@@ -150,7 +150,7 @@ const form = reactive({
 // Filter states based on selected country
 const filteredStates = computed(() => {
   if (!form.country) return [];
-  return props.states.filter(s => s.country === Number(form.country) || s.country === form.country);
+  return props.states.filter(s => s.country === Number(form.country));
 });
 
 // Translation helper

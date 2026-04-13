@@ -112,7 +112,7 @@ import { Scale } from 'lucide-vue-next';
 import { LoadingSpinner, ErrorMessage, DataTable, type Column } from '@shared/index.js';
 import { useInventory } from '../composables/useInventory';
 import { inventoryRouteNames } from '../router';
-import type { StockMovement, StockMovementFilters, StockMovementType } from '../types';
+import type { StockMovementFilters } from '../types';
 
 const { movements, isLoading, errors, loadMovements } = useInventory();
 
@@ -122,7 +122,7 @@ const filters = ref<StockMovementFilters>({
   dateTo: '',
 });
 
-const columns: Column<StockMovement>[] = [
+const columns: Column[] = [
   { key: 'movementDate', label: 'Fecha', sortable: true },
   { key: 'productName', label: 'Producto', sortable: true },
   { key: 'movementType', label: 'Tipo', sortable: true, align: 'center' },
@@ -131,7 +131,7 @@ const columns: Column<StockMovement>[] = [
   { key: 'performedByName', label: 'Usuario', sortable: true },
 ];
 
-const movementTypeLabels: Record<StockMovementType, string> = {
+const movementTypeLabels: Record<string, string> = {
   IN: 'Entrada',
   OUT: 'Salida',
   ADJUSTMENT: 'Ajuste',
@@ -141,7 +141,7 @@ const movementTypeLabels: Record<StockMovementType, string> = {
   PURCHASE: 'Compra',
 };
 
-const movementTypeClasses: Record<StockMovementType, string> = {
+const movementTypeClasses: Record<string, string> = {
   IN: 'bg-green-100 text-green-800',
   OUT: 'bg-red-100 text-red-800',
   ADJUSTMENT: 'bg-yellow-100 text-yellow-800',

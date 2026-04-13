@@ -172,7 +172,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
+import { ref, watch } from 'vue';
 import { X, Upload, Image as ImageIcon, Check } from 'lucide-vue-next';
 import { useConfigStore } from '@/stores/config';
 import type { PaymentMethodTemplate, MetadataField } from '@/types';
@@ -238,12 +238,6 @@ const formData = ref<FormDataState>({ ...defaultForm });
 const logoFile = ref<File | null>(null);
 const logoPreview = ref<string>('');
 const loading = ref(false);
-
-const defaultCurrencyCode = computed(() => {
-  if (!formData.value.currency_id) return 'VES';
-  const currency = configStore.currencies.find(c => c.id === formData.value.currency_id);
-  return (currency?.code as 'USD' | 'VES') || 'VES';
-});
 
 watch(() => props.template, (newTemplate) => {
   if (newTemplate) {

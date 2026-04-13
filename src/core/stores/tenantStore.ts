@@ -7,16 +7,6 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { TenantContext, ULID } from '@core/types';
 
-/** Estado del store de tenant */
-interface TenantState {
-  tenantId: ULID | null;
-  tenantSlug: string;
-  tenantName: string;
-  plan: string;
-  isLoading: boolean;
-  error: string | null;
-}
-
 /**
  * Store para gestionar el contexto multi-tenant
  * @returns {Object} Store con estado y acciones del tenant

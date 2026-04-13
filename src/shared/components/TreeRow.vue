@@ -1,5 +1,4 @@
 <template>
-  <>
     <!-- Current Row -->
     <tr 
       :class="[
@@ -117,16 +116,11 @@
         :level="level + 1"
         :expanded-nodes="expandedNodes"
         :has-actions="hasActions"
-        @toggle="$emit('toggle', $event)"
-        @select="$emit('select', $event)"
-        @action="$emit('action', $event.action, $event.node)"
-      >
-        <template #row-actions="{ node: childNode }">
-          <slot name="row-actions" :node="childNode" />
-        </template>
-      </TreeRow>
+        @toggle="(id: string) => $emit('toggle', id)"
+        @select="(n: CategoryTree) => $emit('select', n)"
+        @action="(a: string, n: CategoryTree) => $emit('action', a, n)"
+      />
     </template>
-  </>
 </template>
 
 <script setup lang="ts">
@@ -144,7 +138,6 @@ import {
   Pencil, 
   Trash2, 
   Loader2,
-  type LucideIcon 
 } from 'lucide-vue-next';
 import type { CategoryTree, HierarchyColumn, Category } from '@modules/master-data/types';
 
@@ -194,7 +187,7 @@ const isSelected = computed(() =>
 );
 
 const hasChildren = computed(() => 
-  props.node.hasChildren || (props.node.children && props.node.children.length > 0)
+  props.node.children && props.node.children.length > 0
 );
 
 // =============================================================================
@@ -230,14 +223,14 @@ function getBadgeClass(value: unknown): string {
 }
 
 // Map icon names to Lucide components
-const iconMap: Record<string, LucideIcon> = {
+const iconMap: Record<string, any> = {
   Folder,
   Pencil,
   Trash2,
   Loader2,
 };
 
-function getIconComponent(name: string): LucideIcon {
+function getIconComponent(name: string): any {
   return iconMap[name] || Folder;
 }
 </script>

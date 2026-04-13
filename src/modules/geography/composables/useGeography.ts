@@ -26,7 +26,7 @@ import type {
 
 export function useGeography() {
   const store = useGeographyStore();
-  const { countries, isLoading, errors } = storeToRefs(store);
+  const { countries, isLoading } = storeToRefs(store);
 
   // Local refs for reactive dropdowns
   const selectedCountryId = ref<ULID | null>(null);

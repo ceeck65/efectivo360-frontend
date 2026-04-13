@@ -7,7 +7,6 @@
 
 import { ref, computed } from 'vue';
 import { storeToRefs } from 'pinia';
-import { toast } from 'vue3-toastify';
 import { useUsersStore } from '../stores/usersStore';
 import type {
   User,
@@ -15,7 +14,6 @@ import type {
   UserCreateData,
   UserUpdateData,
   ProfileUpdateData,
-  ChangePasswordData,
   UserFilters,
 } from '../types';
 
@@ -206,25 +204,6 @@ export function useUsers() {
   }
 
   /**
-   * Cambiar contraseña
-   */
-  async function changePassword(data: ChangePasswordData): Promise<boolean> {
-    const { useAuthStore } = await import('@/stores/auth');
-    const authStore = useAuthStore();
-    
-    try {
-      const success = await authStore.changePassword(data);
-      if (success) {
-        toast.success('Contraseña actualizada');
-      }
-      return success;
-    } catch {
-      toast.error('Error cambiando contraseña');
-      return false;
-    }
-  }
-
-  /**
    * Actualizar preferencias
    */
   async function updatePreferences(preferences: Record<string, unknown>): Promise<boolean> {
@@ -333,7 +312,6 @@ export function useUsers() {
     
     // Profile
     updateProfile,
-    changePassword,
     updatePreferences,
     
     // Sessions
@@ -366,17 +344,10 @@ export function useProfile() {
     return await store.updateProfile(data);
   }
 
-  async function updateAvatar(file: File): Promise<boolean> {
-    const { useAuthStore } = await import('@/stores/auth');
-    const authStore = useAuthStore();
-    return await authStore.updateAvatar(file);
-  }
-
   return {
     user: currentUser,
     isProcessing,
     update,
-    updateAvatar,
     preferences: computed(() => currentUser.value?.preferences),
   };
 }

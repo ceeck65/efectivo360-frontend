@@ -161,11 +161,9 @@ function toggleNode(nodeId: string): void {
 function expandAll(): void {
   function addAll(nodes: CategoryTree[]) {
     nodes.forEach(node => {
-      if (node.hasChildren) {
+      if (node.children && node.children.length > 0) {
         expandedNodes.value.add(node.category.id);
-        if (node.children) {
-          addAll(node.children);
-        }
+        addAll(node.children);
       }
     });
   }

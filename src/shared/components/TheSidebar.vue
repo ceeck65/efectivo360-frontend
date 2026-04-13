@@ -249,9 +249,8 @@ import {
   PanelRightClose,
   Lock,
   AlertCircle,
-  type LucideIcon,
 } from 'lucide-vue-next';
-import { useSmartNavigation, type MenuGroup } from '../composables/useSmartNavigation';
+import { useSmartNavigation } from '../composables/useSmartNavigation';
 import { useAssistantStore } from '@modules/assistant';
 import { useSubscriptionsStore } from '@modules/subscriptions';
 import type { NavigationItem } from '../config/navigationConfig';
@@ -342,7 +341,7 @@ const visibleGroups = computed(() => {
 /**
  * Mapear nombre de icono a componente Lucide
  */
-const iconMap: Record<string, LucideIcon> = {
+const iconMap: Record<string, any> = {
   LayoutDashboard,
   ShoppingCart,
   Receipt,
@@ -374,7 +373,7 @@ const iconMap: Record<string, LucideIcon> = {
   AlertCircle,
 };
 
-function getIcon(name: string): LucideIcon {
+function getIcon(name: string): any {
   return iconMap[name] || LayoutDashboard;
 }
 

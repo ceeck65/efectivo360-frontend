@@ -6,18 +6,15 @@
  * Manejo de atributos dinámicos según la categoría.
  */
 
-import { ref, computed, watch } from 'vue';
+import { ref, computed } from 'vue';
 import { storeToRefs } from 'pinia';
-import { toast } from 'vue3-toastify';
 import { useMasterDataStore } from '../stores/masterDataStore';
 import type {
   Category,
-  CategoryTree,
   CategoryFormData,
   Blueprint,
   BlueprintAttribute,
   DynamicEntityFilters,
-  TreeNode,
 } from '../types';
 
 // =============================================================================
@@ -416,6 +413,7 @@ export function useMasterData() {
     // Blueprint
     selectBlueprint,
     saveBlueprint,
+    getBlueprintById: store.getBlueprintById,
     
     // Attributes
     getDefaultAttributeValues,
@@ -474,7 +472,7 @@ export function useCategorySelector() {
  */
 export function useDynamicAttributes(blueprintId?: string) {
   const store = useMasterDataStore();
-  const { blueprints, isLoading } = storeToRefs(store);
+  const { isLoading } = storeToRefs(store);
   
   const values = ref<Record<string, unknown>>({});
   const errors = ref<Record<string, string>>({});

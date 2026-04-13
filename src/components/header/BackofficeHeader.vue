@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRouter } from 'vue-router';
 import {
   Menu,
   ChevronDown,
@@ -29,7 +28,6 @@ interface Props {
 }
 
 const props = defineProps<Props>();
-const router = useRouter();
 const authStore = useAuthStore();
 
 // State
@@ -52,15 +50,6 @@ const userEmail = computed(() => authStore.user?.email || '-');
 const userInitial = computed(() => 
   (authStore.user?.first_name?.[0] || authStore.user?.username?.[0] || '?').toUpperCase()
 );
-
-const todayLabel = computed(() => {
-  return new Date().toLocaleDateString('es-VE', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-});
 
 // Keyboard shortcut for command palette
 const onKeydown = (e: KeyboardEvent) => {
@@ -95,10 +84,6 @@ const toggleDarkMode = () => {
   document.documentElement.classList.toggle('dark', isDarkMode.value);
 };
 
-const closeDropdowns = () => {
-  profileOpen.value = false;
-  notificationsOpen.value = false;
-};
 </script>
 
 <template>

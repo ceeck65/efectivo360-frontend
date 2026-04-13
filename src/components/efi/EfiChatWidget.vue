@@ -220,7 +220,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, watch, computed } from 'vue';
+import { ref, onMounted, nextTick, computed } from 'vue';
 import { marked } from 'marked';
 import {
   Bot,
@@ -234,19 +234,14 @@ import {
   Minimize2,
   Plus,
 } from 'lucide-vue-next';
-import { useEfiChat, type EfiMessage } from '@/composables/useEfiChat';
-import { useAuthStore } from '@/stores/auth';
+import { useEfiChat } from '@/composables/useEfiChat';
 
 // Props
 interface Props {
   tenantUlid?: string;
 }
 
-const props = defineProps<Props>()
-
-// Get auth store for tenant info
-const authStore = useAuthStore();
-const tenantUlidFromStore = computed(() => authStore.tenantUlid);
+defineProps<Props>()
 
 // Use EfiChat composable
 const {
@@ -270,7 +265,6 @@ const unreadCount = ref(0);
 
 // Computed session title
 const sessionTitle = computed(() => currentSession.value?.title || '');
-const sessionUlid = computed(() => currentSession.value?.ulid || null);
 
 // Quick suggestions
 const quickSuggestions = [
@@ -333,8 +327,6 @@ const renderMarkdown = (content: string): string => {
     marked.setOptions({
       breaks: true,
       gfm: true,
-      headerIds: false,
-      mangle: false,
     });
 
     // Render markdown to HTML

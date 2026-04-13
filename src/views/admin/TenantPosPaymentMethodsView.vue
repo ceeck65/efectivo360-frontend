@@ -72,8 +72,8 @@
               <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
                   <img
-                    v-if="method.template?.logo_url"
-                    :src="method.template.logo_url"
+                    v-if="method.template?.logo"
+                    :src="method.template.logo"
                     :alt="method.template.name"
                     class="h-10 w-10 rounded-lg object-contain bg-white border border-slate-100"
                   />

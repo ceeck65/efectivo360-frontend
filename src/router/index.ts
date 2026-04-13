@@ -121,7 +121,7 @@ const router = createRouter({
       redirect: '/es',
     },
   ],
-  scrollBehavior(to, from, savedPosition) {
+  scrollBehavior(to, _from, savedPosition) {
     if (savedPosition) {
       return savedPosition;
     }
@@ -138,7 +138,7 @@ const router = createRouter({
 // Auth guard - protect admin routes
 let isRedirecting = false;
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   const authStore = useAuthStore();
 
   // Prevent redirect loops

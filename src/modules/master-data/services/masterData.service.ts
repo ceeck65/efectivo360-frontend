@@ -10,7 +10,6 @@ import type { ApiResponse, PaginatedResponse } from '@core/types';
 import type {
   Blueprint,
   Category,
-  CategoryTree,
   CategoryDetail,
   CategoryFilters,
   CategoryFormData,

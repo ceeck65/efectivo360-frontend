@@ -11,8 +11,8 @@
       <div class="flex items-start justify-between">
         <div class="flex items-center gap-3">
           <img
-            v-if="template.logo_url"
-            :src="template.logo_url"
+            v-if="template.logo"
+            :src="template.logo"
             :alt="template.name"
             class="h-12 w-12 rounded-lg object-contain bg-white shadow-sm"
           />
@@ -55,7 +55,7 @@
           {{ template.category?.name || 'Sin categoría' }}
         </span>
         <span class="badge bg-gray-100 text-gray-700 border-0">
-          {{ configStore.getPaymentTypeLabel(template.payment_type) }}
+          {{ configStore.getPaymentTypeLabel(template.payment_type.id) }}
         </span>
         <span
           v-if="template.currency"

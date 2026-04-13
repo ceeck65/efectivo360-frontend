@@ -30,7 +30,6 @@ import {
   AlertTriangle, 
   CheckCircle2, 
   Package,
-  type Component
 } from 'lucide-vue-next';
 import type { StockLevel } from '../types';
 
@@ -59,7 +58,7 @@ const props = withDefaults(defineProps<Props>(), {
 /** Mapa de configuración por nivel de stock */
 const stockConfig: Record<StockLevel, {
   label: string;
-  icon: Component;
+  icon: any;
   colors: Record<string, string>;
 }> = {
   CRITICAL: {

@@ -30,8 +30,8 @@
             <label class="label">Método de Pago</label>
             <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
               <img
-                v-if="method.template?.logo_url"
-                :src="method.template.logo_url"
+                v-if="method.template?.logo"
+                :src="method.template.logo"
                 class="h-8 w-8 rounded object-contain"
               />
               <span class="font-medium">{{ method.template?.name }}</span>

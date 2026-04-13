@@ -18,18 +18,11 @@ import type {
   PaymentTypeOption,
   PaymentTransaction,
   CurrencyFormData,
-  ExchangeRateFormData,
   SaasPaymentMethodFormData,
   TenantPaymentMethodFormData,
   TransactionFilters,
 } from '../types';
 import * as paymentsService from '../services/payments.service';
-
-/** Estado del store de pagos */
-interface PaymentsState {
-  isLoading: boolean;
-  errors: Record<string, string | null>;
-}
 
 export const usePaymentsStore = defineStore('payments', () => {
   // ===========================================================================

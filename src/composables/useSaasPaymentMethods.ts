@@ -24,7 +24,6 @@ import type {
  */
 export function useSaasPaymentMethods() {
   const { fetchApi } = useApi();
-  const mockApi = useMockPaymentApi();
   const useMock = ref(false);
 
   const saasMethods = ref<SaasPaymentMethod[]>([]);

@@ -15,6 +15,7 @@ import type {
   PublicPaymentMethodView,
   PaymentMethodAvailability,
   CurrencyConversionResult,
+  TenantPaymentMethod,
 } from '../types';
 
 /**

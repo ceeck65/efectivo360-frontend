@@ -3,7 +3,7 @@
  * @module @modules/inventory/types
  */
 
-import type { ULID, BaseEntity, BaseFilters, PaginatedResponse, EntityStatus } from '@core/types';
+import type { ULID, BaseEntity, BaseFilters, PaginatedResponse } from '@core/types';
 
 /** Categoría de producto en inventario */
 export type ProductCategory = 

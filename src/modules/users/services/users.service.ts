@@ -9,7 +9,6 @@ import { httpClient } from '@core/index.js';
 import type { ApiResponse, PaginatedResponse } from '@core/types';
 import type {
   User,
-  UserProfile,
   Role,
   Permission,
   UserCreateData,

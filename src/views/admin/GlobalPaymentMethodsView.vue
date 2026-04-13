@@ -178,7 +178,6 @@ import Swal from 'sweetalert2';
 const {
   templates,
   isLoading,
-  apiBaseUrl,
   loadTemplates,
   createTemplate,
   updateTemplate,

@@ -25,6 +25,7 @@ export interface EfiMessage {
   tokens_output?: number;
   metadata?: Record<string, any>;
   created_at: string;
+  isLoading?: boolean;
 }
 
 export interface EfiChatSession {

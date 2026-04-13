@@ -37,7 +37,7 @@ export function useSmartNavigation() {
   const subscriptionsStore = useSubscriptionsStore();
   const tenantsStore = useTenantsStore();
   
-  const { currentUser, hasPermission } = storeToRefs(usersStore);
+  const { currentUser } = storeToRefs(usersStore);
   const { subscription, currentPlan } = storeToRefs(subscriptionsStore);
   const { currentTenant } = storeToRefs(tenantsStore);
   

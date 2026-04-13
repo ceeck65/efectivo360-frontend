@@ -30,7 +30,7 @@ interface Props {
   color?: SpinnerColor;
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   size: 'md',
   color: 'primary',
 });

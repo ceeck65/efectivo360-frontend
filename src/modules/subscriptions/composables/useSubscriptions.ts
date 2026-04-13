@@ -16,6 +16,7 @@ import type {
   BillingCycle,
   PaymentFilters,
   PlanRecommendation,
+  SubscriptionPayment,
 } from '../types';
 
 // =============================================================================
@@ -51,14 +52,14 @@ export function useSubscriptions() {
     if (!currentPlan.value) return store.availablePlans;
     
     const currentOrder = currentPlan.value.sortOrder;
-    return store.availablePlans.filter(p => p.sortOrder > currentOrder);
+    return store.availablePlans.filter((p: Plan) => p.sortOrder > currentOrder);
   });
 
   const downgradeOptions = computed(() => {
     if (!currentPlan.value) return [];
     
     const currentOrder = currentPlan.value.sortOrder;
-    return store.availablePlans.filter(p => p.sortOrder < currentOrder);
+    return store.availablePlans.filter((p: Plan) => p.sortOrder < currentOrder);
   });
 
   const comparisonPlans = computed(() => 
@@ -227,7 +228,7 @@ export function useSubscriptions() {
   }>> {
     const ids = comparisonPlanIds.value.length > 0 
       ? comparisonPlanIds.value 
-      : store.availablePlans.slice(0, 3).map(p => p.id);
+      : store.availablePlans.slice(0, 3).map((p: Plan) => p.id);
     
     try {
       return await subscriptionsService.comparePlansForEfi(ids);
@@ -277,7 +278,7 @@ export function useSubscriptions() {
    * Descargar factura
    */
   function downloadInvoice(paymentId: string): void {
-    const payment = payments.value.find(p => p.id === paymentId);
+    const payment = payments.value.find((p: SubscriptionPayment) => p.id === paymentId);
     if (payment) {
       store.downloadInvoicePdf(payment.id);
     }
@@ -381,7 +382,7 @@ export function usePlanUpgrade() {
     if (!currentPlan.value) return store.availablePlans;
     
     const currentOrder = currentPlan.value.sortOrder;
-    return store.availablePlans.filter(p => p.sortOrder > currentOrder);
+    return store.availablePlans.filter((p: Plan) => p.sortOrder > currentOrder);
   });
 
   /**
@@ -402,7 +403,6 @@ export function usePlanUpgrade() {
   });
 
   async function upgrade(): Promise<boolean> {
-    upgradeOptions,
     if (!bestUpgradeOption.value) return false;
     
     const planId = bestUpgradeOption.value.id;

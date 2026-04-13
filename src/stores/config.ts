@@ -3,63 +3,6 @@ import { ref, computed } from 'vue';
 import type { GlobalConfig, Currency, PaymentCategory, PaymentTypeOption, CurrencyFormatRules } from '@/types';
 import { useApi } from '@/composables/useApi';
 
-// Mock config for development when API is not available
-const getMockConfig = (): GlobalConfig => ({
-  currencies: [
-    {
-      id: 1,
-      code: 'USD',
-      name: 'US Dollar',
-      symbol: '$',
-      is_active: true,
-      format_rules: {
-        code: 'USD',
-        symbol: '$',
-        symbol_position: 'prefix',
-        decimal_separator: '.',
-        thousand_separator: ',',
-        decimal_precision: 2,
-      },
-    },
-    {
-      id: 2,
-      code: 'VES',
-      name: 'Bolívar Soberano',
-      symbol: 'Bs',
-      is_active: true,
-      format_rules: {
-        code: 'VES',
-        symbol: 'Bs',
-        symbol_position: 'prefix',
-        decimal_separator: ',',
-        thousand_separator: '.',
-        decimal_precision: 2,
-      },
-    },
-  ],
-  payment_categories: [],
-  payment_types: [],
-  icons: {
-    'banknote': 'Banknote',
-    'credit-card': 'CreditCard',
-    'arrow-left-right': 'ArrowLeftRight',
-  },
-  tenant: {
-    id: 1,
-    name: 'Efectivo 360',
-    slug: 'efectivo360',
-    timezone: 'America/Caracas',
-    default_currency_code: 'USD',
-    default_language: 'es',
-    features: [],
-  },
-  ui_config: {
-    primary_color: '#3b82f6',
-    logo_url: '',
-    favicon_url: '',
-  },
-});
-
 export const useConfigStore = defineStore('config', () => {
   // State
   const config = ref<GlobalConfig | null>(null);
@@ -77,7 +20,14 @@ export const useConfigStore = defineStore('config', () => {
   const currencyRulesMap = computed((): Record<string, CurrencyFormatRules> => {
     const map: Record<string, CurrencyFormatRules> = {};
     currencies.value.forEach(currency => {
-      map[currency.code] = currency.format_rules;
+      map[currency.code] = {
+        code: currency.code,
+        symbol: currency.symbol,
+        decimal_precision: currency.decimal_precision,
+        symbol_position: currency.symbol_position,
+        thousand_separator: currency.thousand_separator,
+        decimal_separator: currency.decimal_separator,
+      };
     });
     return map;
   });

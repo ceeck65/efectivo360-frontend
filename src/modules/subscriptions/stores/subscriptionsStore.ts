@@ -16,6 +16,8 @@ import type {
   PaymentFilters,
   SubscribeRequest,
   SaaSStats,
+  SubscriptionPayment,
+  Invoice,
 } from '../types';
 import * as subscriptionsService from '../services/subscriptions.service';
 

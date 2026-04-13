@@ -37,11 +37,11 @@ export function useTenantPaymentMethods() {
   const methodsByCategory = computed(() => {
     const grouped: Record<string, TenantPaymentMethod[]> = {};
     paymentMethods.value.forEach(method => {
-      const category = method.template?.category || 'otros';
-      if (!grouped[category]) {
-        grouped[category] = [];
+      const categoryName = method.template?.category?.name || 'otros';
+      if (!grouped[categoryName]) {
+        grouped[categoryName] = [];
       }
-      grouped[category].push(method);
+      grouped[categoryName].push(method);
     });
     return grouped;
   });

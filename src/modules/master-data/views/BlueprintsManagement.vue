@@ -161,7 +161,7 @@
                 <Plus class="w-4 h-4" />
               </button>
               <button
-                v-if="!node.hasChildren"
+                v-if="!node.children || node.children.length === 0"
                 @click="deleteCategory(node.category)"
                 class="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
                 title="Eliminar"
@@ -373,13 +373,10 @@ import {
   Trash2,
   Copy,
   X,
-  ChevronRight,
-  ChevronDown,
-  type LucideIcon,
 } from 'lucide-vue-next';
-import { DataTableJerarquica } from '@shared';
-import { useMasterData } from '../../composables/useMasterData';
-import type { CategoryTree, Category, Blueprint, HierarchyColumn } from '../../types';
+import DataTableJerarquica from '@/shared/components/DataTableJerarquica.vue';
+import { useMasterData } from '@/modules/master-data/composables/useMasterData';
+import type { CategoryTree, Category, Blueprint, HierarchyColumn } from '@/modules/master-data/types';
 
 // =============================================================================
 // STATE
@@ -398,8 +395,6 @@ const {
   blueprints,
   categoryTree,
   flatCategories,
-  currentBlueprint,
-  isLoading,
   initialize,
   toggleExpand,
   getBlueprintById,
@@ -459,7 +454,7 @@ function editCategory(category: Category) {
   // Abrir modal de edición
 }
 
-function addSubcategory(parentCategory: Category) {
+function addSubcategory(_parentCategory: Category) {
   // Crear nueva categoría con parentId predefinido
   showCreateCategory.value = true;
 }
@@ -471,11 +466,11 @@ function deleteCategory(category: Category) {
   }
 }
 
-function editBlueprint(blueprint: Blueprint) {
+function editBlueprint(_blueprint: Blueprint) {
   // Abrir modal de edición
 }
 
-function cloneBlueprint(blueprint: Blueprint) {
+function cloneBlueprint(_blueprint: Blueprint) {
   // Clonar blueprint
 }
 
@@ -492,7 +487,7 @@ function getCategoryCountForBlueprint(blueprintId: string): number {
 }
 
 // Icon mapping
-const iconMap: Record<string, LucideIcon> = {
+const iconMap: Record<string, any> = {
   FileJson,
   FolderTree,
   Palette,
@@ -506,7 +501,7 @@ const iconMap: Record<string, LucideIcon> = {
   X,
 };
 
-function getIcon(name: string): LucideIcon {
+function getIcon(name: string): any {
   return iconMap[name] || FileJson;
 }
 

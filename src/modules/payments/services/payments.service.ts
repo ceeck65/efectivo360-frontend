@@ -19,7 +19,6 @@ import type {
   PaymentTypeOption,
   CurrencyFormData,
   ExchangeRateFormData,
-  PaymentMethodTemplateFormData,
   SaasPaymentMethodFormData,
   TenantPaymentMethodFormData,
   PaymentMethodFilters,
