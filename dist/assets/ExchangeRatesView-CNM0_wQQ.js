@@ -1,0 +1,2 @@
+import{d as s,o as a,c as o,a as e}from"./index-B7YVa9JW.js";const n={class:"p-6"},i=s({__name:"ExchangeRatesView",setup(c){return(r,t)=>(a(),o("div",n,[...t[0]||(t[0]=[e("h1",{class:"text-2xl font-bold text-gray-900"},"Tasas de Cambio",-1),e("p",{class:"mt-1 text-sm text-gray-500"}," Gestión de tasas de conversión entre monedas (Solo Staff) ",-1),e("div",{class:"mt-6 text-gray-600"}," Vista en construcción... ",-1)])]))}});export{i as default};
+//# sourceMappingURL=ExchangeRatesView-CNM0_wQQ.js.map

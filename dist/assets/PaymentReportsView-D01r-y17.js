@@ -1,0 +1,2 @@
+import{d as s,o as a,c as o,a as t}from"./index-B7YVa9JW.js";const n={class:"p-6"},d=s({__name:"PaymentReportsView",setup(c){return(r,e)=>(a(),o("div",n,[...e[0]||(e[0]=[t("h1",{class:"text-2xl font-bold text-gray-900"},"Reportes de Pagos",-1),t("p",{class:"mt-1 text-sm text-gray-500"}," Análisis y estadísticas de transacciones ",-1),t("div",{class:"mt-6 text-gray-600"}," Vista en construcción... ",-1)])]))}});export{d as default};
+//# sourceMappingURL=PaymentReportsView-D01r-y17.js.map

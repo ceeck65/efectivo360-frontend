@@ -1,0 +1,2 @@
+import{d as e,o as s,c as o,a as t}from"./index-B7YVa9JW.js";const n={class:"p-6"},i=e({__name:"SaasPaymentMethodsView",setup(r){return(c,a)=>(s(),o("div",n,[...a[0]||(a[0]=[t("h1",{class:"text-2xl font-bold text-gray-900"},"Métodos SaaS",-1),t("p",{class:"mt-1 text-sm text-gray-500"}," Configuración de métodos de pago para cobrar suscripciones (Solo Staff) ",-1),t("div",{class:"mt-6 text-gray-600"}," Vista en construcción... ",-1)])]))}});export{i as default};
+//# sourceMappingURL=SaasPaymentMethodsView--tKFWJAG.js.map

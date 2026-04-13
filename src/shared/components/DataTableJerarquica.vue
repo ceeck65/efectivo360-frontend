@@ -108,17 +108,14 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  columns: () => defaultColumns,
+  columns: () => [
+    { field: 'name', header: 'Nombre', type: 'tree', width: '40%' },
+    { field: 'code', header: 'Código', type: 'text', width: '20%' },
+    { field: 'productCount', header: 'Productos', type: 'number', width: '15%' },
+    { field: 'isActive', header: 'Estado', type: 'badge', width: '15%' },
+  ],
   showDetails: true,
 });
-
-// Default columns
-const defaultColumns: HierarchyColumn[] = [
-  { field: 'name', header: 'Nombre', type: 'tree', width: '40%' },
-  { field: 'code', header: 'Código', type: 'text', width: '20%' },
-  { field: 'productCount', header: 'Productos', type: 'number', width: '15%' },
-  { field: 'isActive', header: 'Estado', type: 'badge', width: '15%' },
-];
 
 // =============================================================================
 // EMITS
