@@ -725,8 +725,8 @@ const handleSave = async () => {
     };
 
     if (permissionMode.value === 'blueprint') {
-      // Blueprint mode: don't include tenant_id at all
-      // The backend will set tenant to null when mode is global
+      // Blueprint mode: explicitly send tenant_id as null
+      payload.tenant_id = null;
     } else {
       // Store mode: use tenant_id
       const tenantId = authStore.tenantUlid || selectedTenantId.value || null;
@@ -737,6 +737,8 @@ const handleSave = async () => {
       }
       payload.tenant_id = tenantId;
     }
+
+    console.log('Sending payload:', JSON.stringify(payload, null, 2));
 
     await fetchApi('/api/role-permissions/sync/', {
       method: 'POST',
