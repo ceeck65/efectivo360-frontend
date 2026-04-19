@@ -30,7 +30,33 @@ export type BusinessType =
 /**
  * Categoría de agrupación del menú
  */
-export type MenuGroup = 'core' | 'operations' | 'catalogo' | 'administracion' | 'saas';
+export type MenuGroup = 'saas' | 'master' | 'operations' | 'config';
+
+/**
+ * Nombres de iconos Lucide soportados
+ */
+export type IconName = 
+  | 'LayoutDashboard'
+  | 'Users'
+  | 'Settings'
+  | 'Building2'
+  | 'CreditCard'
+  | 'BarChart3'
+  | 'Package'
+  | 'Database'
+  | 'Tags'
+  | 'Waypoints'
+  | 'MessageSquare'
+  | 'Receipt'
+  | 'Briefcase'
+  | 'Plug'
+  | 'Bot'
+  | 'Globe'
+  | 'Map'
+  | 'Coins'
+  | 'Flag'
+  | 'Wallet'
+  | 'DollarSign';
 
 /**
  * Definición de un item del menú
@@ -39,7 +65,7 @@ export interface NavigationItem {
   id: string;
   label: string;
   path: string;
-  icon: string;           // Nombre del icono Lucide
+  icon: IconName;         // Nombre del icono Lucide
   group: MenuGroup;
   
   // Filtros de visibilidad
@@ -73,7 +99,7 @@ export interface NavigationItem {
 export interface GroupConfig {
   id: MenuGroup;
   label: string;
-  icon: string;
+  icon: IconName;
   sortOrder: number;
 }
 
@@ -82,11 +108,10 @@ export interface GroupConfig {
 // =============================================================================
 
 export const groupConfigs: GroupConfig[] = [
-  { id: 'core', label: 'Principal', icon: 'LayoutGrid', sortOrder: 1 },
-  { id: 'operations', label: 'Operaciones', icon: 'Briefcase', sortOrder: 2 },
-  { id: 'catalogo', label: 'Catálogo', icon: 'Package', sortOrder: 3 },
-  { id: 'administracion', label: 'Administración', icon: 'Settings', sortOrder: 4 },
-  { id: 'saas', label: 'Efectivo 360 SaaS', icon: 'Shield', sortOrder: 5 },
+  { id: 'saas', label: 'Administración SaaS', icon: 'Building2', sortOrder: 1 },
+  { id: 'master', label: 'Maestro de Datos', icon: 'Database', sortOrder: 2 },
+  { id: 'operations', label: 'Operaciones', icon: 'Briefcase', sortOrder: 3 },
+  { id: 'config', label: 'Configuración', icon: 'Settings', sortOrder: 4 },
 ];
 
 // =============================================================================
@@ -95,260 +120,179 @@ export const groupConfigs: GroupConfig[] = [
 
 export const navigationItems: NavigationItem[] = [
   // ==========================================================================
-  // CORE - Principal
-  // ==========================================================================
-  {
-    id: 'dashboard',
-    label: 'Dashboard',
-    path: '/dashboard',
-    icon: 'LayoutDashboard',
-    group: 'core',
-    sortOrder: 1,
-  },
-  {
-    id: 'pos',
-    label: 'Punto de Venta',
-    path: '/pos',
-    icon: 'ShoppingCart',
-    group: 'core',
-    allowedRoles: ['admin', 'manager', 'cashier', 'sales_rep'],
-    sortOrder: 2,
-  },
-  {
-    id: 'sales',
-    label: 'Ventas',
-    path: '/sales',
-    icon: 'Receipt',
-    group: 'core',
-    allowedRoles: ['admin', 'manager', 'cashier', 'sales_rep'],
-    sortOrder: 3,
-  },
-  
-  // ==========================================================================
-  // OPERATIONS - Operaciones
-  // ==========================================================================
-  {
-    id: 'customers',
-    label: 'Clientes',
-    path: '/customers',
-    icon: 'Users',
-    group: 'operations',
-    sortOrder: 1,
-  },
-  {
-    id: 'payments',
-    label: 'Pagos',
-    path: '/payments',
-    icon: 'CreditCard',
-    group: 'operations',
-    requiredModules: ['payments'],
-    sortOrder: 2,
-  },
-  {
-    id: 'reports',
-    label: 'Reportes',
-    path: '/reports',
-    icon: 'BarChart3',
-    group: 'operations',
-    allowedRoles: ['admin', 'manager'],
-    sortOrder: 3,
-  },
-  {
-    id: 'advanced-reports',
-    label: 'Reportes Avanzados',
-    path: '/reports/advanced',
-    icon: 'LineChart',
-    group: 'operations',
-    allowedRoles: ['admin', 'manager'],
-    requiredPlan: ['PRO', 'ENTERPRISE'],  // Bloqueado para BASIC
-    isLocked: true,
-    sortOrder: 4,
-  },
-  {
-    id: 'cash-register',
-    label: 'Caja',
-    path: '/cash-register',
-    icon: 'CashRegister',
-    group: 'operations',
-    allowedRoles: ['admin', 'manager', 'cashier'],
-    sortOrder: 5,
-  },
-  
-  // ==========================================================================
-  // CATALOGO - Catálogo e Inventario
-  // ==========================================================================
-  {
-    id: 'products',
-    label: 'Productos',
-    path: '/inventory/products',
-    icon: 'Package',
-    group: 'catalogo',
-    requiredModules: ['inventory'],
-    sortOrder: 1,
-  },
-  {
-    id: 'categories',
-    label: 'Categorías',
-    path: '/master-data/categories',
-    icon: 'FolderTree',
-    group: 'catalogo',
-    requiredModules: ['inventory'],
-    sortOrder: 2,
-  },
-  {
-    id: 'blueprints',
-    label: 'Configuración de Rubros',
-    path: '/master-data/blueprints',
-    icon: 'Palette',
-    group: 'catalogo',
-    requiredModules: ['inventory'],
-    allowedRoles: ['admin', 'manager', 'inventory_manager'],
-    sortOrder: 3,
-    children: [
-      {
-        id: 'blueprints-list',
-        label: 'Blueprints',
-        path: '/master-data/blueprints',
-        icon: 'FileJson',
-        group: 'catalogo',
-        parentId: 'blueprints',
-        sortOrder: 1,
-      },
-      {
-        id: 'category-tree',
-        label: 'Árbol de Categorías',
-        path: '/master-data/category-tree',
-        icon: 'GitBranch',
-        group: 'catalogo',
-        parentId: 'blueprints',
-        sortOrder: 2,
-      },
-      {
-        id: 'attributes',
-        label: 'Atributos Dinámicos',
-        path: '/master-data/attributes',
-        icon: 'Tags',
-        group: 'catalogo',
-        parentId: 'blueprints',
-        sortOrder: 3,
-        // Solo visible para rubros que usan atributos (ropa, zapatos)
-        // Oculto para 'services', 'hardware', 'supermarket', 'pharmacy'
-        requiredBusinessType: ['clothing', 'retail', 'electronics', 'wholesale'],
-        excludedBusinessType: ['services', 'hardware', 'supermarket', 'pharmacy'],
-      },
-    ],
-  },
-  {
-    id: 'stock',
-    label: 'Control de Stock',
-    path: '/inventory/stock',
-    icon: 'Warehouse',
-    group: 'catalogo',
-    requiredModules: ['inventory'],
-    allowedRoles: ['admin', 'manager', 'inventory_manager'],
-    sortOrder: 4,
-  },
-  {
-    id: 'sizes',
-    label: 'Gestión de Tallas/Colores',
-    path: '/inventory/sizes',
-    icon: 'Ruler',
-    group: 'catalogo',
-    requiredModules: ['inventory'],
-    requiredBusinessType: ['clothing'],  // Solo ropa/zapatos
-    excludedBusinessType: ['hardware', 'supermarket', 'pharmacy', 'services'],
-    sortOrder: 5,
-  },
-  
-  // ==========================================================================
-  // ADMINISTRACIÓN - Configuración del Tenant
-  // ==========================================================================
-  {
-    id: 'settings',
-    label: 'Ajustes Generales',
-    path: '/settings',
-    icon: 'Settings',
-    group: 'administracion',
-    allowedRoles: ['admin', 'manager'],
-    sortOrder: 1,
-  },
-  {
-    id: 'users',
-    label: 'Usuarios',
-    path: '/users',
-    icon: 'UserCog',
-    group: 'administracion',
-    allowedRoles: ['admin'],
-    sortOrder: 2,
-  },
-  {
-    id: 'tenant-profile',
-    label: 'Perfil del Comercio',
-    path: '/tenant/profile',
-    icon: 'Store',
-    group: 'administracion',
-    allowedRoles: ['admin'],
-    sortOrder: 3,
-  },
-  {
-    id: 'integrations',
-    label: 'Integraciones',
-    path: '/settings/integrations',
-    icon: 'Plug',
-    group: 'administracion',
-    allowedRoles: ['admin'],
-    isBeta: true,
-    sortOrder: 4,
-  },
-  
-  // ==========================================================================
-  // SAAS - Administración (solo Staff/Superadmin)
+  // ADMINISTRACIÓN SaaS
   // ==========================================================================
   {
     id: 'tenants',
-    label: 'Comercios',
+    label: 'Tenants',
     path: '/admin/tenants',
     icon: 'Building2',
     group: 'saas',
-    allowedRoles: ['superadmin'],
     sortOrder: 1,
-  },
-  {
-    id: 'plans',
-    label: 'Planes y Precios',
-    path: '/admin/plans',
-    icon: 'CreditCard',
-    group: 'saas',
-    allowedRoles: ['superadmin'],
-    sortOrder: 2,
   },
   {
     id: 'subscriptions',
     label: 'Suscripciones',
     path: '/admin/subscriptions',
-    icon: 'Repeat',
+    icon: 'CreditCard',
     group: 'saas',
-    allowedRoles: ['superadmin'],
-    sortOrder: 3,
+    sortOrder: 2,
   },
   {
-    id: 'saas-payments',
-    label: 'Pagos Recibidos',
-    path: '/admin/payments',
-    icon: 'DollarSign',
+    id: 'users',
+    label: 'Usuarios',
+    path: '/admin/users',
+    icon: 'Users',
     group: 'saas',
-    allowedRoles: ['superadmin'],
+    sortOrder: 3,
+  },
+  
+  // ==========================================================================
+  // MAESTRO DE DATOS
+  // ==========================================================================
+  {
+    id: 'countries',
+    label: 'Países',
+    path: '/admin/geography/countries',
+    icon: 'Globe',
+    group: 'master',
     sortOrder: 4,
   },
   {
-    id: 'analytics',
-    label: 'Analytics SaaS',
-    path: '/admin/analytics',
-    icon: 'LineChart',
-    group: 'saas',
-    allowedRoles: ['superadmin'],
-    isBeta: true,
+    id: 'states',
+    label: 'Estados y Ciudades',
+    path: '/admin/geography/states',
+    icon: 'Map',
+    group: 'master',
     sortOrder: 5,
+  },
+  {
+    id: 'master-data',
+    label: 'Datos Maestros',
+    path: '/admin/master-data',
+    icon: 'Database',
+    group: 'master',
+    sortOrder: 1,
+  },
+  {
+    id: 'categories',
+    label: 'Categorías',
+    path: '/admin/master/categories',
+    icon: 'Waypoints',
+    group: 'master',
+    sortOrder: 2,
+  },
+  {
+    id: 'blueprints',
+    label: 'Tipos de Comercio',
+    path: '/admin/master/commerce-types',
+    icon: 'Building2',
+    group: 'master',
+    sortOrder: 3,
+  },
+  {
+    id: 'chat',
+    label: 'Chat',
+    path: '/admin/chat',
+    icon: 'MessageSquare',
+    group: 'master',
+    sortOrder: 4,
+  },
+  {
+    id: 'products',
+    label: 'Productos',
+    path: '/admin/products',
+    icon: 'Package',
+    group: 'master',
+    sortOrder: 4,
+  },
+  
+  // ==========================================================================
+  // OPERACIONES
+  // ==========================================================================
+  {
+    id: 'dashboard',
+    label: 'Dashboard',
+    path: '/admin',
+    icon: 'LayoutDashboard',
+    group: 'operations',
+    sortOrder: 1,
+  },
+  {
+    id: 'sales',
+    label: 'Ventas',
+    path: '/admin/sales',
+    icon: 'Receipt',
+    group: 'operations',
+    sortOrder: 2,
+  },
+  {
+    id: 'payments',
+    label: 'Pagos',
+    path: '/admin/payments',
+    icon: 'CreditCard',
+    group: 'operations',
+    sortOrder: 3,
+  },
+  {
+    id: 'reports',
+    label: 'Reportes',
+    path: '/admin/reports',
+    icon: 'BarChart3',
+    group: 'operations',
+    sortOrder: 4,
+  },
+  
+  // ==========================================================================
+  // CONFIGURACIÓN
+  // ==========================================================================
+  {
+    id: 'settings',
+    label: 'Configuración',
+    path: '/admin/settings',
+    icon: 'Settings',
+    group: 'config',
+    sortOrder: 1,
+  },
+  {
+    id: 'integrations',
+    label: 'Integraciones',
+    path: '/admin/integrations',
+    icon: 'Plug',
+    group: 'config',
+    sortOrder: 2,
+  },
+  {
+    id: 'currencies',
+    label: 'Monedas',
+    path: '/admin/master/currencies',
+    icon: 'Coins',
+    group: 'config',
+    sortOrder: 3,
+  },
+  {
+    id: 'currencies-country',
+    label: 'Monedas por País',
+    path: '/admin/geography/country-currency',
+    icon: 'Flag',
+    group: 'config',
+    sortOrder: 4,
+  },
+  {
+    id: 'payment-methods',
+    label: 'Métodos de Pago',
+    path: '/admin/staff/payment-templates',
+    icon: 'Wallet',
+    group: 'config',
+    sortOrder: 5,
+  },
+  {
+    id: 'forex-rates',
+    label: 'Tasas de Cambio',
+    path: '/admin/forex-rates',
+    icon: 'DollarSign',
+    group: 'config',
+    sortOrder: 6,
   },
 ];
 
@@ -361,7 +305,7 @@ export const efiNavigationItem: NavigationItem = {
   label: 'Asistente Efi',
   path: '#efi',
   icon: 'Bot',
-  group: 'core',
+  group: 'config',
   sortOrder: 999,  // Siempre al final
 };
 

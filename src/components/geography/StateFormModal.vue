@@ -55,7 +55,7 @@
             :disabled="countriesLoading"
           >
             <option value="">{{ t('geography.selectCountry') }}</option>
-            <option v-for="country in countries" :key="country.id" :value="country.id">
+            <option v-for="country in countries" :key="country.ulid" :value="country.ulid">
               {{ country.name }}
             </option>
           </select>
@@ -146,7 +146,7 @@ watch(
     if (newState) {
       form.name = newState.name;
       form.code = newState.code;
-      form.country = String(newState.country);
+      form.country = newState.country_ulid || '';
       form.is_active = newState.is_active;
     } else {
       form.name = '';
@@ -178,13 +178,13 @@ const validate = (): boolean => {
 
 const handleSubmit = async () => {
   if (!validate()) return;
-  
+
   isSubmitting.value = true;
   try {
     emit('save', {
       name: form.name.trim(),
       code: form.code.trim().toUpperCase(),
-      country: Number(form.country),
+      country_ulid: form.country, // Enviar ULID como string
       is_active: form.is_active,
     });
   } finally {

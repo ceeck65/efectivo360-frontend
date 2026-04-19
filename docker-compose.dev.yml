@@ -1,0 +1,23 @@
+version: '3.8'
+services:
+    frontend:
+        build:
+            context: .
+            dockerfile: Dockerfile.dev
+        container_name: efectivo360-frontend-dev
+        environment:
+            - VITE_API_PROXY_URL=http://api.efectivo360.test/api
+            - VIRTUAL_HOST=efectivo360.test
+            - VIRTUAL_PORT=3000
+        volumes:
+            - '.:/app'
+            - '/app/node_modules'
+        ports:
+            - '3000:3000'
+        networks:
+            - web-proxy
+        command: npm run dev -- --host 0.0.0.0
+
+networks:
+    web-proxy:
+        external: true

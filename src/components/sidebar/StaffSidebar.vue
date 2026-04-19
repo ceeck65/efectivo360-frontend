@@ -12,6 +12,7 @@ import {
   Settings,
   Megaphone,
   Bell,
+  MessageSquare,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -83,6 +84,8 @@ const menuStructure = [
       { id: 'pagos', label: 'Pagos Recibidos', href: '/admin/master/payments', icon: Receipt, minRole: STAFF_ROLES.OPERATIONS },
       { id: 'planes', label: 'Configuración de Planes', href: '/admin/master/plans', icon: Settings, minRole: STAFF_ROLES.OPERATIONS },
       { id: 'categorias', label: 'Categorías ERP', href: '/admin/master/categories', icon: Waypoints, minRole: STAFF_ROLES.OPERATIONS },
+      { id: 'tipos-comercio', label: 'Tipos de Comercio', href: '/admin/master/commerce-types', icon: Building2, minRole: STAFF_ROLES.OPERATIONS },
+      { id: 'chat', label: 'Chat', href: '/admin/chat', icon: MessageSquare, minRole: STAFF_ROLES.OPERATIONS },
     ],
   },
   {

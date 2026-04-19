@@ -8,7 +8,7 @@
  * - Caché automático para evitar peticiones redundantes
  */
 
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, type Ref, type ComputedRef } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { ULID } from '@core/types';
 import { useGeographyStore } from '../stores/geographyStore';
@@ -21,10 +21,58 @@ import type {
 } from '../types';
 
 // =============================================================================
+// RETURN TYPE
+// =============================================================================
+
+interface UseGeographyReturn {
+  // State refs
+  selectedCountryId: Ref<ULID | null>;
+  selectedStateId: Ref<ULID | null>;
+  selectedCityId: Ref<ULID | null>;
+  
+  // Options for dropdowns
+  countryOptions: ComputedRef<GeographyOption[]>;
+  stateOptions: ComputedRef<GeographyOption[]>;
+  cityOptions: ComputedRef<GeographyOption[]>;
+  
+  // Selected objects
+  selectedCountry: ComputedRef<Country | undefined>;
+  selectedState: ComputedRef<State | undefined>;
+  selectedCity: ComputedRef<City | undefined>;
+  currentSelection: ComputedRef<LocationSelection>;
+  
+  // Loading states
+  isLoadingCountries: ComputedRef<boolean>;
+  isLoadingStates: ComputedRef<boolean>;
+  isLoadingCities: ComputedRef<boolean>;
+  
+  // Actions
+  initialize: () => Promise<void>;
+  loadStates: (countryId: ULID) => Promise<State[]>;
+  loadCities: (stateId: ULID) => Promise<City[]>;
+  fetchLocations: (
+    countryId?: ULID,
+    stateId?: ULID,
+    cityId?: ULID
+  ) => Promise<{
+    countries: Country[];
+    states: State[];
+    cities: City[];
+  }>;
+  setSelection: (
+    countryId: ULID | null,
+    stateId?: ULID | null,
+    cityId?: ULID | null
+  ) => Promise<void>;
+  clearSelection: () => void;
+  isSelectionComplete: (requiredLevel?: 'country' | 'state' | 'city') => boolean;
+}
+
+// =============================================================================
 // MAIN COMPOSABLE
 // =============================================================================
 
-export function useGeography() {
+export function useGeography(): UseGeographyReturn {
   const store = useGeographyStore();
   const { countries, isLoading } = storeToRefs(store);
 

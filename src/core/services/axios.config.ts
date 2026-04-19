@@ -9,7 +9,7 @@ import { ApiError } from '@core/types';
 
 /** Configuración por defecto de Axios */
 const DEFAULT_CONFIG: AxiosRequestConfig = {
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: import.meta.env.VITE_API_URL || '',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',

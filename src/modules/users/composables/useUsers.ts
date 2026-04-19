@@ -57,7 +57,7 @@ export function useUsers() {
     if (filters.value.search) {
       const search = filters.value.search.toLowerCase();
       result = result.filter(u => 
-        u.fullName.toLowerCase().includes(search) ||
+        (u.fullName?.toLowerCase() || '').includes(search) ||
         u.email.toLowerCase().includes(search)
       );
     }
@@ -369,7 +369,7 @@ export function useUserSelector() {
   const options = computed(() => 
     users.value.map(u => ({
       id: u.id,
-      label: u.fullName,
+      label: u.fullName || u.email,
       sublabel: u.email,
       avatar: u.avatarUrl,
     }))

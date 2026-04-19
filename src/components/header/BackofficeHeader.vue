@@ -12,6 +12,7 @@ import {
 } from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/auth';
 import { t } from '@/lib/navigation';
+import TenantSelector from './TenantSelector.vue';
 
 interface ForexRateResponse {
   rate: number;
@@ -109,8 +110,11 @@ const toggleDarkMode = () => {
           <p class="text-[10px] font-medium uppercase tracking-wider text-slate-500">
             {{ isStaff ? 'ERP' : t('header.storeLabel', 'Tienda') }}
           </p>
-          <h2 class="truncate text-base font-semibold text-brand-dark md:text-lg">
-            {{ isStaff ? 'Efectivo 360' : tenantName }}
+          <!-- Tenant Selector for non-staff users -->
+          <TenantSelector v-if="!isStaff" />
+          <!-- Static title for staff users -->
+          <h2 v-else class="truncate text-base font-semibold text-brand-dark md:text-lg">
+            Efectivo 360
           </h2>
         </div>
 
@@ -135,19 +139,25 @@ const toggleDarkMode = () => {
 
         <!-- Forex Rate Badge -->
         <span
-          v-if="props.forexRate"
           :class="[
-            'hidden shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold lg:inline-flex',
-            props.forexRate.status === 'ok'
-              ? 'border-emerald-800 bg-emerald-50 text-emerald-800'
-              : 'border-amber-700 bg-amber-50 text-amber-700'
+            'shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold lg:inline-flex',
+            !props.forexRate || props.forexRate.status === 'degraded'
+              ? 'border-amber-700 bg-amber-50 text-amber-700'
+              : 'border-emerald-800 bg-emerald-50 text-emerald-800'
           ]"
-          :title="props.forexRate.status === 'ok' 
+          :title="props.forexRate && props.forexRate.status === 'ok' 
             ? undefined 
-            : `${t('header.bcvLastUpdate', 'Última actualización')}: ${new Date(props.forexRate.last_success_at).toLocaleString()}`
+            : props.forexRate 
+              ? `${t('header.bcvLastUpdate', 'Última actualización')}: ${new Date(props.forexRate.last_success_at).toLocaleString()}`
+              : 'Cargando tasa...'
           "
         >
-          {{ t('header.bcvRate', 'Tasa Oficial BCV') }}: {{ props.forexRate.rate.toFixed(2) }} VES
+          <template v-if="props.forexRate">
+            {{ t('header.bcvRate', 'Tasa Oficial BCV') }}: {{ props.forexRate.rate.toFixed(2) }} VES
+          </template>
+          <template v-else>
+            {{ t('header.bcvRateLoading', 'Cargando tasa...') }}
+          </template>
         </span>
       </div>
 

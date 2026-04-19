@@ -24,6 +24,9 @@ export type {
   Role,
   Permission,
   ModulePermissions,
+  RoleOption,
+  PermissionDefinition,
+  UserPermissionsResponse,
   
   // Form types
   UserCreateData,
@@ -104,3 +107,15 @@ export {
   useProfile,
   useUserSelector,
 } from './composables/useUsers';
+
+// =============================================================================
+// ROUTER
+// =============================================================================
+
+export {
+  usersRoutes,
+  usersRouteNames,
+  usersPaths,
+  USERS_ROUTE_PREFIX,
+  USERS_ROUTE_NAME,
+} from './router';

@@ -1,7 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
-import { inventoryRoutes } from '@modules/inventory/router';
-import { paymentsRoutes } from '@modules/payments/router';
+import { usersRoutes } from '@modules/users/router';
+import { categoriesRoutes } from '@modules/categories/router';
+import { blueprintsRoutes } from '@modules/blueprints/router';
+import { chatRoutes } from '@modules/chat/router';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -45,81 +47,122 @@ const router = createRouter({
       path: '/register',
       redirect: '/es/register',
     },
+    // 404 - Full screen without layout
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: () => import('@/modules/shared/views/NotFoundView.vue')
+    },
     // Admin routes - protected
     {
       path: '/admin',
-      component: () => import('@/views/admin/AdminLayout.vue'),
+      redirect: '/admin/dashboard',
       meta: { requiresAuth: true },
-      children: [
-        {
-          path: '',
-          redirect: '/admin/dashboard',
-        },
-        {
-          path: 'dashboard',
-          name: 'AdminDashboard',
-          component: () => import('@/views/admin/DashboardView.vue'),
-        },
-        {
-          path: 'geography/countries',
-          name: 'Countries',
-          component: () => import('@/views/admin/CountriesView.vue'),
-        },
-        {
-          path: 'geography/states',
-          name: 'States',
-          component: () => import('@/views/admin/StatesView.vue'),
-        },
-        {
-          path: 'geography/cities',
-          name: 'Cities',
-          component: () => import('@/views/admin/CitiesView.vue'),
-        },
-        {
-          path: 'geography/country-currency',
-          name: 'CountryCurrencyConfig',
-          component: () => import('@/views/admin/CountryCurrencyConfigView.vue'),
-        },
-        // Currencies - Staff only
-        {
-          path: 'master/currencies',
-          name: 'Currencies',
-          component: () => import('@/views/admin/CurrenciesView.vue'),
-          meta: { requiresStaff: true },
-        },
-        // Payment Methods - Separación de responsabilidades
-        {
-          path: 'staff/payment-templates',
-          name: 'StaffPaymentTemplates',
-          component: () => import('@/views/admin/GlobalPaymentMethodsView.vue'),
-          meta: { requiresStaff: true },
-        },
-        {
-          path: 'billing/saas-payments',
-          name: 'TenantSaasPayments',
-          component: () => import('@/views/admin/TenantSaasPaymentsView.vue'),
-        },
-        {
-          path: 'settings/pos-payments',
-          name: 'TenantPosPayments',
-          component: () => import('@/views/admin/TenantPosPaymentMethodsView.vue'),
-        },
-        // Inventory module routes
-        ...inventoryRoutes.map(route => ({
-          ...route,
-          path: route.path.replace('/inventory', 'inventory'),
-        })),
-        // Payments module routes
-        ...paymentsRoutes.map(route => ({
-          ...route,
-          path: route.path.replace('/payments', 'payments'),
-        })),
-      ],
     },
     {
-      path: '/:pathMatch(.*)*',
-      redirect: '/es',
+      path: '/admin/setup',
+      name: 'ShopSetup',
+      component: () => import('@/views/ShopWizardView.vue'),
+      meta: { requiresAuth: true },
     },
+    {
+      path: '/admin/onboarding',
+      name: 'ShopOnboarding',
+      component: () => import('@/views/ShopWizardView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/admin/dashboard',
+      name: 'AdminDashboard',
+      component: () => import('@/views/admin/DashboardView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/admin/geography/countries',
+      name: 'Countries',
+      component: () => import('@/views/admin/CountriesView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/admin/geography/states',
+      name: 'States',
+      component: () => import('@/views/admin/StatesView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/admin/geography/cities',
+      name: 'Cities',
+      component: () => import('@/views/admin/CitiesView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/admin/geography/country-currency',
+      name: 'CountryCurrencyConfig',
+      component: () => import('@/views/admin/CountryCurrencyConfigView.vue'),
+      meta: { requiresAuth: true },
+    },
+    // Currencies - Staff only
+    {
+      path: '/admin/master/currencies',
+      name: 'Currencies',
+      component: () => import('@/views/admin/CurrenciesView.vue'),
+      meta: { requiresAuth: true, requiresStaff: true },
+    },
+    // Forex Rate Management - All authenticated users (read-only)
+    {
+      path: '/admin/forex-rates',
+      name: 'ForexRates',
+      component: () => import('@/views/admin/ForexRatesView.vue'),
+      meta: { requiresAuth: true },
+    },
+    // Payment Methods - Separación de responsabilidades
+    {
+      path: '/admin/staff/payment-templates',
+      name: 'StaffPaymentTemplates',
+      component: () => import('@/views/admin/GlobalPaymentMethodsView.vue'),
+      meta: { requiresAuth: true, requiresStaff: true },
+    },
+    {
+      path: '/admin/billing/saas-payments',
+      name: 'TenantSaasPayments',
+      component: () => import('@/views/admin/TenantSaasPaymentsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/admin/settings/pos-payments',
+      name: 'TenantPosPayments',
+      component: () => import('@/views/admin/TenantPosPaymentMethodsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    // Navigation Menu Modules - Staff only
+    {
+      path: '/admin/menu-modules',
+      name: 'MenuModules',
+      component: () => import('@/views/admin/MenuModulesView.vue'),
+      meta: { requiresAuth: true, requiresStaff: true },
+    },
+    // Role Permissions - Staff only
+    {
+      path: '/admin/role-permissions',
+      name: 'RolePermissions',
+      component: () => import('@/views/admin/RolePermissionsView.vue'),
+      meta: { requiresAuth: true, requiresStaff: true },
+    },
+    // Roles Management - Staff only
+    {
+      path: '/admin/roles',
+      name: 'RolesList',
+      component: () => import('@/views/admin/RolesListView.vue'),
+      meta: { requiresAuth: true, requiresStaff: true },
+    },
+    // Users module - Staff only
+    ...usersRoutes,
+    // Categories module - Staff only
+    ...categoriesRoutes,
+    // Blueprints module - Staff only
+    ...blueprintsRoutes,
+    // Chat module - Staff only
+    ...chatRoutes,
   ],
   scrollBehavior(to, _from, savedPosition) {
     if (savedPosition) {

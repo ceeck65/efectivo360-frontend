@@ -55,7 +55,7 @@
             @change="handleCountryChange"
           >
             <option value="">{{ t('geography.selectCountry') }}</option>
-            <option v-for="country in countries" :key="country.id" :value="country.id">
+            <option v-for="country in countries" :key="country.ulid" :value="country.ulid">
               {{ country.name }}
             </option>
           </select>
@@ -73,7 +73,7 @@
             :disabled="!form.country || filteredStates.length === 0"
           >
             <option value="">{{ t('geography.selectState') }}</option>
-            <option v-for="state in filteredStates" :key="state.id" :value="state.id">
+            <option v-for="state in filteredStates" :key="state.ulid" :value="state.ulid">
               {{ state.name }}
             </option>
           </select>
@@ -150,7 +150,7 @@ const form = reactive({
 // Filter states based on selected country
 const filteredStates = computed(() => {
   if (!form.country) return [];
-  return props.states.filter(s => s.country === Number(form.country));
+  return props.states.filter(s => s.country_ulid === form.country);
 });
 
 // Translation helper
@@ -176,8 +176,8 @@ watch(
     if (newCity) {
       form.name = newCity.name;
       form.code = newCity.code;
-      form.country = String(newCity.country);
-      form.state = String(newCity.state);
+      form.country = newCity.country_ulid || '';
+      form.state = newCity.state_ulid || '';
       form.is_active = newCity.is_active;
     } else {
       form.name = '';
@@ -218,14 +218,14 @@ const validate = (): boolean => {
 
 const handleSubmit = async () => {
   if (!validate()) return;
-  
+
   isSubmitting.value = true;
   try {
     emit('save', {
       name: form.name.trim(),
       code: form.code.trim().toUpperCase(),
-      country: Number(form.country),
-      state: Number(form.state),
+      country_ulid: form.country, // Enviar ULID como string
+      state_ulid: form.state, // Enviar ULID como string
       is_active: form.is_active,
     });
   } finally {

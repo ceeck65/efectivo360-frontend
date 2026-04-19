@@ -5,7 +5,7 @@ import { resolve } from 'path';
 export default defineConfig(({ mode }) => {
   // Load env file based on mode
   const env = loadEnv(mode, process.cwd(), '');
-  const apiUrl = env.VITE_API_URL || 'http://api.efectivo360.test';
+  const apiUrl = env.VITE_API_PROXY_URL || 'http://api.efectivo360.test';
 
   return {
     plugins: [vue()],
@@ -28,7 +28,6 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: apiUrl,
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, ''),
         },
       },
     },

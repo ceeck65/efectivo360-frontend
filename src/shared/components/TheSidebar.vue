@@ -1,264 +1,231 @@
 <template>
-  <aside 
-    :class="[
-      'fixed left-0 top-0 h-full bg-white border-r border-gray-200 flex flex-col transition-all duration-300 z-40',
-      isCollapsed ? 'w-16' : 'w-64'
-    ]"
-  >
-    <!-- Header / Logo -->
-    <div class="h-16 flex items-center justify-center border-b border-gray-100 px-4">
-      <div v-if="!isCollapsed" class="flex items-center gap-3">
-        <div class="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-          <span class="text-white font-bold text-sm">E</span>
-        </div>
-        <span class="font-semibold text-gray-900">Efectivo 360</span>
-      </div>
-      <div v-else class="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-        <span class="text-white font-bold text-sm">E</span>
-      </div>
-    </div>
+  <div>
+    <!-- Mobile Overlay -->
+    <div
+      v-if="isMobileOpen"
+      class="fixed inset-0 z-40 bg-black/40 transition-opacity lg:hidden"
+      @click="closeMobile"
+    />
 
-    <!-- Navigation Groups -->
-    <nav class="flex-1 overflow-y-auto py-4">
-      <div
-        v-for="group in visibleGroups"
-        :key="group.id"
-        class="mb-4"
-      >
-        <!-- Group Label -->
-        <div
-          v-if="!isCollapsed && group.items.length > 0"
-          class="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider"
-        >
-          {{ group.label }}
+    <!-- Sidebar -->
+    <aside
+      :class="[
+        'flex h-screen flex-col px-3 py-5 transition-all duration-300 flex-shrink-0',
+        'border-r border-white/[0.07] bg-brand-dark backdrop-blur-md shadow-[inset_-1px_0_0_0_rgba(255,255,255,0.04)]',
+        isCollapsed ? 'w-14' : 'w-64'
+      ]"
+    >
+      <!-- Logo Section (Fixed) -->
+      <div class="px-2 flex-shrink-0">
+        <div class="mb-3 flex items-center justify-center">
+          <img
+            src="/assets/logo.svg"
+            alt="ERP Efectivo 360"
+            :class="['transition-all duration-300', isCollapsed ? 'h-12 w-12' : 'h-10 w-10']"
+          />
         </div>
-        <div
-          v-else-if="group.items.length > 0"
-          class="px-4 py-2"
-        >
-          <div class="h-px bg-gray-200"></div>
+        <div v-if="!isCollapsed" class="text-center">
+          <p class="text-sm font-semibold text-white/55">
+            ERP Efectivo 360
+          </p>
+          <h1 class="text-xl font-semibold text-white">
+            ERP Efectivo 360
+          </h1>
         </div>
+      </div>
 
-        <!-- Group Items -->
-        <ul class="space-y-1 px-2">
-          <li v-for="item in group.items" :key="item.id">
-            <!-- Item with children -->
-            <div v-if="item.children && item.children.length > 0">
+      <!-- Navigation (Scrollable) -->
+      <nav class="mt-6 flex flex-1 flex-col gap-1 overflow-y-auto">
+        <template v-if="isLoading">
+          <div class="px-3 py-4 text-center text-white/40 text-sm">
+            Cargando menú...
+          </div>
+        </template>
+        <template v-else-if="error">
+          <div class="px-3 py-4 text-center text-red-400 text-sm">
+            Error al cargar menú: {{ error }}
+          </div>
+        </template>
+        <template v-else-if="ungroupedItems.length === 0 && visibleGroups.length === 0">
+          <div class="px-3 py-4 text-center text-white/40 text-sm">
+            No hay elementos de menú disponibles
+          </div>
+        </template>
+        <template v-else>
+          <!-- Ungrouped items (shown first, no toggle) -->
+          <template v-if="!isCollapsed && ungroupedItems.length > 0">
+            <div class="space-y-1">
+              <template v-for="item in ungroupedItems" :key="item.id">
+                <button
+                  @click="navigateTo(item.path, item.id)"
+                  :class="[
+                    'flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm transition w-full text-left',
+                    isItemActive(item.path)
+                      ? 'border border-brand-primary/50 bg-brand-primary/20 text-brand-primary shadow-[0_0_20px_rgba(0,123,255,0.2)]'
+                      : 'border border-transparent text-slate-300 hover:border-white/15 hover:bg-white/10 hover:text-white hover:shadow-[0_0_16px_rgba(0,0,0,0.15)]'
+                  ]"
+                >
+                  <component
+                    :is="getIcon(item.icon)"
+                    class="h-[18px] w-[18px] shrink-0 stroke-[1.5]"
+                  />
+                  <span>{{ item.label }}</span>
+                </button>
+              </template>
+            </div>
+          </template>
+
+          <!-- Grouped items (with toggle) -->
+          <template v-for="group in (isCollapsed ? [{ id: 'flat', label: '', icon: '', items: visibleGroups.flatMap(g => g.items) }] : visibleGroups)" :key="group.id">
+            <div class="space-y-1">
+              <!-- Group Header -->
               <button
-                @click="toggleMenu(item.id)"
-                :class="[
-                  'w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                  isActive(item.id) || isExpanded(item.id)
-                    ? 'bg-blue-50 text-blue-700'
-                    : 'text-gray-700 hover:bg-gray-100',
-                  isCollapsed ? 'justify-center' : ''
-                ]"
+                v-if="!isCollapsed && group.label"
+                type="button"
+                class="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[11px] uppercase tracking-wide text-white/60 hover:bg-white/5"
+                @click="toggleMenu(group.id)"
               >
-                <component
-                  :is="getIcon(item.icon)"
-                  class="w-5 h-5 flex-shrink-0"
-                  :class="isActive(item.id) ? 'text-blue-600' : 'text-gray-500'"
-                />
-                <span v-if="!isCollapsed" class="flex-1 text-left">{{ item.label }}</span>
-                <ChevronDown
-                  v-if="!isCollapsed"
-                  class="w-4 h-4 text-gray-400 transition-transform"
-                  :class="isExpanded(item.id) ? 'rotate-180' : ''"
-                />
+                <div class="flex items-center gap-2">
+                  <component
+                    v-if="group.icon"
+                    :is="getIcon(group.icon)"
+                    class="h-3.5 w-3.5"
+                  />
+                  <span>{{ group.label }}</span>
+                </div>
+                <ChevronDown v-if="isExpanded(group.id)" class="h-3.5 w-3.5" />
+                <ChevronRight v-else class="h-3.5 w-3.5" />
               </button>
 
-              <!-- Children -->
-              <ul
-                v-if="isExpanded(item.id) && !isCollapsed"
-                class="mt-1 ml-4 space-y-1"
-              >
-                <li v-for="child in getVisibleChildren(item)" :key="child.id">
-                  <router-link
-                    :to="child.path"
-                    @click="setActiveItem(child.id)"
+              <!-- Group Items -->
+              <template v-if="isCollapsed || isExpanded(group.id)">
+                <template v-for="item in group.items" :key="item.id">
+                  <button
+                    @click="navigateTo(item.path, item.id)"
                     :class="[
-                      'flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors',
-                      isActive(child.id)
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      'flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm transition w-full text-left',
+                      isCollapsed ? 'justify-center' : '',
+                      isItemActive(item.path)
+                        ? 'border border-brand-primary/50 bg-brand-primary/20 text-brand-primary shadow-[0_0_20px_rgba(0,123,255,0.2)]'
+                        : 'border border-transparent text-slate-300 hover:border-white/15 hover:bg-white/10 hover:text-white hover:shadow-[0_0_16px_rgba(0,0,0,0.15)]'
                     ]"
                   >
                     <component
-                      :is="getIcon(child.icon)"
-                      class="w-4 h-4"
-                      :class="isActive(child.id) ? 'text-blue-600' : 'text-gray-400'"
+                      :is="getIcon(item.icon)"
+                      class="h-[18px] w-[18px] shrink-0 stroke-[1.5]"
                     />
-                    <span>{{ child.label }}</span>
-                    <!-- Badges -->
-                    <span
-                      v-if="child.isNew"
-                      class="ml-auto px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded"
-                    >
-                      Nuevo
+                    <span :class="[isCollapsed ? 'hidden' : 'block']">
+                      {{ item.label }}
                     </span>
-                    <span
-                      v-if="child.isBeta"
-                      class="ml-auto px-1.5 py-0.5 text-xs bg-purple-100 text-purple-700 rounded"
-                    >
-                      Beta
-                    </span>
-                  </router-link>
-                </li>
-              </ul>
+                  </button>
+                </template>
+              </template>
             </div>
+          </template>
+        </template>
+      </nav>
 
-            <!-- Item without children -->
-            <router-link
-              v-else
-              :to="item.path"
-              @click="handleItemClick(item)"
-              :class="[
-                'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-                isActive(item.id)
-                  ? 'bg-blue-50 text-blue-700'
-                  : 'text-gray-700 hover:bg-gray-100',
-                isCollapsed ? 'justify-center' : ''
-              ]"
-            >
-              <component
-                :is="getIcon(item.icon)"
-                class="w-5 h-5 flex-shrink-0"
-                :class="isActive(item.id) ? 'text-blue-600' : 'text-gray-500'"
-              />
-              <span v-if="!isCollapsed">{{ item.label }}</span>
-              
-              <!-- Badges -->
-              <span
-                v-if="!isCollapsed && item.isNew"
-                class="ml-auto px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded"
-              >
-                Nuevo
-              </span>
-              <span
-                v-if="!isCollapsed && item.isBeta"
-                class="ml-auto px-1.5 py-0.5 text-xs bg-purple-100 text-purple-700 rounded"
-              >
-                Beta
-              </span>
-              <span
-                v-if="!isCollapsed && item.badge"
-                class="ml-auto px-2 py-0.5 text-xs bg-red-100 text-red-700 rounded-full"
-              >
-                {{ item.badge }}
-              </span>
-            </router-link>
-          </li>
-        </ul>
+      <!-- Footer -->
+      <div class="space-y-2 p-3 text-xs rounded-bento border border-white/[0.08] bg-black/25 text-white/50 backdrop-blur-sm" :class="isCollapsed ? 'hidden' : 'block'">
+        <div class="flex items-center gap-2">
+          <span class="h-2 w-2 rounded-full bg-emerald-500" />
+          <span>Online</span>
+        </div>
+        <p class="mt-1">Sistema ERP Efectivo 360</p>
       </div>
-    </nav>
 
-    <!-- Subscription Badge (if needed) -->
-    <div v-if="subscriptionBadge && !isCollapsed" class="px-3 py-2">
-      <div 
-        :class="[
-          'flex items-center gap-2 px-3 py-2 rounded-lg text-sm',
-          subscriptionBadge.type === 'error' 
-            ? 'bg-red-50 text-red-700 border border-red-200'
-            : 'bg-amber-50 text-amber-700 border border-amber-200'
-        ]"
-      >
-        <AlertCircle class="w-4 h-4" />
-        <span class="font-medium">{{ subscriptionBadge.text }}</span>
-        <span class="ml-auto text-xs">{{ subscriptionBadge.days }}d</span>
-      </div>
-    </div>
-
-    <!-- Efi Section (Persistent) -->
-    <div class="border-t border-gray-100 p-2">
+      <!-- Collapse Toggle (Desktop) -->
       <button
-        @click="openEfi"
-        :class="[
-          'w-full flex items-center gap-3 px-3 py-3 rounded-xl transition-all',
-          isCollapsed ? 'justify-center' : '',
-          'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl'
-        ]"
-      >
-        <Bot class="w-5 h-5" />
-        <span v-if="!isCollapsed" class="font-medium text-sm">Preguntar a Efi</span>
-        <Sparkles v-if="!isCollapsed" class="w-4 h-4 ml-auto" />
-      </button>
-    </div>
-
-    <!-- Footer - Collapse Toggle -->
-    <div class="border-t border-gray-100 p-2">
-      <button
+        type="button"
+        class="mt-4 hidden w-full items-center justify-center p-2 lg:flex rounded-xl border border-white/12 text-white/70 hover:border-sky-400/25 hover:bg-white/[0.06]"
         @click="toggleCollapse"
-        class="w-full flex items-center justify-center p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
         :title="isCollapsed ? 'Expandir menú' : 'Colapsar menú'"
       >
-        <PanelLeftClose v-if="!isCollapsed" class="w-5 h-5" />
-        <PanelRightClose v-else class="w-5 h-5" />
+        <ChevronRight v-if="isCollapsed" class="h-4 w-4 stroke-[1.5]" />
+        <ChevronLeft v-else class="h-4 w-4 stroke-[1.5]" />
+        <span class="ml-2 text-xs" :class="isCollapsed ? 'hidden' : 'block'">
+          {{ isCollapsed ? 'Expandir' : 'Colapsar' }}
+        </span>
       </button>
-    </div>
-  </aside>
-
-  <!-- Mobile Overlay -->
-  <div
-    v-if="isMobileOpen"
-    class="fixed inset-0 bg-black/50 z-30 lg:hidden"
-    @click="closeMobile"
-  ></div>
+    </aside>
+  </div>
 </template>
 
 <script setup lang="ts">
-/**
- * @fileoverview Sidebar inteligente de Efectivo 360
- * @module @shared/components/TheSidebar
- * 
- * Menú data-driven con filtros por:
- * - Rol del usuario
- * - Plan de suscripción (módulos activos)
- * - Rubro del comercio
- * 
- * Incluye acceso directo persistente a Efi.
- */
-import { ref, computed, onMounted, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, computed, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import {
   LayoutDashboard,
-  ShoppingCart,
-  Receipt,
   Users,
+  Settings,
+  Building2,
   CreditCard,
   BarChart3,
   Package,
-  FolderTree,
-  Palette,
-  FileJson,
-  GitBranch,
+  Database,
   Tags,
-  Warehouse,
-  Ruler,
-  Settings,
-  UserCog,
-  Store,
+  Receipt,
+  Briefcase,
   Plug,
-  Building2,
-  Repeat,
-  DollarSign,
-  LineChart,
   Bot,
-  Sparkles,
+  Globe,
+  Map as MapIcon,
+  Coins,
+  Flag,
+  Wallet,
+  DollarSign,
   ChevronDown,
-  PanelLeftClose,
-  PanelRightClose,
-  Lock,
-  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
+  Monitor,
+  Boxes,
+  Gauge,
+  Ruler,
+  ShieldCheck,
+  Shield,
+  Landmark,
+  Waypoints,
+  CheckCircle2,
+  LineChart,
+  MoreHorizontal,
 } from 'lucide-vue-next';
-import { useSmartNavigation } from '../composables/useSmartNavigation';
-import { useAssistantStore } from '@modules/assistant';
-import { useSubscriptionsStore } from '@modules/subscriptions';
-import type { NavigationItem } from '../config/navigationConfig';
+import { useNavigationStore, type MenuItem } from '@/stores/navigation';
 
-// =============================================================================
-// PROPS
-// =============================================================================
+// Icon mapping from Lucide
+const iconMap: Record<string, any> = {
+  LayoutDashboard,
+  Users,
+  Settings,
+  Building2,
+  CreditCard,
+  BarChart3,
+  Package,
+  Database,
+  Tags,
+  Receipt,
+  Briefcase,
+  Plug,
+  Bot,
+  Globe,
+  Map: MapIcon,
+  Coins,
+  Flag,
+  Wallet,
+  DollarSign,
+  Monitor,
+  Boxes,
+  Gauge,
+  Ruler,
+  ShieldCheck,
+  Shield,
+  Landmark,
+  Waypoints,
+  CheckCircle2,
+  LineChart,
+  MoreHorizontal,
+};
 
+// Props
 interface Props {
   modelValue?: boolean;
 }
@@ -271,210 +238,122 @@ const emit = defineEmits<{
   'update:modelValue': [value: boolean];
 }>();
 
-// =============================================================================
-// ROUTE & STORES
-// =============================================================================
-
+// Route
 const route = useRoute();
-const assistantStore = useAssistantStore();
-const subscriptionsStore = useSubscriptionsStore();
+const router = useRouter();
+const navigationStore = useNavigationStore();
 
-const {
-  groupedItems,
-  availableGroups,
-  groupConfigs,
-  isExpanded,
-  toggleMenu,
-  isActive,
-  setActiveItem,
-  getVisibleChildren,
-  findItemByPath,
-} = useSmartNavigation();
-
-// =============================================================================
-// SUBSCRIPTION BADGE
-// =============================================================================
-
-const subscriptionBadge = computed(() => {
-  const summary = subscriptionsStore.subscriptionSummary;
-  if (!summary) return null;
-  
-  if (summary.isInGracePeriod) {
-    return { type: 'error', text: 'Vencido', days: summary.gracePeriodDays };
-  }
-  if (summary.daysRemaining <= 7) {
-    return { type: 'warning', text: 'Próximo', days: summary.daysRemaining };
-  }
-  return null;
-});
-
-// =============================================================================
-// STATE
-// =============================================================================
-
+// State
 const isCollapsed = ref(false);
-const isMobileOpen = ref(false);
+const isMobileOpen = computed(() => props.modelValue);
+const activeItemId = ref<string | null>('');
+const expandedItems = ref<Set<string>>(new Set());
 
-// =============================================================================
-// COMPUTED
-// =============================================================================
-
-/**
- * Grupos visibles con sus items
- */
-const visibleGroups = computed(() => {
-  return availableGroups.value.map(groupId => {
-    const config = groupConfigs.find(g => g.id === groupId)!;
-    return {
-      id: groupId,
-      label: config.label,
-      icon: config.icon,
-      items: groupedItems.value[groupId] || [],
-    };
-  }).filter(g => g.items.length > 0);
-});
-
-// =============================================================================
-// METHODS
-// =============================================================================
-
-/**
- * Mapear nombre de icono a componente Lucide
- */
-const iconMap: Record<string, any> = {
-  LayoutDashboard,
-  ShoppingCart,
-  Receipt,
-  Users,
-  CreditCard,
-  BarChart3,
-  Package,
-  FolderTree,
-  Palette,
-  FileJson,
-  GitBranch,
-  Tags,
-  Warehouse,
-  Ruler,
-  Settings,
-  UserCog,
-  Store,
-  Plug,
-  Building2,
-  Repeat,
-  DollarSign,
-  LineChart,
-  Bot,
-  Sparkles,
-  ChevronDown,
-  PanelLeftClose,
-  PanelRightClose,
-  Lock,
-  AlertCircle,
-};
-
-function getIcon(name: string): any {
-  return iconMap[name] || LayoutDashboard;
-}
-
-/**
- * Manejar click en item
- */
-function handleItemClick(item: NavigationItem): void {
-  setActiveItem(item.id);
-  
-  // Si es Efi, abrir chat
-  if (item.id === 'efi') {
-    openEfi();
+// Fetch navigation on mount
+onMounted(async () => {
+  navigationStore.clearCache();
+  try {
+    await navigationStore.fetchNavigation();
+    console.log('TheSidebar: Navigation loaded', navigationStore.menu);
+    
+    if (!navigationStore.menu || navigationStore.menu.length === 0) {
+      console.warn('TheSidebar: El store de navegación está vacío');
+    }
+  } catch (e) {
+    console.error('TheSidebar: Failed to fetch navigation', e);
   }
   
-  // Cerrar menú móvil
-  closeMobile();
-}
-
-/**
- * Abrir Efi
- */
-function openEfi(): void {
-  // Enviar contexto actual al asistente
-  const currentModule = getCurrentModuleFromPath();
-  assistantStore.setContext({
-    module: currentModule,
-    action: 'sidebar_access',
-    data: { source: 'sidebar_button' },
-    timestamp: new Date().toISOString(),
-  });
-  
-  // Abrir ventana de chat
-  assistantStore.openChat();
-  
-  // Cerrar menú móvil
-  closeMobile();
-}
-
-/**
- * Determinar módulo actual desde la ruta
- */
-function getCurrentModuleFromPath(): any {
-  const path = route.path;
-  if (path.includes('inventory') || path.includes('products')) return 'inventory';
-  if (path.includes('payments')) return 'payments';
-  if (path.includes('sales')) return 'sales';
-  if (path.includes('customers')) return 'customers';
-  if (path.includes('reports')) return 'reports';
-  return 'dashboard';
-}
-
-/**
- * Toggle colapso
- */
-function toggleCollapse(): void {
-  isCollapsed.value = !isCollapsed.value;
-  localStorage.setItem('sidebar_collapsed', String(isCollapsed.value));
-}
-
-/**
- * Cerrar menú móvil
- */
-function closeMobile(): void {
-  isMobileOpen.value = false;
-  emit('update:modelValue', false);
-}
-
-// =============================================================================
-// LIFECYCLE
-// =============================================================================
-
-onMounted(() => {
-  // Restaurar estado de colapso
-  const saved = localStorage.getItem('sidebar_collapsed');
-  if (saved) {
-    isCollapsed.value = saved === 'true';
-  }
-  
-  // Establecer item activo según ruta actual
-  const currentItem = findItemByPath(route.path);
-  if (currentItem) {
-    setActiveItem(currentItem.id);
-    // Expandir padre si es hijo
-    if (currentItem.parentId) {
-      toggleMenu(currentItem.parentId);
+  // Set active item based on current route
+  if (navigationStore.menu && navigationStore.menu.length > 0) {
+    const currentPath = route.path;
+    const currentItem = navigationStore.menu.find(item => 
+      currentPath.startsWith(item.path)
+    );
+    if (currentItem) {
+      setActiveItem(currentItem.id);
     }
   }
 });
 
-// Watch para menú móvil
-watch(() => props.modelValue, (val) => {
-  isMobileOpen.value = val;
+// Computed
+const isLoading = computed(() => navigationStore.isLoading);
+const error = computed(() => navigationStore.error);
+
+const ungroupedItems = computed(() => {
+  console.log('TheSidebar: Computing ungroupedItems', navigationStore.ungrouped);
+  if (!navigationStore.ungrouped || navigationStore.ungrouped.length === 0) {
+    return [];
+  }
+  return navigationStore.ungrouped.map((item: MenuItem) => ({
+    id: item.id,
+    label: item.title,
+    path: item.path,
+    icon: item.icon,
+    group: null,
+    sortOrder: item.order,
+  }));
 });
 
-// Watch para cambios de ruta
-watch(() => route.path, (path) => {
-  const item = findItemByPath(path);
-  if (item) {
-    setActiveItem(item.id);
+type VisibleGroup = { id: string; label: string; icon: string; items: any[] };
+
+const visibleGroups = computed<VisibleGroup[]>(() => {
+  console.log('TheSidebar: Computing visibleGroups', navigationStore.groups);
+  if (!navigationStore.groups || navigationStore.groups.length === 0) {
+    return [];
   }
+
+  return navigationStore.groups.map(group => ({
+    id: group.id,
+    label: group.label,
+    icon: group.icon,
+    items: group.modules.map((item: MenuItem) => ({
+      id: item.id,
+      label: item.title,
+      path: item.path,
+      icon: item.icon,
+      group: group.id,
+      sortOrder: item.order,
+    })),
+  })).filter(group => group.items.length > 0);
 });
+
+// Methods
+function getIcon(iconName: string) {
+  return iconMap[iconName] || LayoutDashboard;
+}
+
+function isExpanded(itemId: string): boolean {
+  return expandedItems.value.has(itemId);
+}
+
+function toggleMenu(itemId: string) {
+  if (expandedItems.value.has(itemId)) {
+    expandedItems.value.delete(itemId);
+  } else {
+    expandedItems.value.add(itemId);
+  }
+}
+
+function setActiveItem(itemId: string) {
+  activeItemId.value = itemId;
+}
+
+function toggleCollapse() {
+  isCollapsed.value = !isCollapsed.value;
+}
+
+function closeMobile() {
+  emit('update:modelValue', false);
+}
+
+function navigateTo(path: string, itemId: string) {
+  router.push(path);
+  setActiveItem(itemId);
+}
+
+function isItemActive(path: string): boolean {
+  return route.path === path || route.path.startsWith(path);
+}
 </script>
 
 <style scoped>

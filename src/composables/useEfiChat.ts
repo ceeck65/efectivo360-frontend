@@ -15,7 +15,7 @@ import { apiClient } from './useApi';
 // Types (legacy - usar types desde @modules/assistant)
 export interface EfiMessage {
   ulid: string;
-  session_ulid: string;
+  session_ulid: string | undefined;
   tenant_ulid: string;
   user_ulid: string;
   role: 'user' | 'assistant' | 'system';
@@ -58,7 +58,7 @@ export function useEfiChat() {
   const currentSession = ref<EfiChatSession | null>(null);
   const messages = ref<EfiMessage[]>([]);
 
-  const sessionUlid = computed(() => currentSession.value?.ulid || null);
+  const sessionUlid = computed(() => currentSession.value?.ulid || undefined);
   const hasActiveSession = computed(() => !!currentSession.value?.is_active);
 
   // Load session from localStorage on init
@@ -147,7 +147,7 @@ export function useEfiChat() {
     // Add user message immediately to UI
     const tempUserMessage: EfiMessage = {
       ulid: `temp-${Date.now()}`,
-      session_ulid: sessionUlid.value || '',
+      session_ulid: sessionUlid.value,
       tenant_ulid: currentSession.value?.tenant_ulid || '',
       user_ulid: currentSession.value?.user_ulid || '',
       role: 'user',
@@ -158,9 +158,9 @@ export function useEfiChat() {
     saveMessages();
 
     try {
-      const response = await apiClient.post<ChatResponse>('/v1/efi/chat/', {
+      const response = await apiClient.post<ChatResponse>('/api/v1/efi/chat/', {
         message: content.trim(),
-        session_ulid: sessionUlid.value,
+        session_ulid: sessionUlid.value || undefined,
       });
 
       const data = response.data;
@@ -202,7 +202,7 @@ export function useEfiChat() {
         // Add error message
         messages.value.push({
           ulid: `error-${Date.now()}`,
-          session_ulid: sessionUlid.value || '',
+          session_ulid: sessionUlid.value,
           tenant_ulid: currentSession.value?.tenant_ulid || '',
           user_ulid: currentSession.value?.user_ulid || '',
           role: 'assistant',
@@ -217,7 +217,7 @@ export function useEfiChat() {
       error.value = err.message || 'Error de conexión';
       messages.value.push({
         ulid: `error-${Date.now()}`,
-        session_ulid: sessionUlid.value || '',
+        session_ulid: sessionUlid.value,
         tenant_ulid: currentSession.value?.tenant_ulid || '',
         user_ulid: currentSession.value?.user_ulid || '',
         role: 'assistant',

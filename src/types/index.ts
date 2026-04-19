@@ -247,6 +247,7 @@ export interface GlobalConfig {
 
 export interface Country {
   id: number;
+  ulid: string;
   name: string;
   code: string;
   is_active: boolean;
@@ -256,9 +257,11 @@ export interface Country {
 
 export interface State {
   id: number;
+  ulid: string;
   name: string;
   code: string;
   country: number;
+  country_ulid?: string;
   country_name?: string;
   is_active: boolean;
   created_at?: string;
@@ -267,12 +270,15 @@ export interface State {
 
 export interface City {
   id: number;
+  ulid: string;
   name: string;
   code: string;
-  state: number;
-  state_name?: string;
   country: number;
+  country_ulid?: string;
   country_name?: string;
+  state: number;
+  state_ulid?: string;
+  state_name?: string;
   is_active: boolean;
   created_at?: string;
   updated_at?: string;

@@ -111,6 +111,21 @@ export const useAuthStore = defineStore('auth', () => {
     return user.value?.tenant as string || '';
   });
 
+  // Check if user has any associated tenant (configured or not)
+  const hasTenant = computed(() => {
+    return !!user.value?.tenant;
+  });
+
+  // Check if user has configured tenant
+  const hasConfiguredTenant = computed(() => {
+    return user.value?.tenant_is_configured || false;
+  });
+
+  // User is in global mode (authenticated but no configured tenant)
+  const isGlobalMode = computed(() => {
+    return user.value && !hasConfiguredTenant.value;
+  });
+
   const hasPermission = (permission: string): boolean => {
     if (!user.value) return false;
     if (user.value.is_superuser) return true;
@@ -230,9 +245,9 @@ export const useAuthStore = defineStore('auth', () => {
   const register = async (username: string, email: string, password: string): Promise<void> => {
     isLoading.value = true;
     try {
-      const data = await fetchApi<{ access: string; refresh: string; user: User }>('/api/v1/auth/register/', {
+      const data = await fetchApi<{ access: string; refresh: string; user: User }>('/api/auth/register/', {
         method: 'POST',
-        data: JSON.stringify({ username, email, password }),
+        data: { username, email, password },
       });
       
       setTokens(data.access, data.refresh);
@@ -275,31 +290,55 @@ export const useAuthStore = defineStore('auth', () => {
     await fetchCmsPermissions();
   };
 
+  const switchTenant = async (tenantId: string): Promise<void> => {
+    const { success: notifySuccess, error: notifyError } = useNotify();
+
+    try {
+      // Call backend endpoint to switch tenant context
+      await fetchApi('/api/v1/auth/switch-tenant/', {
+        method: 'POST',
+        data: { tenant_id: tenantId },
+      });
+
+      // Refresh user data to get new tenant context
+      await fetchUser();
+
+      // Invalidate navigation cache for the new tenant
+      const { useNavigationStore } = await import('@/stores/navigation');
+      const navigationStore = useNavigationStore();
+      await navigationStore.invalidateForTenantChange(tenantId);
+
+      notifySuccess('Tienda cambiada exitosamente');
+    } catch (err) {
+      notifyError('Error al cambiar de tienda');
+      throw err;
+    }
+  };
+
   return {
-    // State
     user,
     token,
     refreshToken,
     cmsPermissions,
     isLoading,
-    // Getters
     isAuthenticated,
     isStaff,
-    isSuperuser,
-    fullName,
     tenantName,
     tenantUlid,
-    hasPermission,
-    hasCmsPermissionCode,
-    // Actions
-    login,
-    register,
-    logout,
-    fetchUser,
-    fetchCmsPermissions,
-    initialize,
-    refreshSession,
+    hasTenant,
+    hasConfiguredTenant,
+    isGlobalMode,
     setTokens,
     clearAuth,
+    login,
+    logout,
+    initialize,
+    fetchUser,
+    fetchCmsPermissions,
+    hasPermission,
+    hasCmsPermissionCode,
+    saveUserToStorage,
+    saveCmsPermissionsToStorage,
+    switchTenant,
   };
 });

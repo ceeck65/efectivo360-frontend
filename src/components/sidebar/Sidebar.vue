@@ -7,10 +7,92 @@ import {
   ChevronLeft,
   ChevronRight,
   LogOut,
+  Lock,
+  Store,
+  User,
+  Settings,
+  MessageCircle,
+  BarChart3,
+  Monitor,
+  Boxes,
+  CreditCard,
+  Gauge,
+  Ruler,
+  Tag,
+  Users,
+  ShieldCheck,
+  Shield,
+  Landmark,
+  Wallet,
+  Waypoints,
+  CheckCircle2,
+  LineChart,
 } from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/auth';
-import type { NavItem, NavGroup } from '@/lib/navigation';
-import { t, getNavGroups, filterNavItemsByRole, allNavItems, financialConfigMenu } from '@/lib/navigation';
+import { useNavigationStore, type MenuItem } from '@/stores/navigation';
+
+// Icon mapping from Lucide
+const iconMap: Record<string, any> = {
+  BarChart3,
+  LineChart,
+  Boxes,
+  CreditCard,
+  Gauge,
+  Monitor,
+  Ruler,
+  Users,
+  Settings,
+  Tag,
+  ShieldCheck,
+  Shield,
+  Landmark,
+  Wallet,
+  Waypoints,
+  CheckCircle2,
+};
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: any;
+  shortcut?: string;
+  permission?: string;
+}
+
+interface NavGroup {
+  id: string;
+  label: string;
+  items: NavItem[];
+}
+
+// Translation helper
+const translate = (key: string, fallback?: string): string => {
+  const translations: Record<string, string> = {
+    'app.subtitle': 'Efectivo 360',
+    'app.subtitleShort': 'Efi 360',
+    'app.title': 'Efectivo 360',
+    'sidebar.close': 'Cerrar',
+    'sidebar.configureTenantFirst': 'Configura tu tienda primero',
+    'sidebar.offlineMode': 'Modo sin conexión',
+    'sidebar.online': 'En línea',
+    'sidebar.footer': 'Sistema POS v2.0',
+    'sidebar.logout': 'Cerrar Sesión',
+    'sidebar.expand': 'Expandir',
+    'sidebar.collapse': 'Colapsar',
+    'sidebar.dashboard': 'Dashboard',
+    'sidebar.posDesktop': 'Punto de Venta',
+    'sidebar.inventory': 'Inventario',
+    'sidebar.billing': 'Facturación',
+    'sidebar.financialAnalytics': 'Analítica Financiera',
+    'sidebar.exchangeRates': 'Tasas de Cambio',
+    'sidebar.units': 'Unidades',
+    'sidebar.receivables': 'Cuentas por Cobrar',
+    'sidebar.customers': 'Clientes',
+    'sidebar.team': 'Equipo',
+    'sidebar.settings': 'Configuración',
+  };
+  return translations[key] || fallback || key;
+};
 
 interface Props {
   isOpen: boolean;
@@ -30,53 +112,84 @@ const emit = defineEmits<{
 
 const route = useRoute();
 const authStore = useAuthStore();
+const navigationStore = useNavigationStore();
 
 // Prevent hydration mismatch by waiting for client mount
 const mounted = ref(false);
-onMounted(() => {
+onMounted(async () => {
   mounted.value = true;
+  
+  // Clear cache to force fresh data from API
+  navigationStore.clearCache();
+  
+  try {
+    await navigationStore.fetchNavigation();
+    console.log('Sidebar: Navigation loaded successfully', navigationStore.menu);
+    
+    if (navigationStore.menu.length === 0) {
+      console.warn('Sidebar: El store de navegación está vacío después de fetch');
+    }
+  } catch (e) {
+    console.error('Sidebar: Failed to fetch navigation:', e);
+  }
 });
-
-// Permission checks using CMS permissions from auth store (same as React)
-const canViewReports = computed(() => 
-  authStore.hasCmsPermissionCode('CAN_VIEW_REPORTS') || 
-  authStore.user?.role === 'OWNER' || 
-  authStore.user?.role === 'FOUNDER'
-);
-const canEditPrice = computed(() => 
-  authStore.hasCmsPermissionCode('CAN_EDIT_PRICE') || 
-  authStore.user?.role === 'OWNER' || 
-  authStore.user?.role === 'FOUNDER'
-);
-const canVoidInvoice = computed(() => 
-  authStore.hasCmsPermissionCode('CAN_VOID_INVOICE') || 
-  authStore.user?.role === 'OWNER' || 
-  authStore.user?.role === 'FOUNDER'
-);
 
 // User info
 const isStaff = computed(() => authStore.user?.is_staff || false);
 const userRole = computed(() => authStore.user?.role || null);
-const userType = computed(() => authStore.user?.user_type || null);
 
-// Navigation items based on role
-const navItems = computed<NavItem[]>(() => {
-  return filterNavItemsByRole(
-    allNavItems,
-    userRole.value,
-    isStaff.value,
-    canViewReports.value,
-    canEditPrice.value,
-    canVoidInvoice.value
+// Check if user needs to configure tenant
+const needsTenantConfiguration = computed(() => {
+  const user = authStore.user;
+  return (
+    !user?.is_staff &&
+    !user?.tenant_is_configured &&
+    user?.role !== 'STAFF'
   );
 });
 
-// Grouped items
+// Convert API menu items to NavItem format
+const navItems = computed<NavItem[]>(() => {
+  if (navigationStore.menu.length === 0) {
+    console.warn('Sidebar: navigationStore.menu está vacío');
+  }
+  
+  return navigationStore.menu.map((item: MenuItem) => ({
+    href: item.path,
+    label: item.title,
+    icon: iconMap[item.icon] || Settings,
+    shortcut: item.shortcut || undefined,
+    permission: item.permission_key || undefined,
+  }));
+});
+
+// Grouped items using API data
 const groupedItems = computed<NavGroup[]>(() => {
-  const extraGroups = isStaff.value
-    ? [{ id: 'financial', label: 'Configuración Financiera', items: financialConfigMenu }]
-    : [];
-  return getNavGroups(navItems.value, isStaff.value, userType.value, extraGroups);
+  const groups: NavGroup[] = [];
+  const groupMap = new Map<string, NavItem[]>();
+  
+  navItems.value.forEach((item) => {
+    const menuItem = navigationStore.menu.find(m => m.path === item.href);
+    const groupId = menuItem?.group_id || 'other';
+    const groupLabel = menuItem?.group_label || 'Otros';
+    
+    if (!groupMap.has(groupId)) {
+      groupMap.set(groupId, []);
+    }
+    groupMap.get(groupId)!.push(item);
+  });
+  
+  groupMap.forEach((items, groupId) => {
+    const menuItem = navigationStore.menu.find(m => m.group_id === groupId);
+    groups.push({
+      id: groupId,
+      label: menuItem?.group_label || 'Otros',
+      items,
+    });
+  });
+  
+  console.log('Sidebar: Grouped items', groups);
+  return groups;
 });
 
 // Expanded groups state
@@ -232,7 +345,36 @@ const translate = (key: string): string => {
             <!-- Group Items -->
             <template v-if="props.isCollapsed || expandedGroups.has(group.id)">
               <template v-for="item in group.items" :key="item.href">
+                <div
+                  v-if="needsTenantConfiguration && item.href !== '/admin/tenants'"
+                  :class="[
+                    'flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm transition cursor-not-allowed opacity-60',
+                    variant === 'glass'
+                      ? 'border border-transparent text-slate-300'
+                      : 'text-muted-foreground'
+                  ]"
+                  :title="translate('sidebar.configureTenantFirst')"
+                >
+                  <component
+                    :is="item.icon"
+                    :class="[
+                      'h-[18px] w-[18px] shrink-0',
+                      variant === 'glass' ? 'stroke-[1.5]' : 'stroke-[1.35]'
+                    ]"
+                  />
+                  <span :class="[props.isCollapsed ? 'hidden' : 'block']">
+                    {{ translate(item.label) }}
+                  </span>
+                  <Lock
+                    v-if="!props.isCollapsed"
+                    :class="[
+                      'ml-auto h-3.5 w-3.5',
+                      variant === 'glass' ? 'text-white/40' : 'text-muted-foreground/60'
+                    ]"
+                  />
+                </div>
                 <RouterLink
+                  v-else
                   :to="item.href"
                   @click="emit('close')"
                   :class="[

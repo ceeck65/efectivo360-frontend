@@ -277,7 +277,7 @@ const onSubmit = async () => {
     await authStore.register(form.ownerUsername, form.email, form.password);
     msg.value = { type: 'ok', text: t('auth.registerSuccess') };
     setTimeout(() => {
-      router.push('/es/dashboard');
+      router.push('/es/admin/dashboard');
     }, 1500);
   } catch (err: any) {
     msg.value = { type: 'err', text: err.message || t('auth.registerError') };

@@ -20,52 +20,63 @@ export type UserStatus = 'active' | 'inactive' | 'suspended' | 'pending';
  * Rol del usuario
  */
 export type UserRole = 
-  | 'superadmin'     // Staff - acceso total
-  | 'admin'          // Admin del tenant
-  | 'manager'        // Gerente
-  | 'cashier'        // Cajero
-  | 'inventory_manager' // Responsable de inventario
-  | 'sales_rep'      // Vendedor
-  | 'readonly';      // Solo lectura
+  // ERP Roles (Staff)
+  | 'ADMIN'          // Administrador ERP
+  | 'SUPER_ADMIN'    // Super administrador con acceso total
+  | 'ERP_SUPERVISOR' // Supervisor de operaciones ERP
+  | 'SUPPORT_ATC'    // Atención al cliente y soporte comercial
+  | 'SUPPORT_TECH'   // Soporte técnico y resolución de incidencias
+  // Tenant Roles (Tienda)
+  | 'OWNER'          // Dueño - Acceso total a la tienda
+  | 'MANAGER'        // Gerente - Gestión de operaciones y equipo
+  | 'SALES_CLERK'    // Vendedor - Ventas y atención al cliente
+  | 'WAREHOUSE';     // Almacén - Inventario y logística
 
 /**
  * Usuario del sistema
  */
 export interface User {
-  id: ULID;
+  id: string;
+  username: string;
   email: string;
   
   // Datos personales
-  firstName: string;
-  lastName: string;
-  fullName: string;
+  first_name: string;
+  last_name: string;
+  firstName?: string;
+  lastName?: string;
+  fullName?: string;
   phone?: string;
   avatarUrl?: string;
   
   // Relaciones
-  tenantId: ULID;
+  tenantId?: string;
   role: UserRole;
+  user_type?: string;
   
   // Estado
-  status: UserStatus;
-  isEmailVerified: boolean;
-  isTwoFactorEnabled: boolean;
+  status?: UserStatus;
+  is_active: boolean;
+  is_staff: boolean;
+  isEmailVerified?: boolean;
+  isTwoFactorEnabled?: boolean;
   
   // Seguridad
+  last_login?: string;
   lastLoginAt?: string;
   lastLoginIp?: string;
   passwordChangedAt?: string;
-  failedLoginAttempts: number;
+  failedLoginAttempts?: number;
   lockedUntil?: string;
   
   // Preferencias
-  preferences: UserPreferences;
+  preferences?: UserPreferences;
   
   // Timestamps
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
   invitedAt?: string;
-  invitedBy?: ULID;
+  invitedBy?: string;
 }
 
 /**
@@ -301,4 +312,34 @@ export interface UserStats {
   newThisMonth: number;
   activeToday: number;
   averageSessionDuration?: number;
+}
+
+// =============================================================================
+// ROLE OPTIONS (UI)
+// =============================================================================
+
+/**
+ * Opción de rol para UI
+ */
+export interface RoleOption {
+  value: UserRole;
+  label: string;
+  color: string;
+  description: string;
+}
+
+/**
+ * Definición de permiso
+ */
+export interface PermissionDefinition {
+  code: string;
+  name: string;
+  description?: string;
+}
+
+/**
+ * Respuesta de permisos de usuario
+ */
+export interface UserPermissionsResponse {
+  permissions?: PermissionDefinition[];
 }
