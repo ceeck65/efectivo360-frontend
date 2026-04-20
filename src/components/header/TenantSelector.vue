@@ -1,6 +1,6 @@
 <template>
   <div class="relative">
-    <!-- Trigger Button - Only show if user has memberships -->
+    <!-- Trigger Button - Show if user has multiple tenants -->
     <button
       v-if="memberships.length > 0"
       @click="toggleDropdown"
@@ -9,22 +9,26 @@
     >
       <!-- Current Tenant Logo -->
       <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-primary to-brand-primary/80 flex items-center justify-center text-white font-semibold text-sm overflow-hidden">
-        <img
-          v-if="currentTenant?.logo"
-          :src="currentTenant.logo"
-          :alt="currentTenant.commercial_name || currentTenant.name"
-          class="w-full h-full object-cover"
-        />
-        <span v-else>{{ (currentTenant?.commercial_name || currentTenant?.name || 'Tienda').charAt(0).toUpperCase() }}</span>
+        <span>{{ (currentTenant?.name || 'Tienda').charAt(0).toUpperCase() }}</span>
       </div>
 
       <!-- Tenant Name -->
       <div class="text-left">
-        <div class="text-xs text-slate-500 font-medium">Tienda Actual</div>
+        <div class="text-xs text-slate-500 font-medium">
+          {{ currentTenant?.is_read_only ? 'Auditando' : 'Tienda Actual' }}
+        </div>
         <div class="text-sm font-semibold text-slate-900 truncate max-w-[150px]">
-          {{ currentTenant?.commercial_name || currentTenant?.name || 'Seleccionar...' }}
+          {{ currentTenant?.name || 'Seleccionar...' }}
         </div>
       </div>
+
+      <!-- Read-Only Badge -->
+      <span
+        v-if="currentTenant?.is_read_only"
+        class="px-2 py-0.5 text-[10px] font-semibold bg-amber-100 text-amber-700 rounded-full"
+      >
+        Solo lectura
+      </span>
 
       <!-- Chevron -->
       <ChevronDown
@@ -32,11 +36,6 @@
         :class="{ 'rotate-180': isOpen }"
       />
     </button>
-
-    <!-- Empty State for staff/superusers without memberships -->
-    <div v-else-if="authStore.isStaff" class="text-sm text-slate-500">
-      Modo Admin Global
-    </div>
 
     <!-- Dropdown -->
     <Transition
@@ -75,22 +74,25 @@
           >
             <!-- Tenant Logo -->
             <div class="w-10 h-10 rounded-lg bg-gradient-to-br from-brand-primary to-brand-primary/80 flex items-center justify-center text-white font-semibold flex-shrink-0 overflow-hidden">
-              <img
-                v-if="membership.logo"
-                :src="membership.logo"
-                :alt="membership.commercial_name || membership.name"
-                class="w-full h-full object-cover"
-              />
-              <span v-else>{{ (membership.commercial_name || membership.name).charAt(0).toUpperCase() }}</span>
+              <span>{{ membership.name.charAt(0).toUpperCase() }}</span>
             </div>
 
             <!-- Tenant Info -->
             <div class="flex-1 min-w-0">
               <div class="text-sm font-semibold text-slate-900 truncate">
-                {{ membership.commercial_name || membership.name }}
+                {{ membership.name }}
               </div>
-              <div class="text-xs text-slate-500">
-                {{ getRoleLabel(membership.role) }}
+              <div class="flex items-center gap-2">
+                <div class="text-xs text-slate-500">
+                  {{ getRoleLabel(membership.role) }}
+                </div>
+                <!-- Read-Only Badge -->
+                <span
+                  v-if="membership.is_read_only"
+                  class="px-1.5 py-0.5 text-[9px] font-semibold bg-amber-100 text-amber-700 rounded"
+                >
+                  Solo lectura
+                </span>
               </div>
             </div>
 
@@ -107,8 +109,8 @@
           </div>
         </div>
 
-        <!-- Create New Tenant Button -->
-        <div class="p-3 border-t border-slate-100 bg-slate-50">
+        <!-- Create New Tenant Button (only for non-auditor users) -->
+        <div v-if="!currentTenant?.is_read_only" class="p-3 border-t border-slate-100 bg-slate-50">
           <RouterLink
             to="/wizard/shop"
             @click="toggleDropdown"
@@ -162,11 +164,12 @@ const { success: notifySuccess, error: notifyError } = useNotify();
 
 interface TenantMembership {
   id: string;
+  ulid: string;
   name: string;
-  commercial_name: string;
-  logo: string | null;
+  slug: string;
+  access_type: 'membership' | 'external_access';
   role: string;
-  joined_at: string | null;
+  is_read_only: boolean;
   is_current: boolean;
 }
 
@@ -182,6 +185,10 @@ const ROLE_LABELS: Record<string, string> = {
   MANAGER: 'Gerente',
   SALES_CLERK: 'Cajero',
   WAREHOUSE: 'Almacén',
+  EXTERNAL_AUDITOR: 'Auditor',
+  CAJERO: 'Cajero',
+  PROPIETARIO: 'Propietario',
+  SUPER_ADMIN: 'Super Admin',
 };
 
 const getRoleLabel = (role: string): string => {
@@ -197,7 +204,7 @@ const filteredMemberships = computed(() => {
   const query = searchQuery.value.toLowerCase();
   return memberships.value.filter(m =>
     m.name.toLowerCase().includes(query) ||
-    m.commercial_name.toLowerCase().includes(query)
+    m.slug.toLowerCase().includes(query)
   );
 });
 
@@ -207,11 +214,17 @@ const toggleDropdown = () => {
 
 const loadMemberships = async () => {
   try {
-    const data = await fetchApi<{ memberships: TenantMembership[]; current_tenant_id: string }>('/api/v1/auth/memberships/');
-    memberships.value = data.memberships;
+    // Use new endpoint that supports both UserTenantMembership and UserTenantAccess
+    const data = await fetchApi<{
+      accessible_tenants: TenantMembership[];
+      count: number;
+      current_tenant_id: string | null;
+      has_multiple_tenants: boolean;
+    }>('/api/tenants/my-access/');
+    memberships.value = data.accessible_tenants;
   } catch (e: any) {
-    console.error('Failed to load memberships:', e);
-    // If user has no memberships (e.g., superadmin without tenant), handle gracefully
+    console.error('Failed to load accessible tenants:', e);
+    // If user has no access (e.g., superadmin without tenant), handle gracefully
     memberships.value = [];
   }
 };
@@ -223,12 +236,20 @@ const handleSelectTenant = async (membership: TenantMembership) => {
   }
 
   isSwitching.value = true;
-  switchingToTenantName.value = membership.commercial_name || membership.name;
+  switchingToTenantName.value = membership.name;
   isOpen.value = false;
 
   try {
+    // Use switch-tenant endpoint which now supports UserTenantAccess
     await authStore.switchTenant(membership.id);
-    notifySuccess(`Ahora estás operando en ${membership.commercial_name || membership.name}`);
+    
+    // Show read-only warning for external auditors
+    if (membership.is_read_only) {
+      notifySuccess(`Auditando: ${membership.name} (Solo lectura)`);
+    } else {
+      notifySuccess(`Ahora estás operando en ${membership.name}`);
+    }
+    
     await loadMemberships(); // Reload to update is_current flags
   } catch (e: any) {
     console.error('Failed to switch tenant:', e);

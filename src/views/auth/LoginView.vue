@@ -350,7 +350,12 @@ const onSubmit = async () => {
     await authStore.login(form.emailOrUsername, form.password);
     msg.value = { type: 'ok', text: t('auth.loginSuccess') };
     setTimeout(() => {
-      router.push('/admin/dashboard');
+      // Redirect EXTERNAL_AUDITOR to auditor dashboard, others to admin dashboard
+      if (authStore.user?.role === 'EXTERNAL_AUDITOR') {
+        router.push('/auditor/dashboard');
+      } else {
+        router.push('/admin/dashboard');
+      }
     }, 500);
   } catch (err: any) {
     msg.value = { type: 'err', text: err.message || t('auth.loginError') };

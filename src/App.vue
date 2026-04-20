@@ -91,7 +91,7 @@ const isAuthRoute = computed(() => {
 // Check if current route is admin/backoffice route
 const isAdminRoute = computed(() => {
   const path = route.path;
-  return path.startsWith('/admin') && !isSimpleRoute.value;
+  return (path.startsWith('/admin') || path.startsWith('/auditor')) && !isSimpleRoute.value;
 });
 
 // Check if current route is a simple route (no sidebar/header)

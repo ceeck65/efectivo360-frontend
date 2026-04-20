@@ -77,6 +77,18 @@ const router = createRouter({
       component: () => import('@/views/admin/DashboardView.vue'),
       meta: { requiresAuth: true },
     },
+    // Auditor routes - for EXTERNAL_AUDITOR role
+    {
+      path: '/auditor',
+      redirect: '/auditor/dashboard',
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/auditor/dashboard',
+      name: 'AuditorDashboard',
+      component: () => import('@/views/auditor/AuditorDashboard.vue'),
+      meta: { requiresAuth: true },
+    },
     {
       path: '/admin/geography/countries',
       name: 'Countries',
@@ -201,6 +213,14 @@ router.beforeEach((to, _from, next) => {
         setTimeout(() => { isRedirecting = false; }, 100);
         return;
       }
+    }
+
+    // Redirect EXTERNAL_AUDITOR to auditor dashboard
+    if (authStore.user?.role === 'EXTERNAL_AUDITOR' && to.path.startsWith('/admin/dashboard')) {
+      isRedirecting = true;
+      next('/auditor/dashboard');
+      setTimeout(() => { isRedirecting = false; }, 100);
+      return;
     }
   }
 

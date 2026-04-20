@@ -9,6 +9,7 @@ import {
   Bell,
   Moon,
   Sun,
+  X,
 } from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/auth';
 import { t } from '@/lib/navigation';
@@ -41,14 +42,21 @@ const unreadCount = ref(3); // Mock - replace with actual notifications hook
 // Computed
 const isOnline = computed(() => true); // Mock - connect to sync status
 const isStaff = computed(() => authStore.user?.is_staff || false);
-const tenantName = computed(() => 
-  authStore.user?.tenant_commercial_name ?? authStore.user?.tenant_name ?? t('header.tenantFallback', 'Mi tienda')
-);
-const userName = computed(() => 
+const isAuditor = computed(() => authStore.user?.role === 'EXTERNAL_AUDITOR');
+const currentAuditTenant = computed(() => {
+  // Get current tenant from session or auth store
+  if (authStore.user?.tenant) {
+    return {
+      name: authStore.user.tenant_commercial_name || authStore.user.tenant_name || 'Tienda'
+    };
+  }
+  return null;
+});
+const userName = computed(() =>
   authStore.user?.first_name || authStore.user?.username || t('header.profile', 'Perfil')
 );
 const userEmail = computed(() => authStore.user?.email || '-');
-const userInitial = computed(() => 
+const userInitial = computed(() =>
   (authStore.user?.first_name?.[0] || authStore.user?.username?.[0] || '?').toUpperCase()
 );
 
@@ -80,6 +88,15 @@ const handleLogout = async () => {
   window.location.href = '/es/login';
 };
 
+const handleClearAuditContext = async () => {
+  try {
+    await authStore.switchTenant(null);
+    window.location.reload();
+  } catch (e: any) {
+    console.error('Failed to clear audit context:', e);
+  }
+};
+
 const toggleDarkMode = () => {
   isDarkMode.value = !isDarkMode.value;
   document.documentElement.classList.toggle('dark', isDarkMode.value);
@@ -91,7 +108,7 @@ const toggleDarkMode = () => {
   <div>
     <!-- Header -->
     <header
-      class="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-slate-100 px-4 py-3 text-brand-dark bg-white shadow-sm"
+      class="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-3 text-brand-dark bg-white shadow-sm"
     >
       <!-- Left Section: Title + Search -->
       <div class="flex min-w-0 flex-1 items-center gap-4">
@@ -108,12 +125,25 @@ const toggleDarkMode = () => {
         <!-- Title Block -->
         <div class="min-w-0 shrink-0">
           <p class="text-[10px] font-medium uppercase tracking-wider text-slate-500">
-            {{ isStaff ? 'ERP' : t('header.storeLabel', 'Tienda') }}
+            {{ isAuditor ? 'AUDITORÍA' : (isStaff ? 'ERP' : t('header.storeLabel', 'Tienda')) }}
           </p>
-          <!-- Tenant Selector for non-staff users -->
-          <TenantSelector v-if="!isStaff" />
-          <!-- Static title for staff users -->
-          <h2 v-else class="truncate text-base font-semibold text-brand-dark md:text-lg">
+          <!-- Audit Context Badge for Auditors with active tenant -->
+          <div v-if="isAuditor && currentAuditTenant" class="flex items-center gap-2 mt-1">
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-50 border border-amber-200">
+              <span class="text-xs font-medium text-amber-800">Auditando: {{ currentAuditTenant.name }}</span>
+              <button
+                @click="handleClearAuditContext"
+                class="flex items-center justify-center w-5 h-5 rounded hover:bg-amber-200 transition-colors"
+                title="Cambiar tienda"
+              >
+                <X class="w-3 h-3 text-amber-600" />
+              </button>
+            </div>
+          </div>
+          <!-- Tenant Selector for all users with multiple tenants (including staff/auditors) -->
+          <TenantSelector v-if="!isAuditor || !currentAuditTenant" />
+          <!-- Static title fallback if no tenants -->
+          <h2 v-if="!authStore.user?.tenant && !authStore.isStaff" class="truncate text-base font-semibold text-brand-dark md:text-lg">
             Efectivo 360
           </h2>
         </div>
@@ -260,9 +290,17 @@ const toggleDarkMode = () => {
               <button
                 type="button"
                 class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-slate-700 hover:bg-slate-100"
+                @click="profileOpen = false"
+              >
+                <Settings class="h-4 w-4 text-slate-400" stroke-width="1.5" />
+                Preferencias
+              </button>
+              <button
+                type="button"
+                class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-red-600 hover:bg-red-50"
                 @click="handleLogout"
               >
-                <LogOut class="h-4 w-4 text-slate-400" stroke-width="1.5" />
+                <LogOut class="h-4 w-4" stroke-width="1.5" />
                 {{ t('header.logout', 'Cerrar sesión') }}
               </button>
             </div>
