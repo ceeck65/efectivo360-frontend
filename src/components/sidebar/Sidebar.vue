@@ -8,10 +8,7 @@ import {
   ChevronRight,
   LogOut,
   Lock,
-  Store,
-  User,
   Settings,
-  MessageCircle,
   BarChart3,
   Monitor,
   Boxes,
@@ -57,6 +54,7 @@ interface NavItem {
   icon: any;
   shortcut?: string;
   permission?: string;
+  requiresOnline?: boolean;
 }
 
 interface NavGroup {
@@ -136,7 +134,6 @@ onMounted(async () => {
 
 // User info
 const isStaff = computed(() => authStore.user?.is_staff || false);
-const userRole = computed(() => authStore.user?.role || null);
 
 // Check if user needs to configure tenant
 const needsTenantConfiguration = computed(() => {
@@ -171,7 +168,6 @@ const groupedItems = computed<NavGroup[]>(() => {
   navItems.value.forEach((item) => {
     const menuItem = navigationStore.menu.find(m => m.path === item.href);
     const groupId = menuItem?.group_id || 'other';
-    const groupLabel = menuItem?.group_label || 'Otros';
     
     if (!groupMap.has(groupId)) {
       groupMap.set(groupId, []);
@@ -234,14 +230,6 @@ const handleLogout = async () => {
 
 const isActive = (href: string): boolean => {
   return route.path === href;
-};
-
-// Translation helper that handles keys
-const translate = (key: string): string => {
-  if (key.startsWith('sidebar.')) {
-    return t(key, key);
-  }
-  return key;
 };
 </script>
 

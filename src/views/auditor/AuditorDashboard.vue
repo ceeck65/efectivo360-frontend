@@ -198,14 +198,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
 import { Receipt, TrendingUp, BarChart3, Search, Building2, Loader2, Eye } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
 import { useAuthStore } from '@/stores/auth';
 import { useNotify } from '@/composables/useNotify';
 
 const { fetchApi } = useApi();
-const router = useRouter();
 const authStore = useAuthStore();
 const { success: notifySuccess, error: notifyError } = useNotify();
 

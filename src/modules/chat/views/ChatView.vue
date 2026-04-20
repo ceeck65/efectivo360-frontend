@@ -115,13 +115,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue';
+import { ref, onMounted, nextTick, watch } from 'vue';
 import { MessageSquare, MessageSquarePlus, User, X, Send } from 'lucide-vue-next';
 import { useNotify } from '@/composables/useNotify';
 import { fetchChatSessions, sendMessage as sendChatMessage } from '../services/chat.service';
 import type { ChatSession, ChatMessage } from '../types';
 
-const { success: notifySuccess, error: notifyError } = useNotify();
+const { error: notifyError } = useNotify();
 
 const sessions = ref<ChatSession[]>([]);
 const selectedSession = ref<ChatSession | null>(null);
@@ -298,6 +298,9 @@ const simulateNotification = () => {
     }
   }
 };
+
+// Silence unused variable warning
+void simulateNotification;
 
 onMounted(() => {
   loadSessions();

@@ -45,10 +45,10 @@ export function useForexRate() {
       
       // Log successful fetch
       console.log('Forex rate updated:', {
-        rate: forexRate.value.rate,
-        status: forexRate.value.status,
-        source: forexRate.value.source,
-        updated_at: forexRate.value.updated_at
+        rate: forexRate.value?.rate,
+        status: forexRate.value?.status,
+        source: forexRate.value?.source,
+        updated_at: forexRate.value?.updated_at
       });
       
     } catch (err) {

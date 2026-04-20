@@ -64,8 +64,8 @@
           <!-- Stepper -->
           <div class="mb-8">
             <div class="flex items-center justify-between">
-              <div 
-                v-for="(step, index) in steps" 
+              <div
+                v-for="(_, index) in steps"
                 :key="index"
                 class="flex items-center"
               >
@@ -697,7 +697,7 @@ const createTenant = async () => {
       throw new Error('Error al crear la tienda')
     }
 
-    const data = await response.json()
+    await response.json()
 
     // Actualizar el store de autenticación
     await authStore.fetchUser()

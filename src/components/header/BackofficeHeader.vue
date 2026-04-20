@@ -90,7 +90,7 @@ const handleLogout = async () => {
 
 const handleClearAuditContext = async () => {
   try {
-    await authStore.switchTenant(null);
+    await authStore.switchTenant('');
     window.location.reload();
   } catch (e: any) {
     console.error('Failed to clear audit context:', e);

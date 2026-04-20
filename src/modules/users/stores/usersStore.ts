@@ -86,12 +86,12 @@ export const useUsersStore = defineStore('users', () => {
   );
 
   const canManageUsers = computed(() => 
-    currentUser.value?.role === 'superadmin' || 
-    currentUser.value?.role === 'admin'
+    currentUser.value?.role === 'SUPER_ADMIN' || 
+    currentUser.value?.role === 'ADMIN'
   );
 
   const isSuperAdmin = computed(() => 
-    currentUser.value?.role === 'superadmin'
+    currentUser.value?.role === 'SUPER_ADMIN'
   );
 
   const pendingInvitations = computed(() => 

@@ -48,7 +48,6 @@
 </template>
 
 <script setup lang="ts">
-import { LayoutDashboard } from 'lucide-vue-next';
 </script>
 
 <style scoped>

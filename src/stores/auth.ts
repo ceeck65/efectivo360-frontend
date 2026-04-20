@@ -98,11 +98,6 @@ export const useAuthStore = defineStore('auth', () => {
   // Getters
   const isAuthenticated = computed(() => !!token.value && !!user.value);
   const isStaff = computed(() => user.value?.is_staff || false);
-  const isSuperuser = computed(() => user.value?.is_superuser || false);
-  const fullName = computed(() => {
-    if (!user.value) return '';
-    return user.value.full_name || `${user.value.first_name || ''} ${user.value.last_name || ''}`.trim() || user.value.username || user.value.email || '';
-  });
   const tenantName = computed(() => {
     return user.value?.tenant_commercial_name || user.value?.tenant_name || '';
   });
@@ -331,10 +326,12 @@ export const useAuthStore = defineStore('auth', () => {
     setTokens,
     clearAuth,
     login,
+    register,
     logout,
     initialize,
     fetchUser,
     fetchCmsPermissions,
+    refreshSession,
     hasPermission,
     hasCmsPermissionCode,
     saveUserToStorage,

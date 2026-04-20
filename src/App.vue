@@ -63,7 +63,7 @@ import { useRoute, RouterView, useRouter } from 'vue-router';
 import LandingNav from '@/components/landing/LandingNav.vue';
 import LandingFooter from '@/components/landing/LandingFooter.vue';
 import SplashScreen from '@/components/splash/SplashScreen.vue';
-import { TheSidebar } from '@shared';
+import { TheSidebar } from '@shared/index';
 import BackofficeHeader from '@/components/header/BackofficeHeader.vue';
 import EfiChatBubble from '@/modules/assistant/components/EfiChatBubble.vue';
 import EfiChatWindow from '@/components/efi/EfiChatWidget.vue';
@@ -79,7 +79,7 @@ const isMobileMenuOpen = ref(false);
 const isSidebarCollapsed = ref(false);
 
 // Use the forex rate composable - it will auto-refresh
-const { forexRate, isLoading: forexLoading, error: forexError } = useForexRate();
+const { forexRate } = useForexRate();
 
 // Check if current route is auth page (login/register)
 const isAuthRoute = computed(() => {
@@ -111,6 +111,9 @@ const needsShopWizard = computed(() => {
     !route.path.startsWith('/admin/chat') // Don't redirect if on chat
   );
 });
+
+// Silence unused variable warning (computed is used in watch)
+void needsShopWizard;
 
 // Watch for authentication changes and redirect if needed
 watch(() => [authStore.isAuthenticated, authStore.hasConfiguredTenant], ([isAuthenticated, hasConfigured]) => {

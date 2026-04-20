@@ -1,0 +1,2 @@
+import{Ct as e,N as t,R as n,_ as r,h as i,w as a}from"./vue.runtime.esm-bundler-QkfWlb_w.js";import{_t as o,t as s}from"./lucide-vue-next-Dh0l1Uif.js";var c=a({__name:`LucideIcon`,props:{name:{},size:{default:24},className:{default:``}},setup(a){let c=a,l=i(()=>{if(!c.name)return o;let e=c.name.charAt(0).toLowerCase()+c.name.slice(1);return s[c.name]||s[e]||o});return(i,o)=>(t(),r(n(l.value),{size:a.size,class:e(a.className)},null,8,[`size`,`class`]))}});export{c as t};
+//# sourceMappingURL=LucideIcon-Bsb8vzL3.js.map

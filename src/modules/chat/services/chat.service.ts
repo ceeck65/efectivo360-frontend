@@ -5,7 +5,7 @@
 
 import { httpClient } from '@core/index.js';
 import type { ApiResponse } from '@core/types';
-import type { ChatMessage, ChatSession, ChatResponse } from '../types';
+import type { ChatSession, ChatResponse } from '../types';
 
 const BASE_URL = '/api/v1/efi';
 

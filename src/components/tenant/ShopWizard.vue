@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import { useApi } from '@/composables/useApi';
 import { useAuthStore } from '@/stores/auth';
 import { useGeography } from '@/modules/geography';
-import { ChevronRight, ChevronLeft, Store, MapPin, Palette, Upload, Check, AlertCircle } from 'lucide-vue-next';
+import { ChevronRight, ChevronLeft, Store, MapPin, Palette, Upload, Check } from 'lucide-vue-next';
 import { useNotify } from '@/composables/useNotify';
 
 const emit = defineEmits<{
@@ -186,7 +186,7 @@ const handleSubmit = async () => {
     formData.append('owner[national_id]', ''); // Will be collected in a modal if needed
     
     // Submit to backend
-    const response = await fetchApi<{ tenant_id: number; owner_id: number }>('/api/tenants/register/', {
+    await fetchApi<{ tenant_id: number; owner_id: number }>('/api/tenants/register/', {
       method: 'POST',
       data: formData,
       headers: {

@@ -228,7 +228,7 @@
 import { ref, watch } from 'vue';
 import { useApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
-import type { BlueprintCreateData, BusinessConditions } from '../types';
+import type { BlueprintCreateData } from '../types';
 import { Info } from 'lucide-vue-next';
 import TagsInput from '@/components/shared/TagsInput.vue';
 import ProductSchemaEditor from '@/components/shared/ProductSchemaEditor.vue';
