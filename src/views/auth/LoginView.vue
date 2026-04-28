@@ -190,8 +190,9 @@
                     id="emailOrUsername"
                     v-model="form.emailOrUsername"
                     type="text"
-                    :class="cn('pl-10', inputAuthClass)"
+                    :class="cn('pl-20', inputAuthClass)"
                     autocomplete="username"
+                    class=" pl-8"
                   />
                 </div>
                 <p v-if="errors.emailOrUsername" class="text-sm text-red-500">{{ errors.emailOrUsername }}</p>
@@ -204,8 +205,9 @@
                     id="password"
                     v-model="form.password"
                     :type="showPassword ? 'text' : 'password'"
-                    :class="cn('pr-12 pl-10', inputAuthClass)"
+                    :class="cn('pr-12 pl-20', inputAuthClass)"
                     autocomplete="current-password"
+                    class=" pl-8"
                   />
                   <button
                     type="button"
