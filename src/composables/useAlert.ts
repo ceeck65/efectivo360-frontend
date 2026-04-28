@@ -74,6 +74,20 @@ export function useAlert() {
     return Swal.fire(options);
   };
 
+  const showInput = async (title: string, placeholder: string = '') => {
+    const result = await Swal.fire({
+      title,
+      input: 'text',
+      inputPlaceholder: placeholder,
+      showCancelButton: true,
+      confirmButtonText: 'Agregar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#ef4444',
+    });
+    return result.value;
+  };
+
   return {
     showSuccess,
     showError,
@@ -81,5 +95,6 @@ export function useAlert() {
     showInfo,
     showConfirm,
     showAlert,
+    showInput,
   };
 }

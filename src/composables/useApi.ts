@@ -15,8 +15,13 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token');
+    console.log('🔑 Token exists:', !!token);
+    console.log('🔑 Request URL:', config.url);
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
+      console.log('🔑 Authorization header set');
+    } else {
+      console.log('❌ No token found or no headers');
     }
     return config;
   },
@@ -75,40 +80,47 @@ export interface UseApiReturn {
   isLoading: typeof ref<boolean>;
 }
 
+// Export fetchApi as a standalone function
+export const fetchApi = async <T>(url: string, options: AxiosRequestConfig = {}): Promise<T> => {
+  try {
+    const response: AxiosResponse<T> = await apiClient({
+      url,
+      ...options,
+    });
+    
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError<{ message?: string; error?: string }>;
+      const message = axiosError.response?.data?.message 
+        || axiosError.response?.data?.error 
+        || axiosError.message 
+        || 'An error occurred';
+      
+      const customError = new Error(message);
+      (customError as any).status = axiosError.response?.status;
+      (customError as any).data = axiosError.response?.data;
+      throw customError;
+    }
+    throw error;
+  }
+};
+
 export function useApi() {
   const isLoading = ref(false);
 
-  const fetchApi = async <T>(url: string, options: AxiosRequestConfig = {}): Promise<T> => {
+  const internalFetchApi = async <T>(url: string, options: AxiosRequestConfig = {}): Promise<T> => {
     isLoading.value = true;
     
     try {
-      const response: AxiosResponse<T> = await apiClient({
-        url,
-        ...options,
-      });
-      
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        const axiosError = error as AxiosError<{ message?: string; error?: string }>;
-        const message = axiosError.response?.data?.message 
-          || axiosError.response?.data?.error 
-          || axiosError.message 
-          || 'An error occurred';
-        
-        const customError = new Error(message);
-        (customError as any).status = axiosError.response?.status;
-        (customError as any).data = axiosError.response?.data;
-        throw customError;
-      }
-      throw error;
+      return await fetchApi<T>(url, options);
     } finally {
       isLoading.value = false;
     }
   };
 
   return {
-    fetchApi,
+    fetchApi: internalFetchApi,
     isLoading,
     apiClient,
   };

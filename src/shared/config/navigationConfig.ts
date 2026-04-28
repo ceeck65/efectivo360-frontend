@@ -30,7 +30,7 @@ export type BusinessType =
 /**
  * Categoría de agrupación del menú
  */
-export type MenuGroup = 'saas' | 'master' | 'operations' | 'config';
+export type MenuGroup = 'saas' | 'master' | 'operations' | 'config' | 'super_admin';
 
 /**
  * Nombres de iconos Lucide soportados
@@ -48,6 +48,8 @@ export type IconName =
   | 'Waypoints'
   | 'MessageSquare'
   | 'Receipt'
+  | 'Shield'
+  | 'ShieldCheck'
   | 'Briefcase'
   | 'Plug'
   | 'Bot'
@@ -112,6 +114,7 @@ export const groupConfigs: GroupConfig[] = [
   { id: 'master', label: 'Maestro de Datos', icon: 'Database', sortOrder: 2 },
   { id: 'operations', label: 'Operaciones', icon: 'Briefcase', sortOrder: 3 },
   { id: 'config', label: 'Configuración', icon: 'Settings', sortOrder: 4 },
+  { id: 'super_admin', label: 'Super-Admin', icon: 'Shield', sortOrder: 0 },
 ];
 
 // =============================================================================
@@ -208,7 +211,7 @@ export const navigationItems: NavigationItem[] = [
   },
   
   // ==========================================================================
-  // OPERACIONES
+  // OPERACIONES (Blueprint: Ventas, Inventario, Finanzas, Auditoría)
   // ==========================================================================
   {
     id: 'dashboard',
@@ -227,12 +230,36 @@ export const navigationItems: NavigationItem[] = [
     sortOrder: 2,
   },
   {
+    id: 'inventory',
+    label: 'Inventario',
+    path: '/admin/inventory',
+    icon: 'Package',
+    group: 'operations',
+    sortOrder: 3,
+  },
+  {
+    id: 'finances',
+    label: 'Finanzas',
+    path: '/admin/finances',
+    icon: 'Coins',
+    group: 'operations',
+    sortOrder: 4,
+  },
+  {
+    id: 'audit',
+    label: 'Auditoría',
+    path: '/admin/audit',
+    icon: 'ShieldCheck',
+    group: 'operations',
+    sortOrder: 5,
+  },
+  {
     id: 'payments',
     label: 'Pagos',
     path: '/admin/payments',
     icon: 'CreditCard',
     group: 'operations',
-    sortOrder: 3,
+    sortOrder: 6,
   },
   {
     id: 'reports',
@@ -240,7 +267,20 @@ export const navigationItems: NavigationItem[] = [
     path: '/admin/reports',
     icon: 'BarChart3',
     group: 'operations',
-    sortOrder: 4,
+    sortOrder: 7,
+  },
+  
+  // ==========================================================================
+  // SUPER-ADMIN (Solo para staff)
+  // ==========================================================================
+  {
+    id: 'super-console',
+    label: 'Consola Super-Admin',
+    path: '/admin/super-console',
+    icon: 'Shield',
+    group: 'super_admin',
+    sortOrder: 1,
+    allowedRoles: ['SUPER_ADMIN', 'ADMIN'],
   },
   
   // ==========================================================================

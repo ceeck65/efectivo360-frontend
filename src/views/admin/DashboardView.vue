@@ -25,6 +25,9 @@ import { useAuthStore } from '@/stores/auth';
 import { t } from '@/lib/navigation';
 import { useApi } from '@/composables/useApi';
 import StaffDashboard from './StaffDashboard.vue';
+import FiscalWidget from '@/components/widgets/FiscalWidget.vue';
+import EfiWidget from '@/components/widgets/EfiWidget.vue';
+import CurrencyWidget from '@/components/widgets/CurrencyWidget.vue';
 
 // Types
 interface ShortcutTile {
@@ -56,6 +59,7 @@ interface LowStockItem {
   name: string;
   current: number;
   minimum: number;
+  category?: string;
 }
 
 // Composables
@@ -68,7 +72,14 @@ const { fetchApi } = useApi();
 const isStaff = computed(() => authStore.user?.is_staff || false);
 
 // State
-const loading = ref(true);
+const loading = ref(false);
+const dismissed = ref(false);
+const documentUsage = ref({
+  used: 0,
+  limit: 100,
+  percentage: 0,
+  is_unlimited: false
+});
 const salesToday = ref(0);
 const salesTrend = ref(0);
 const creditsReceivable = ref(0);
@@ -76,7 +87,6 @@ const creditsTrend = ref(0);
 const bcvRate = ref<number | null>(null);
 const bcvStatus = ref<'ok' | 'degraded'>('ok');
 const bcvTrend = ref(0);
-const dismissed = ref(false);
 
 // Mock billing status
 const billingStatus = ref<{ days_left: number; status: 'TRIAL' | 'PAID' | 'FREE'; is_near_expiry: boolean } | null>(null);
@@ -88,11 +98,64 @@ const pendingSales = ref<PendingSale[]>([
   { id: '3', label: 'Carlos López', since: '1d', total: 2340.00 },
 ]);
 
-const lowStockItems = ref<LowStockItem[]>([
-  { id: '1', name: 'Café Premium 500g', current: 3, minimum: 10 },
-  { id: '2', name: 'Azúcar 1kg', current: 5, minimum: 15 },
-  { id: '3', name: 'Leche Entera', current: 8, minimum: 20 },
+// Categorías por tipo de negocio
+const CATEGORIES_BY_INDUSTRY: Record<string, string[]> = {
+  'BOUTIQUE': ['Calzado', 'Zapatos', 'Tenis', 'Botas', 'Sandalias', 'Accesorios', 'Limpieza'],
+  'BODEGA': ['Café', 'Azúcar', 'Harina', 'Arroz', 'Alimentos', 'Bebidas', 'Lácteos'],
+  'GROCERY': ['Café', 'Azúcar', 'Harina', 'Arroz', 'Alimentos', 'Bebidas', 'Lácteos'],
+  'SUPERMARKET': ['Café', 'Azúcar', 'Harina', 'Arroz', 'Alimentos', 'Bebidas', 'Lácteos'],
+  'PHARMACY': ['Medicamentos', 'Farmacia', 'Cuidado', 'Salud'],
+  'HARDWARE_STORE': ['Herramientas', 'Ferretería', 'Construcción'],
+  'RESTAURANT': ['Alimentos', 'Bebidas', 'Insumos'],
+};
+
+// Todos los items de stock bajo (sin filtrar)
+const allLowStockItems = ref<LowStockItem[]>([
+  { id: '1', name: 'Café Premium 500g', current: 3, minimum: 10, category: 'Café' },
+  { id: '2', name: 'Azúcar 1kg', current: 5, minimum: 15, category: 'Azúcar' },
+  { id: '3', name: 'Leche Entera', current: 8, minimum: 20, category: 'Lácteos' },
+  { id: '4', name: 'Zapatos Deportivos Talla 40', current: 2, minimum: 5, category: 'Zapatos' },
+  { id: '5', name: 'Botas de Cuero Caballero', current: 1, minimum: 3, category: 'Botas' },
+  { id: '6', name: 'Limpiador de Calzado', current: 4, minimum: 10, category: 'Limpieza' },
 ]);
+
+// Filtrar stock bajo por industry_type del tenant
+const lowStockItems = computed(() => {
+  const industryType = authStore.user?.tenant_industry_type || 'OTHER';
+  const allowedCategories = CATEGORIES_BY_INDUSTRY[industryType] || [];
+  
+  if (allowedCategories.length === 0) {
+    // Si no hay categorías específicas, mostrar todos
+    return allLowStockItems.value;
+  }
+  
+  // Filtrar items que coinciden con las categorías permitidas
+  return allLowStockItems.value.filter(item => 
+    allowedCategories.some(cat => item.category?.toLowerCase().includes(cat.toLowerCase()))
+  );
+});
+
+// Detectar categorías que no coinciden con el tipo de negocio
+const mismatchedCategories = computed(() => {
+  const industryType = authStore.user?.tenant_industry_type || 'OTHER';
+  const allowedCategories = CATEGORIES_BY_INDUSTRY[industryType] || [];
+  
+  if (allowedCategories.length === 0) {
+    return [];
+  }
+  
+  // Encontrar categorías en allLowStockItems que no están en allowedCategories
+  const foundCategories = allLowStockItems.value
+    .map(item => item.category)
+    .filter((cat): cat is string => cat !== undefined);
+  
+  const mismatched = foundCategories.filter(cat => 
+    !allowedCategories.some(allowed => cat.toLowerCase().includes(allowed.toLowerCase()))
+  );
+  
+  // Eliminar duplicados
+  return [...new Set(mismatched)];
+});
 
 // Preview mode from query params
 const previewRole = computed(() => route.query.previewRole as string | undefined);
@@ -210,6 +273,27 @@ const loadDashboardData = async () => {
       bcvRate.value = forexData.rate;
       bcvStatus.value = forexData.status;
     }
+    
+    // Load document usage
+    try {
+      const usageData = await fetchApi<any>('/api/v1/plans/document-usage/');
+      documentUsage.value = {
+        used: usageData.used || 0,
+        limit: usageData.limit || 100,
+        percentage: usageData.percentage || 0,
+        is_unlimited: usageData.is_unlimited || false
+      };
+    } catch (usageErr) {
+      console.error('Failed to load document usage:', usageErr);
+      // Set defaults
+      documentUsage.value = {
+        used: 85,
+        limit: 100,
+        percentage: 85,
+        is_unlimited: false
+      };
+    }
+    
     salesToday.value = 1250.50;
     salesTrend.value = 5.2;
     creditsReceivable.value = 3450.00;
@@ -323,6 +407,63 @@ onMounted(() => {
           </div>
           <p v-if="kpi.sub" class="text-[11px] leading-relaxed text-slate-500 dark:text-slate-500">{{ kpi.sub }}</p>
         </div>
+      </div>
+    </div>
+
+    <!-- Document Usage Widget -->
+    <div v-if="!isStaff && !documentUsage.is_unlimited" class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/[0.06] dark:bg-[#141824]">
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex-1 space-y-3">
+          <div class="flex items-center gap-2">
+            <div class="h-2 w-2 rounded-full" :class="documentUsage.percentage >= 90 ? 'bg-red-500' : documentUsage.percentage >= 70 ? 'bg-amber-500' : 'bg-emerald-500'" />
+            <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Límite de Documentos Mensuales</h3>
+          </div>
+          <div class="space-y-2">
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-slate-600 dark:text-slate-400">Uso actual</span>
+              <span class="font-medium text-slate-900 dark:text-white">{{ documentUsage.used }} de {{ documentUsage.limit }}</span>
+            </div>
+            <div class="relative h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+              <div 
+                class="h-full rounded-full transition-all duration-500 ease-out"
+                :class="documentUsage.percentage >= 90 ? 'bg-red-500' : documentUsage.percentage >= 70 ? 'bg-amber-500' : 'bg-emerald-500'"
+                :style="{ width: `${Math.min(100, documentUsage.percentage)}%` }"
+              />
+            </div>
+            <div class="mt-1 text-xs" :class="documentUsage.percentage >= 90 ? 'text-red-600' : documentUsage.percentage >= 70 ? 'text-amber-600' : 'text-emerald-600'">
+              {{ documentUsage.percentage }}% utilizado
+            </div>
+          </div>
+        </div>
+        <div v-if="documentUsage.percentage >= 90" class="flex-shrink-0">
+          <button class="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 px-3 py-2 text-xs font-medium text-white shadow-sm hover:from-cyan-700 hover:to-blue-700 transition-colors">
+            <CreditCard class="h-3.5 w-3.5" />
+            Actualizar Plan
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI + Fiscal Intelligence Widgets -->
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <!-- Efi AI Widget -->
+      <div class="lg:col-span-2">
+        <EfiWidget
+          :industry-type="authStore.user?.tenant_industry_type ?? undefined"
+          :mismatched-categories="mismatchedCategories"
+        />
+      </div>
+      
+      <!-- Fiscal Status Widget -->
+      <div class="lg:col-span-1">
+        <FiscalWidget />
+      </div>
+    </div>
+
+    <!-- Currency Widget -->
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div class="lg:col-span-1">
+        <CurrencyWidget />
       </div>
     </div>
 

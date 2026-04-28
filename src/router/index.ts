@@ -77,6 +77,12 @@ const router = createRouter({
       component: () => import('@/views/admin/DashboardView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/admin/super-console',
+      name: 'SuperAdminConsole',
+      component: () => import('@/views/admin/SuperAdminConsole.vue'),
+      meta: { requiresAuth: true, requiresStaff: true },
+    },
     // Auditor routes - for EXTERNAL_AUDITOR role
     {
       path: '/auditor',
@@ -144,6 +150,13 @@ const router = createRouter({
       path: '/admin/settings/pos-payments',
       name: 'TenantPosPayments',
       component: () => import('@/views/admin/TenantPosPaymentMethodsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    // Tenant Add-ons Marketplace
+    {
+      path: '/admin/marketplace',
+      name: 'AddonsMarketplace',
+      component: () => import('@/views/tenant/AddonsMarketplace.vue'),
       meta: { requiresAuth: true },
     },
     // Navigation Menu Modules - Staff only

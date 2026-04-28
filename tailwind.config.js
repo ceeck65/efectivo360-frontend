@@ -43,10 +43,17 @@ export default {
           foreground: "hsl(var(--card-foreground))",
         },
         brand: {
-          primary: "#007BFF",
-          secondary: "#00D492",
-          dark: "#0F172A",
-          light: "#F1F5F9",
+          primary: "#1E40AF", // Azul corporativo más profesional
+          secondary: "#64748B", // Gris medio
+          dark: "#0F172A", // Gris oscuro
+          light: "#F8FAFC", // Blanco/gris muy claro
+        },
+        corporate: {
+          blue: "#1E3A8A", // Azul corporativo profundo
+          blueLight: "#3B82F6", // Azul corporativo claro
+          gray: "#64748B", // Gris corporativo
+          grayDark: "#1E293B", // Gris oscuro
+          grayLight: "#F1F5F9", // Gris claro
         },
         night: {
           950: "#05080f",
