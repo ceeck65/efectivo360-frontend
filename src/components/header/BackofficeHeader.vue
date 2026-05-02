@@ -60,6 +60,17 @@ const userInitial = computed(() =>
   (authStore.user?.first_name?.[0] || authStore.user?.username?.[0] || '?').toUpperCase()
 );
 
+// User capabilities summary
+const userCapabilities = computed(() => {
+  const matrix = authStore.user?.permissions_matrix;
+  if (!matrix) return [];
+  
+  return Object.entries(matrix).map(([module, actions]) => ({
+    module,
+    actions: actions.join(', ')
+  }));
+});
+
 // Keyboard shortcut for command palette
 const onKeydown = (e: KeyboardEvent) => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
@@ -276,6 +287,22 @@ const toggleDarkMode = () => {
                   {{ userName }}
                 </div>
                 <div class="truncate text-xs text-slate-500">{{ userEmail }}</div>
+                <div class="mt-1 text-xs text-slate-400">
+                  Rol: {{ authStore.user?.role || '-' }}
+                </div>
+              </div>
+            </div>
+            <!-- Capabilities Summary -->
+            <div v-if="userCapabilities.length > 0" class="border-b border-slate-100 p-2">
+              <div class="text-xs font-medium text-slate-500 mb-1">Capacidades</div>
+              <div class="max-h-32 overflow-y-auto space-y-1">
+                <div v-for="cap in userCapabilities.slice(0, 5)" :key="cap.module" class="flex items-center justify-between text-xs">
+                  <span class="font-medium text-slate-700">{{ cap.module }}</span>
+                  <span class="text-slate-500">{{ cap.actions }}</span>
+                </div>
+                <div v-if="userCapabilities.length > 5" class="text-xs text-slate-400 text-center">
+                  +{{ userCapabilities.length - 5 }} más
+                </div>
               </div>
             </div>
             <div class="grid gap-0.5 p-1 text-sm">

@@ -4,6 +4,7 @@ import { usersRoutes } from '@modules/users/router';
 import { categoriesRoutes } from '@modules/categories/router';
 import { blueprintsRoutes } from '@modules/blueprints/router';
 import { chatRoutes } from '@modules/chat/router';
+import { vaultsRoutes } from '@modules/vaults/router';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -188,6 +189,8 @@ const router = createRouter({
     ...blueprintsRoutes,
     // Chat module - Staff only
     ...chatRoutes,
+    // Vaults module - Staff and Tenant
+    ...vaultsRoutes,
   ],
   scrollBehavior(to, _from, savedPosition) {
     if (savedPosition) {

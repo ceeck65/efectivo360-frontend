@@ -399,11 +399,12 @@
                   </td>
                   <td class="px-6 py-4">
                     <div class="flex flex-wrap gap-1">
-                      <span v-for="(enabled, module) in plan.enabled_modules" :key="module" 
-                        v-if="enabled" 
-                        class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300">
-                        {{ getModuleDisplayName(module) }}
-                      </span>
+                      <template v-for="(value, key) in plan.enabled_modules" :key="key">
+                        <span v-if="value"
+                          class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300">
+                          {{ getModuleDisplayName(key) }}
+                        </span>
+                      </template>
                     </div>
                   </td>
                   <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{{ plan.tenant_count || 0 }}</td>
@@ -991,19 +992,19 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Máximo de Usuarios</label>
-                <input v-model.number="newPlan.limits.max_users" type="number" min="1" placeholder="3" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
+                <input v-model.number="newPlan.limits!.max_users" type="number" min="1" placeholder="3" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
               </div>
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Máximo de Cajas (POS)</label>
-                <input v-model.number="newPlan.limits.max_cajas" type="number" min="1" placeholder="1" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
+                <input v-model.number="newPlan.limits!.max_cajas" type="number" min="1" placeholder="1" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
               </div>
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Máximo de Productos</label>
-                <input v-model.number="newPlan.limits.max_productos" type="number" min="1" placeholder="100" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
+                <input v-model.number="newPlan.limits!.max_productos" type="number" min="1" placeholder="100" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
               </div>
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Máximo de Sucursales</label>
-                <input v-model.number="newPlan.limits.max_sucursales" type="number" min="1" placeholder="1" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
+                <input v-model.number="newPlan.limits!.max_sucursales" type="number" min="1" placeholder="1" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
               </div>
             </div>
           </div>
@@ -1013,27 +1014,27 @@
             <h4 class="text-sm font-medium text-slate-900 dark:text-white">Módulos Activos</h4>
             <div class="grid grid-cols-2 gap-3">
               <label class="flex items-center gap-2">
-                <input v-model="newPlan.enabled_modules.efi_assistant" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
+                <input v-model="newPlan.enabled_modules!.efi_assistant" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
                 <span class="text-sm text-slate-700 dark:text-slate-300">IA Efi</span>
               </label>
               <label class="flex items-center gap-2">
-                <input v-model="newPlan.enabled_modules.fiscal_module" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
+                <input v-model="newPlan.enabled_modules!.fiscal_module" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
                 <span class="text-sm text-slate-700 dark:text-slate-300">Módulo Fiscal</span>
               </label>
               <label class="flex items-center gap-2">
-                <input v-model="newPlan.enabled_modules.dashboard_auditor" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
+                <input v-model="newPlan.enabled_modules!.dashboard_auditor" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
                 <span class="text-sm text-slate-700 dark:text-slate-300">Dashboard Auditor</span>
               </label>
               <label class="flex items-center gap-2">
-                <input v-model="newPlan.enabled_modules.advanced_analytics" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
+                <input v-model="newPlan.enabled_modules!.advanced_analytics" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
                 <span class="text-sm text-slate-700 dark:text-slate-300">Análisis Avanzado</span>
               </label>
               <label class="flex items-center gap-2">
-                <input v-model="newPlan.enabled_modules.inventory_management" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
+                <input v-model="newPlan.enabled_modules!.inventory_management" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
                 <span class="text-sm text-slate-700 dark:text-slate-300">Gestión de Inventario</span>
               </label>
               <label class="flex items-center gap-2">
-                <input v-model="newPlan.enabled_modules.sales_management" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
+                <input v-model="newPlan.enabled_modules!.sales_management" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
                 <span class="text-sm text-slate-700 dark:text-slate-300">Gestión de Ventas</span>
               </label>
             </div>
@@ -1104,19 +1105,19 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Máximo de Usuarios</label>
-                <input v-model.number="editingPlan.limits.max_users" type="number" min="1" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
+                <input v-model.number="editingPlan.limits!.max_users" type="number" min="1" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
               </div>
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Máximo de Cajas (POS)</label>
-                <input v-model.number="editingPlan.limits.max_cajas" type="number" min="1" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
+                <input v-model.number="editingPlan.limits!.max_cajas" type="number" min="1" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
               </div>
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Máximo de Productos</label>
-                <input v-model.number="editingPlan.limits.max_productos" type="number" min="1" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
+                <input v-model.number="editingPlan.limits!.max_productos" type="number" min="1" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
               </div>
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Máximo de Sucursales</label>
-                <input v-model.number="editingPlan.limits.max_sucursales" type="number" min="1" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
+                <input v-model.number="editingPlan.limits!.max_sucursales" type="number" min="1" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
               </div>
             </div>
           </div>
@@ -1373,7 +1374,7 @@ const { showInput } = useAlert();
 
 const loading = ref(true);
 const isSaving = ref(false);
-const activeTab = ref<'blueprints' | 'categories' | 'plans' | 'addons' | 'config'>('blueprints');
+const activeTab = ref<'blueprints' | 'categories' | 'plans' | 'addons' | 'permissions' | 'config'>('blueprints');
 const blueprintSearch = ref('');
 const categorySearch = ref('');
 const planSearch = ref('');
@@ -1383,7 +1384,7 @@ const blueprints = ref<Blueprint[]>([]);
 const categories = ref<Category[]>([]);
 const plans = ref<Plan[]>([]);
 const addons = ref<any[]>([]);
-const tenantAddons = ref<any[]>([]);
+const permissions = ref<any[]>([]);
 const selectedTenant = ref<any>(null);
 const selectedAddon = ref<any>(null);
 const assignAddonQuantity = ref(100);
@@ -1410,13 +1411,14 @@ const newBlueprint = ref({
   icon: '',
   features: ''
 });
-const newPlan = ref<Partial<Plan>>({
+const newPlan = ref<Omit<Plan, 'id'>>({
   code: '',
   name: '',
   description: '',
   monthly_price: 0,
   annual_price: 0,
   max_monthly_documents: 100,
+  is_active: true,
   limits: {
     max_users: 3,
     max_cajas: 1,
@@ -1488,9 +1490,9 @@ const filteredAddons = computed(() => {
   if (!addonSearch.value.trim()) return addons.value;
   const q = addonSearch.value.toLowerCase();
   return addons.value.filter(addon => 
-    addon.code.toLowerCase().includes(q) || 
     addon.name.toLowerCase().includes(q) ||
-    addon.description?.toLowerCase().includes(q)
+    addon.code.toLowerCase().includes(q) ||
+    addon.description.toLowerCase().includes(q)
   );
 });
 
@@ -1515,6 +1517,7 @@ const loadAllData = async () => {
       loadCategories(),
       loadPlans(),
       loadAddons(),
+      loadPermissions(),
       loadTenantCount()
     ]);
   } finally {
@@ -1554,11 +1557,21 @@ const loadPlans = async () => {
 
 const loadAddons = async () => {
   try {
-    const data = await fetchApi<any[] | { results?: any[] }>('/api/v1/addons/');
-    addons.value = Array.isArray(data) ? data : (data as { results?: any[] }).results ?? [];
+    const data = await fetchApi<any[]>('/api/v1/addons/');
+    addons.value = data;
   } catch (error) {
     console.error('Error loading addons:', error);
     notifyError('Error al cargar add-ons');
+  }
+};
+
+const loadPermissions = async () => {
+  try {
+    const data = await fetchApi<any[]>('/api/v1/permissions/');
+    permissions.value = data;
+  } catch (error) {
+    console.error('Error loading permissions:', error);
+    notifyError('Error al cargar permisos');
   }
 };
 
@@ -1575,7 +1588,7 @@ const loadTenants = async () => {
   try {
     const data = await fetchApi<any[] | { results?: any[] }>('/api/v1/tenants/');
     return Array.isArray(data) ? data : (data as { results?: any[] }).results ?? [];
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error loading tenants:', error);
     notifyError('Error al cargar tenants');
     return [];
@@ -1619,21 +1632,10 @@ const openAssignAddon = async () => {
     notifyError('No hay tenants disponibles');
     return;
   }
-  
-  // Simple selection dialog
-  const tenantOptions = tenants.map((t: any) => ({ 
-    label: `${t.commercial_name || t.name} (${t.slug})`, 
-    value: t 
-  }));
-  
-  const addonOptions = addons.value.map((a: any) => ({ 
-    label: `${a.name} (${a.code})`, 
-    value: a 
-  }));
-  
+
   // For now, just set the first tenant and addon as defaults
   selectedTenant.value = tenants[0];
-  selectedAddon.value = addons[0];
+  selectedAddon.value = addons.value[0];
 };
 
 const openCreateBlueprint = () => {
@@ -1917,6 +1919,8 @@ const openCreatePlan = () => {
     description: '',
     monthly_price: 0,
     annual_price: 0,
+    max_monthly_documents: 100,
+    is_active: true,
     limits: {
       max_users: 3,
       max_cajas: 1,
@@ -1952,7 +1956,7 @@ const createPlan = async () => {
       display_order: plans.value.length + 1
     };
 
-    const createdPlan = await fetchApi('/api/v1/plans/', {
+    const createdPlan = await fetchApi<Plan>('/api/v1/plans/', {
       method: 'POST',
       data: planData
     });
@@ -1971,13 +1975,22 @@ const createPlan = async () => {
 const editPlan = (plan: any) => {
   editingPlan.value = {
     ...plan,
+    max_monthly_documents: plan.max_monthly_documents || 100,
+    is_active: plan.is_active ?? true,
     limits: plan.limits || {
       max_users: 3,
       max_cajas: 1,
       max_productos: 100,
       max_sucursales: 1
     },
-    enabled_modules: plan.enabled_modules || {}
+    enabled_modules: plan.enabled_modules || {
+      efi_assistant: false,
+      fiscal_module: false,
+      dashboard_auditor: false,
+      advanced_analytics: false,
+      inventory_management: false,
+      sales_management: false
+    }
   };
   showEditPlan.value = true;
 };
@@ -2085,7 +2098,7 @@ const createAddon = async () => {
   try {
     await fetchApi('/api/v1/addons/', {
       method: 'POST',
-      body: JSON.stringify(newAddon.value)
+      data: newAddon.value
     });
     
     notifySuccess('Add-on creado correctamente');
@@ -2121,7 +2134,7 @@ const updateAddon = async () => {
   try {
     await fetchApi(`/api/v1/addons/${editingAddon.value.id}/`, {
       method: 'PATCH',
-      body: JSON.stringify(editingAddon.value)
+      data: editingAddon.value
     });
     
     notifySuccess('Add-on actualizado correctamente');

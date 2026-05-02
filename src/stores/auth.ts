@@ -55,6 +55,7 @@ interface User {
   is_withholding_agent?: boolean | null;
   auto_generate_retention_vouchers?: boolean | null;
   permissions?: string[];
+  permissions_matrix?: Record<string, string[]>;  // Matriz de capacidades: { "vta": ["view", "create"], "inv": ["view"] }
 }
 
 // CMS Permissions interface
@@ -125,6 +126,23 @@ export const useAuthStore = defineStore('auth', () => {
     if (!user.value) return false;
     if (user.value.is_superuser) return true;
     return user.value.permissions?.includes(permission) || false;
+  };
+
+  const hasPerm = (module: string, action: string): boolean => {
+    /**
+     * Verifica si el usuario tiene un permiso específico usando la matriz de capacidades.
+     * Ejemplo: hasPerm('vta', 'create') retorna true si el usuario puede crear ventas.
+     */
+    if (!user.value) return false;
+    if (user.value.is_superuser) return true;
+    
+    const matrix = user.value.permissions_matrix;
+    if (!matrix) return false;
+    
+    const moduleActions = matrix[module];
+    if (!moduleActions) return false;
+    
+    return moduleActions.includes(action);
   };
 
   const hasCmsPermissionCode = (code: string): boolean => {
@@ -307,6 +325,17 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (err) {
       notifyError('Error al cambiar de tienda');
       throw err;
+    };
+  };
+
+  // Refresh user permissions without full user refresh
+  const refreshUserPermissions = async () => {
+    try {
+      const data = await fetchApi<{ permissions: string[] }>('/api/v1/auth/user-permissions/');
+      userPermissions.value = data.permissions || [];
+      console.log('Auth: User permissions refreshed');
+    } catch (error) {
+      console.error('Auth: Failed to refresh user permissions:', error);
     }
   };
 
@@ -319,6 +348,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     isStaff,
     tenantName,
+    hasPerm,
     tenantUlid,
     hasTenant,
     hasConfiguredTenant,
@@ -337,5 +367,6 @@ export const useAuthStore = defineStore('auth', () => {
     saveUserToStorage,
     saveCmsPermissionsToStorage,
     switchTenant,
+    refreshUserPermissions,
   };
 });

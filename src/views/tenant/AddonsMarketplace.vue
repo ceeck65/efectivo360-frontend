@@ -49,15 +49,6 @@ const availableAddons = computed(() => {
   return addons.value.filter(addon => addon.is_active);
 });
 
-const hasActiveAddon = (addonId: string) => {
-  return tenantAddons.value.some(ta => 
-    ta.addon.id === addonId && 
-    ta.is_active && 
-    (ta.addon.addon_type === 'CONSUMO' || 
-     (ta.addon.addon_type === 'SERVICIO' && ta.expiration_date && new Date(ta.expiration_date) > new Date()))
-  );
-};
-
 const getAddonStatus = (addon: Addon) => {
   const tenantAddon = tenantAddons.value.find(ta => ta.addon.id === addon.id);
   if (!tenantAddon || !tenantAddon.is_active) return 'available';

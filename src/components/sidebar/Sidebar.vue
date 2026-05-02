@@ -27,6 +27,8 @@ import {
 } from 'lucide-vue-next';
 import { useAuthStore } from '@/stores/auth';
 import { useNavigationStore, type MenuItem } from '@/stores/navigation';
+import { usePermissions } from '@/composables/usePermissions';
+import { eventBus, PERMISSION_EVENTS } from '@/events/eventBus';
 
 // Icon mapping from Lucide
 const iconMap: Record<string, any> = {
@@ -111,6 +113,7 @@ const emit = defineEmits<{
 const route = useRoute();
 const authStore = useAuthStore();
 const navigationStore = useNavigationStore();
+const { hasPerm } = usePermissions();
 
 // Prevent hydration mismatch by waiting for client mount
 const mounted = ref(false);
@@ -130,7 +133,37 @@ onMounted(async () => {
   } catch (e) {
     console.error('Sidebar: Failed to fetch navigation:', e);
   }
+
+  // Listen for permission changes
+  eventBus.on(PERMISSION_EVENTS.PERMISSIONS_CHANGED, handlePermissionsChanged);
+  eventBus.on(PERMISSION_EVENTS.ROLE_PERMISSIONS_UPDATED, handlePermissionsChanged);
+  eventBus.on(PERMISSION_EVENTS.USER_PERMISSIONS_REFRESHED, handlePermissionsChanged);
 });
+
+onUnmounted(() => {
+  // Clean up event listeners
+  eventBus.off(PERMISSION_EVENTS.PERMISSIONS_CHANGED, handlePermissionsChanged);
+  eventBus.off(PERMISSION_EVENTS.ROLE_PERMISSIONS_UPDATED, handlePermissionsChanged);
+  eventBus.off(PERMISSION_EVENTS.USER_PERMISSIONS_REFRESHED, handlePermissionsChanged);
+});
+
+// Handle permission changes
+const handlePermissionsChanged = async () => {
+  console.log('Sidebar: Permissions changed, refreshing navigation');
+  
+  try {
+    // Refresh user permissions from auth store
+    await authStore.refreshUserPermissions();
+    
+    // Refresh navigation menu
+    navigationStore.clearCache();
+    await navigationStore.fetchNavigation();
+    
+    console.log('Sidebar: Navigation refreshed after permission changes');
+  } catch (e) {
+    console.error('Sidebar: Failed to refresh after permission changes:', e);
+  }
+};
 
 // User info
 const isStaff = computed(() => authStore.user?.is_staff || false);
@@ -362,7 +395,7 @@ const isActive = (href: string): boolean => {
                   />
                 </div>
                 <RouterLink
-                  v-else
+                  v-else-if="!item.permission || hasPerm('MENUS', item.permission)"
                   :to="item.href"
                   @click="emit('close')"
                   :class="[

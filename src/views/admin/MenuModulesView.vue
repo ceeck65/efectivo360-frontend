@@ -22,16 +22,29 @@
         </div>
       </div>
 
-      <!-- Search -->
+      <!-- Search & Filter -->
       <div class="bg-white rounded-xl border border-slate-200 p-4">
-        <div class="relative">
-          <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="Buscar módulos por título o ruta..."
-            class="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
-          />
+        <div class="flex items-center gap-4">
+          <div class="relative flex-1">
+            <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Buscar módulos o grupos..."
+              class="w-full pl-10 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+            />
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="text-xs text-slate-600">Estado:</label>
+            <select
+              v-model="activeFilter"
+              class="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+            >
+              <option value="all">Todos</option>
+              <option value="active">Activos</option>
+              <option value="inactive">Inactivos</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -130,8 +143,15 @@
                         <button @click="handleEdit(module)" class="p-1.5 hover:bg-slate-100 rounded text-slate-600">
                           <Pencil class="h-3.5 w-3.5" />
                         </button>
-                        <button @click="handleDelete(module)" class="p-1.5 hover:bg-red-50 text-red-600 rounded">
-                          <Trash2 class="h-3.5 w-3.5" />
+                        <button
+                          @click="toggleModuleActive(module)"
+                          :class="[
+                            'p-1.5 rounded',
+                            module.is_active ? 'text-green-600 hover:text-green-700' : 'text-slate-400 hover:text-slate-600'
+                          ]"
+                          :title="module.is_active ? 'Desactivar' : 'Activar'"
+                        >
+                          <Power :class="['h-3.5 w-3.5', !module.is_active && 'rotate-90']" />
                         </button>
                       </div>
                     </div>
@@ -190,8 +210,15 @@
                     <button @click="handleEdit(module)" class="p-1.5 hover:bg-slate-100 rounded text-slate-600">
                       <Pencil class="h-3.5 w-3.5" />
                     </button>
-                    <button @click="handleDelete(module)" class="p-1.5 hover:bg-red-50 text-red-600 rounded">
-                      <Trash2 class="h-3.5 w-3.5" />
+                    <button
+                      @click="toggleModuleActive(module)"
+                      :class="[
+                        'p-1.5 rounded',
+                        module.is_active ? 'text-green-600 hover:text-green-700' : 'text-slate-400 hover:text-slate-600'
+                      ]"
+                      :title="module.is_active ? 'Desactivar' : 'Activar'"
+                    >
+                      <Power :class="['h-3.5 w-3.5', !module.is_active && 'rotate-90']" />
                     </button>
                   </div>
                 </div>
@@ -222,10 +249,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { ArrowLeft, Plus, Pencil, Trash2, Smartphone, Monitor, GripVertical, FolderPlus, Search } from 'lucide-vue-next';
+import { ArrowLeft, Plus, Pencil, Power, Smartphone, Monitor, GripVertical, FolderPlus, Search } from 'lucide-vue-next';
 import draggable from 'vuedraggable';
 import { useApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
+import { useNavigationStore } from '@/stores/navigation';
 import MenuModuleFormModal from '@/components/admin/MenuModuleFormModal.vue';
 import MenuGroupFormModal from '@/components/admin/MenuGroupFormModal.vue';
 import LucideIcon from '@/components/lucide/LucideIcon.vue';
@@ -264,6 +292,7 @@ interface MenuGroup {
 
 const { fetchApi } = useApi();
 const { success: notifySuccess, error: notifyError } = useNotify();
+const navigationStore = useNavigationStore();
 const groups = ref<MenuGroup[]>([]);
 const ungroupedModules = ref<MenuModule[]>([]);
 const allModules = ref<MenuModule[]>([]);
@@ -274,6 +303,7 @@ const groupModalOpen = ref(false);
 const editingModule = ref<MenuModule | null>(null);
 const editingGroup = ref<MenuGroup | null>(null);
 const searchQuery = ref('');
+const activeFilter = ref<'all' | 'active' | 'inactive'>('all');
 
 const fetchModules = async () => {
   isLoading.value = true;
@@ -302,10 +332,14 @@ const fetchModules = async () => {
     allGroups.value = groupsData;
 
     // Group modules by their group
-    const grouped: MenuGroup[] = groupsData.map((group: MenuGroup) => ({
-      ...group,
-      modules: modulesData.filter((m: MenuModule) => m.group_ulid === group.ulid).sort((a: MenuModule, b: MenuModule) => a.order - b.order)
-    })).filter((g: MenuGroup) => g.modules.length > 0);
+    const grouped: MenuGroup[] = groupsData.map((group: MenuGroup) => {
+      const groupModules = modulesData.filter((m: MenuModule) => m.group_ulid === group.ulid).sort((a: MenuModule, b: MenuModule) => a.order - b.order);
+      console.log(`MenuModulesView - Group ${group.name} (${group.ulid}): ${groupModules.length} modules`, groupModules.map((m: MenuModule) => m.title));
+      return {
+        ...group,
+        modules: groupModules
+      };
+    }).filter((g: MenuGroup) => g.modules.length > 0);
 
     console.log('MenuModulesView - grouped:', grouped);
 
@@ -328,31 +362,56 @@ const fetchModules = async () => {
 
 // Filter groups based on filtered modules
 const filteredGroups = computed(() => {
-  if (!searchQuery.value.trim()) {
-    return groups.value;
-  }
-  const query = searchQuery.value.toLowerCase();
-  return groups.value
-    .map((group: MenuGroup) => ({
+  let result = groups.value;
+
+  // Apply active filter
+  if (activeFilter.value !== 'all') {
+    result = result.map((group: MenuGroup) => ({
       ...group,
       modules: group.modules.filter((m: MenuModule) =>
-        m.title.toLowerCase().includes(query) ||
-        m.path.toLowerCase().includes(query)
+        activeFilter.value === 'active' ? m.is_active : !m.is_active
       )
-    }))
-    .filter((g: MenuGroup) => g.modules.length > 0);
+    })).filter((g: MenuGroup) => g.modules.length > 0);
+  }
+
+  // Apply search filter
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase();
+    result = result
+      .map((group: MenuGroup) => ({
+        ...group,
+        modules: group.modules.filter((m: MenuModule) =>
+          m.title.toLowerCase().includes(query) ||
+          m.path.toLowerCase().includes(query)
+        )
+      }))
+      .filter((g: MenuGroup) => g.modules.length > 0);
+  }
+
+  return result;
 });
 
 // Filter ungrouped modules
 const filteredUngroupedModules = computed(() => {
-  if (!searchQuery.value.trim()) {
-    return ungroupedModules.value;
+  let result = ungroupedModules.value;
+
+  // Apply active filter
+  if (activeFilter.value !== 'all') {
+    result = result.filter((m: MenuModule) =>
+      activeFilter.value === 'active' ? m.is_active : !m.is_active
+    );
   }
-  const query = searchQuery.value.toLowerCase();
-  return ungroupedModules.value.filter((m: MenuModule) =>
-    m.title.toLowerCase().includes(query) ||
-    m.path.toLowerCase().includes(query)
-  );
+
+  // Apply search filter
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase();
+    result = result.filter((m: MenuModule) =>
+      m.title.toLowerCase().includes(query) ||
+      m.path.toLowerCase().includes(query)
+    );
+  }
+
+  return result;
 });
 
 // Helper to get group by ulid
@@ -370,29 +429,36 @@ const handleEdit = (module: MenuModule) => {
   modalOpen.value = true;
 };
 
-const handleDelete = async (module: MenuModule) => {
+const toggleModuleActive = async (module: MenuModule) => {
+  const title = module.is_active ? '¿Desactivar Módulo?' : '¿Activar Módulo?';
+  const message = module.is_active
+    ? 'Esta acción es reversible. El módulo dejará de aparecer en el menú de navegación.'
+    : 'Esta acción es reversible. El módulo aparecerá en el menú de navegación.';
+
   const result = await Swal.fire({
-    title: '¿Confirmar eliminación?',
-    text: `¿Eliminar el módulo "${module.title}" permanentemente?`,
+    title,
+    text: message,
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: 'Sí, eliminar',
-    cancelButtonText: 'Cancelar',
-    confirmButtonColor: '#dc2626',
-    cancelButtonColor: '#6B7280',
-    reverseButtons: true,
+    confirmButtonColor: module.is_active ? '#ef4444' : '#22c55e',
+    cancelButtonColor: '#64748b',
+    confirmButtonText: module.is_active ? 'Sí, desactivar' : 'Sí, activar',
+    cancelButtonText: 'Cancelar'
   });
 
-  if (!result.isConfirmed) return;
-
-  try {
-    await fetchApi(`/api/navigation/menu-modules/${module.id}/`, {
-      method: 'DELETE',
-    });
-    notifySuccess(`Módulo "${module.title}" eliminado exitosamente`);
-    await fetchModules();
-  } catch (err: any) {
-    notifyError(err?.message || 'Error eliminando módulo');
+  if (result.isConfirmed) {
+    try {
+      await fetchApi(`/api/navigation/menu-modules/${module.id}/`, {
+        method: 'PATCH',
+        data: { is_active: !module.is_active }
+      });
+      notifySuccess(`Módulo "${module.title}" ${module.is_active ? 'desactivado' : 'activado'} exitosamente`);
+      await fetchModules();
+      // Invalidar caché de navegación para que los cambios se reflejen en el menú
+      await navigationStore.refreshNavigation();
+    } catch (err: any) {
+      notifyError(err?.message || 'Error cambiando estado del módulo');
+    }
   }
 };
 
@@ -428,6 +494,8 @@ const handleSave = async (formData: Partial<MenuModule>) => {
     }
     modalOpen.value = false;
     await fetchModules();
+    // Invalidar caché de navegación y recargar menú para que los cambios se reflejen
+    await navigationStore.refreshNavigation();
   } catch (err: any) {
     notifyError(err?.message || 'Error guardando módulo');
     throw err;
@@ -510,6 +578,8 @@ const onGroupReorder = async () => {
     notifyError(err?.message || 'Error actualizando orden');
     await fetchModules();
   }
+  // Invalidar caché de navegación para que los cambios se reflejen en el menú
+  await navigationStore.refreshNavigation();
 };
 
 const onModuleReorder = async (group: MenuGroup) => {
@@ -528,6 +598,8 @@ const onModuleReorder = async (group: MenuGroup) => {
     notifyError(err?.message || 'Error actualizando orden');
     await fetchModules();
   }
+  // Invalidar caché de navegación para que los cambios se reflejen en el menú
+  await navigationStore.refreshNavigation();
 };
 
 const onUngroupedModuleReorder = async () => {
@@ -546,6 +618,8 @@ const onUngroupedModuleReorder = async () => {
     notifyError(err?.message || 'Error actualizando orden');
     await fetchModules();
   }
+  // Invalidar caché de navegación para que los cambios se reflejen en el menú
+  await navigationStore.refreshNavigation();
 };
 
 onMounted(fetchModules);

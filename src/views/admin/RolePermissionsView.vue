@@ -11,13 +11,88 @@
             <div>
               <h1 class="text-xl font-bold text-slate-900">Administración de Roles</h1>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs Navigation -->
+      <div class="border-b border-slate-200 mb-4">
+        <nav class="flex space-x-8">
+          <!-- TIENDA: Solo visible para usuarios no staff (dueños de tienda) -->
+          <button
+            v-if="!authStore.user?.is_staff"
+            @click="permissionMode = 'store'"
+            :class="[
+              'py-4 px-1 border-b-2 font-medium text-sm transition-colors',
+              permissionMode === 'store'
+                ? 'border-brand-primary text-brand-primary'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            ]"
+          >
+            TIENDA
+          </button>
+          <!-- BLUEPRINT: Solo visible para staff (Super Admin y Staff) -->
+          <button
+            v-if="authStore.user?.is_staff"
+            @click="permissionMode = 'blueprint'"
+            :class="[
+              'py-4 px-1 border-b-2 font-medium text-sm transition-colors',
+              permissionMode === 'blueprint'
+                ? 'border-brand-primary text-brand-primary'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            ]"
+          >
+            BLUEPRINT
+          </button>
+          <!-- STAFF: Solo visible para staff (Super Admin y Staff) -->
+          <button
+            v-if="authStore.user?.is_staff"
+            @click="permissionMode = 'staff'"
+            :class="[
+              'py-4 px-1 border-b-2 font-medium text-sm transition-colors',
+              permissionMode === 'staff'
+                ? 'border-brand-primary text-brand-primary'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            ]"
+          >
+            STAFF
+          </button>
+        </nav>
+      </div>
+
+      <!-- Blueprint Warning for Store Owners -->
+      <div 
+        v-if="permissionMode === 'store' && !authStore.user?.is_staff && isUsingBlueprint"
+        class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4"
+      >
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0">
+            <svg class="h-5 w-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-sm font-medium text-amber-800">Configuración Estándar</h3>
+            <p class="text-sm text-amber-700 mt-1">
+              Estás usando la configuración estándar del Blueprint. Si realizas cambios, se creará una matriz personalizada para tu tienda.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Matrix Content -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-3">
             <span
               :class="[
                 'px-2.5 py-1 text-xs font-medium rounded-full',
-                permissionMode === 'store' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'
+                permissionMode === 'store' ? 'bg-blue-100 text-blue-700' :
+                permissionMode === 'blueprint' ? 'bg-emerald-100 text-emerald-700' :
+                'bg-purple-100 text-purple-700'
               ]"
             >
-              {{ permissionMode === 'store' ? 'Tienda' : 'Blueprint' }}
+              {{ permissionMode === 'store' ? 'Tienda' : permissionMode === 'blueprint' ? 'Blueprint' : 'Staff' }}
             </span>
             <div class="relative group">
               <Info class="h-4 w-4 text-slate-400 cursor-help" />
@@ -25,36 +100,16 @@
                 <p v-if="permissionMode === 'store'">
                   Configura permisos específicos para esta tienda. Estos permisos sobrescriben el Blueprint.
                 </p>
-                <p v-else>
+                <p v-else-if="permissionMode === 'blueprint'">
                   Configura el Blueprint Global (Plantilla Maestra). Todas las tiendas heredarán estos permisos por defecto.
+                </p>
+                <p v-else>
+                  Configura los permisos del equipo interno de Disproweb (Soporte, Admin, Supervisor, Agente).
                 </p>
               </div>
             </div>
           </div>
-        </div>
         <div class="flex items-center gap-3">
-          <!-- Permission Mode Toggle -->
-          <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
-            <button
-              @click="permissionMode = 'store'"
-              :class="[
-                'px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
-                permissionMode === 'store' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-              ]"
-            >
-              Tienda
-            </button>
-            <button
-              v-if="authStore.user?.is_staff"
-              @click="permissionMode = 'blueprint'"
-              :class="[
-                'px-3 py-1.5 text-xs font-medium rounded-md transition-colors',
-                permissionMode === 'blueprint' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-              ]"
-            >
-              Blueprint
-            </button>
-          </div>
           <RouterLink
             to="/admin/roles"
             class="inline-flex items-center gap-2 h-8 px-3 text-xs font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200"
@@ -66,7 +121,7 @@
           <select
             v-if="permissionMode === 'store' && isStaffWithoutTenant && memberships.length > 0"
             v-model="selectedTenantId"
-            @change="loadPermissionsMatrix"
+            @change="handleTenantChange"
             class="h-10 px-3 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
           >
             <option value="">Seleccionar Tenant</option>
@@ -114,6 +169,13 @@
 
         <!-- Permissions Matrix -->
         <div v-if="filteredModules.length > 0" class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+          <div class="px-4 py-3 border-b border-slate-100 bg-slate-50/50">
+            <h3 class="text-sm font-semibold text-slate-900">
+              {{ permissionMode === 'blueprint' ? 'Editando Plantilla Base' :
+                 permissionMode === 'staff' ? 'Editando Permisos de Equipo' :
+                 `Editando Tienda: ${selectedTenantName || authStore.tenantName || 'Selecciona una tienda'}` }}
+            </h3>
+          </div>
           <div class="overflow-x-auto max-h-[600px]">
             <table class="w-full text-sm">
               <thead class="bg-slate-50/50 sticky top-0 z-20">
@@ -177,95 +239,138 @@
               </tr>
             </thead>
             <tbody>
-              <tr
-                v-for="module in paginatedModules"
-                :key="module.ulid"
-                class="border-t border-slate-100 hover:bg-slate-50/30 transition-colors"
-              >
-                <td class="px-4 py-2 sticky left-0 bg-white z-10 border-r border-slate-100">
-                  <div class="flex items-center gap-2">
-                    <div v-if="module.icon" class="flex items-center justify-center w-6 h-6 rounded bg-slate-100 text-slate-600">
-                      <LucideIcon :name="module.icon" :size="14" />
-                    </div>
-                    <div v-else class="flex items-center justify-center w-6 h-6 rounded bg-slate-100 text-slate-600">
-                      <Shield class="h-3.5 w-3.5" />
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <div class="flex items-center gap-1.5">
-                        <div class="text-sm font-medium text-slate-900">{{ module.title }}</div>
-                        <button
-                          @click="startEditingPermissionKey(module.ulid, module.permission_key)"
-                          class="text-slate-400 hover:text-brand-primary transition-colors"
-                          title="Editar permission_key"
+              <template v-for="module in paginatedModules" :key="module.ulid">
+                <!-- Parent row (module) -->
+                <tr class="border-t border-slate-100 hover:bg-slate-50/30 transition-colors">
+                  <td class="px-4 py-2 sticky left-0 bg-white z-10 border-r border-slate-100">
+                    <div class="flex items-center gap-2">
+                      <button
+                        @click="toggleModuleExpansion(module.ulid, activeRoles[0])"
+                        class="text-slate-400 hover:text-slate-600 transition-colors"
+                        title="Expandir/Colapsar"
+                      >
+                        <svg
+                          :class="['h-4 w-4 transition-transform', isModuleExpanded(module.ulid, activeRoles[0]) ? 'rotate-90' : '']"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
                         >
-                          <Pencil class="h-3 w-3" />
-                        </button>
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                      <div v-if="module.icon" class="flex items-center justify-center w-6 h-6 rounded bg-slate-100 text-slate-600">
+                        <LucideIcon :name="module.icon" :size="14" />
                       </div>
-                      <div v-if="editingModule === module.ulid" class="mt-1 flex items-center gap-2">
-                        <input
-                          v-model="tempPermissionKey"
-                          @keyup.enter="savePermissionKey(module.ulid)"
-                          @keyup.esc="cancelEditingPermissionKey"
-                          class="text-xs px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-brand-primary/20 w-full"
-                          placeholder="CAN_VIEW_MODULE"
-                        />
-                        <button
-                          @click="savePermissionKey(module.ulid)"
-                          class="text-xs text-green-600 hover:text-green-700"
-                        >
-                          ✓
-                        </button>
-                        <button
-                          @click="cancelEditingPermissionKey"
-                          class="text-xs text-red-600 hover:text-red-700"
-                        >
-                          ✗
-                        </button>
+                      <div v-else class="flex items-center justify-center w-6 h-6 rounded bg-slate-100 text-slate-600">
+                        <Shield class="h-3.5 w-3.5" />
                       </div>
-                      <div v-else-if="module.permission_key" class="text-xs text-slate-400 mt-0.5">{{ module.permission_key }}</div>
-                      <div v-else class="flex items-center gap-1 text-xs text-amber-600 mt-0.5">
-                        <AlertTriangle class="h-3 w-3" />
-                        <span>Sin permiso</span>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-1.5">
+                          <div class="text-sm font-medium text-slate-900">{{ module.title }}</div>
+                          <button
+                            @click="startEditingPermissionKey(module.ulid, module.permission_key)"
+                            class="text-slate-400 hover:text-brand-primary transition-colors"
+                            title="Editar permission_key"
+                          >
+                            <Pencil class="h-3 w-3" />
+                          </button>
+                        </div>
+                        <div v-if="editingModule === module.ulid" class="mt-1 flex items-center gap-2">
+                          <input
+                            v-model="tempPermissionKey"
+                            @keyup.enter="savePermissionKey(module.ulid)"
+                            @keyup.esc="cancelEditingPermissionKey"
+                            class="text-xs px-2 py-1 border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-brand-primary/20 w-full"
+                            placeholder="CAN_VIEW_MODULE"
+                          />
+                          <button
+                            @click="savePermissionKey(module.ulid)"
+                            class="text-xs text-green-600 hover:text-green-700"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            @click="cancelEditingPermissionKey"
+                            class="text-xs text-red-600 hover:text-red-700"
+                          >
+                            ✗
+                          </button>
+                        </div>
+                        <div v-else-if="module.permission_key" class="text-xs text-slate-400 mt-0.5">{{ module.permission_key }}</div>
+                        <div v-else class="flex items-center gap-1 text-xs text-amber-600 mt-0.5">
+                          <AlertTriangle class="h-3 w-3" />
+                          <span>Sin permiso</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </td>
-                <td
-                  v-for="role in activeRoles"
-                  :key="`${module.ulid}-${role}`"
-                  class="px-4 py-2 text-center"
+                  </td>
+                  <td
+                    v-for="role in activeRoles"
+                    :key="`${module.ulid}-${role}`"
+                    class="px-4 py-2 text-center"
+                  >
+                    <input
+                      :ref="(el) => setCheckboxRef(el, module.ulid, role)"
+                      type="checkbox"
+                      :checked="hasPermission(role, module.permission_key) === 'ALL'"
+                      @change="(e) => toggleParentCheckbox(module, role, (e.target as HTMLInputElement).checked)"
+                      class="h-3.5 w-3.5 rounded border-slate-300 text-brand-primary focus:ring-brand-primary cursor-pointer"
+                    />
+                  </td>
+                </tr>
+
+                <!-- Child rows (permissions) -->
+                <tr
+                  v-if="isModuleExpanded(module.ulid, activeRoles[0])"
+                  v-for="permissionKey in generatePermissionKeys(module.title)"
+                  :key="`${module.ulid}-${permissionKey}`"
+                  class="border-t border-slate-50 bg-slate-50/30 hover:bg-slate-50/50 transition-colors"
                 >
-                  <input
-                    type="checkbox"
-                    :checked="hasPermission(role, module.permission_key)"
-                    @change="togglePermission(role, module.permission_key, module.title)"
-                    class="h-3.5 w-3.5 rounded border-slate-300 text-brand-primary focus:ring-brand-primary cursor-pointer"
-                  />
-                </td>
-              </tr>
+                  <td class="px-4 py-2 sticky left-0 bg-slate-50/30 z-10 border-r border-slate-100">
+                    <div class="flex items-center gap-2 pl-8">
+                      <div class="w-6 h-6"></div>
+                      <div class="flex-1 min-w-0">
+                        <div class="text-xs text-slate-600">{{ permissionKey }}</div>
+                        <div class="text-xs text-slate-400">{{ getPermissionLabel(permissionKey) }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td
+                    v-for="role in activeRoles"
+                    :key="`${module.ulid}-${permissionKey}-${role}`"
+                    class="px-4 py-2 text-center"
+                  >
+                    <input
+                      type="checkbox"
+                      :checked="getRolePermissions(role).includes(permissionKey)"
+                      @change="toggleChildCheckbox(module, role, permissionKey)"
+                      class="h-3.5 w-3.5 rounded border-slate-300 text-brand-primary focus:ring-brand-primary cursor-pointer"
+                    />
+                  </td>
+                </tr>
+              </template>
             </tbody>
           </table>
         </div>
       </div>
 
         <!-- Pagination for roles -->
-      <div v-if="rolesTotalPages > 1 || (permissionMode === 'store' ? storeRoles : staffRoles).length > 5" class="flex items-center justify-between mt-2 px-3">
+      <div v-if="rolesTotalPages > 1 || roles.length > 5" class="flex items-center justify-between mt-2 px-3">
         <div class="flex items-center gap-4">
           <div class="text-xs text-slate-500">
-            Roles {{ (rolesCurrentPage - 1) * rolesItemsPerPage + 1 }} a {{ Math.min(rolesCurrentPage * rolesItemsPerPage, (permissionMode === 'store' ? storeRoles : staffRoles).length) }} de {{ (permissionMode === 'store' ? storeRoles : staffRoles).length }}
+            Roles {{ (rolesCurrentPage - 1) * rolesItemsPerPage + 1 }} a {{ Math.min(rolesCurrentPage * rolesItemsPerPage, roles.length) }} de {{ roles.length }}
           </div>
           <div class="flex items-center gap-2">
             <label class="text-xs text-slate-600">Mostrar:</label>
             <select
               v-model="rolesItemsPerPage"
-              @change="rolesCurrentPage = 1"
-              class="text-sm border border-slate-200 rounded-lg px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
+              class="h-8 px-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-brand-primary/20"
             >
               <option :value="5">5</option>
               <option :value="10">10</option>
               <option :value="20">20</option>
               <option :value="50">50</option>
-              <option :value="(permissionMode === 'store' ? storeRoles : staffRoles).length">Todos</option>
+              <option :value="roles.length">Todos</option>
             </select>
           </div>
         </div>
@@ -363,12 +468,14 @@
           Tienes cambios sin guardar. Haz clic en "Guardar Cambios" para aplicarlos.
         </p>
       </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { computed, ref, onMounted, watch } from 'vue';
+import { eventBus, PERMISSION_EVENTS } from '@/events/eventBus';
 import { RouterLink } from 'vue-router';
 import { ArrowLeft, Save, Loader2, Shield, AlertTriangle, Pencil, Users, Info, RotateCcw } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
@@ -399,8 +506,9 @@ interface Role {
 
 interface PermissionsData {
   roles: string[];
-  modules: Module[];
+  modules: Record<string, Module[]>;
   permissions: Record<string, string[]>;
+  inheritance_status?: Record<string, 'custom' | 'inherited' | 'none'>;
 }
 
 const allRoles = ref<Role[]>([]);
@@ -412,15 +520,41 @@ const isSaving = ref(false);
 const originalPermissions = ref<Record<string, string[]>>({});
 const memberships = ref<any[]>([]);
 const selectedTenantId = ref<string>('');
+const selectedTenantName = ref<string>('');
 const currentPage = ref(1);
 const itemsPerPage = ref(10);
 const rolesCurrentPage = ref(1);
 const rolesItemsPerPage = ref(5);
 const editingModule = ref<string | null>(null);
 const tempPermissionKey = ref<string>('');
-const permissionMode = ref<'blueprint' | 'store'>('store');
+const permissionMode = ref<'store' | 'blueprint' | 'staff'>('store');
+
+// Set initial permission mode based on user type
+onMounted(() => {
+  if (authStore.user?.is_staff) {
+    // Staff users: default to blueprint (they can't see store tab anyway)
+    permissionMode.value = 'blueprint';
+  } else {
+    // Store owners: default to store (they can only see store tab)
+    permissionMode.value = 'store';
+  }
+});
 const searchQuery = ref<string>('');
 const inheritanceStatus = ref<Record<string, 'custom' | 'inherited' | 'none'>>({});
+const isUsingBlueprint = ref<boolean>(true); // Track if store is using blueprint config
+
+// Refs for checkboxes
+const checkboxRefs = ref<Record<string, HTMLInputElement>>({});
+
+const setCheckboxRef = (el: any, moduleUlid: string, role: string) => {
+  if (el && el instanceof HTMLInputElement) {
+    const key = `${moduleUlid}-${role}`;
+    checkboxRefs.value[key] = el;
+  }
+};
+
+// State for expanded modules per role
+const expandedModules = ref<Record<string, Set<string>>>({});
 
 interface TenantMembership {
   id: string;
@@ -436,9 +570,45 @@ const getRoleLabel = (role: string): string => {
   return roleObj?.name || role;
 };
 
-const hasPermission = (role: string, permissionKey: string | null): boolean => {
-  if (!permissionKey) return false;
-  return ((permissions.value || {} as Record<string, string[]>)[role]?.includes(permissionKey) || false);
+const getRolePermissions = (role: string): string[] => {
+  return (permissions.value as Record<string, string[]>)[role] || [];
+};
+
+const handleTenantChange = () => {
+  const membership = memberships.value.find(m => m.id === selectedTenantId.value);
+  selectedTenantName.value = membership?.commercial_name || membership?.name || '';
+  loadPermissionsMatrix();
+};
+
+type PermissionState = 'ALL' | 'PARTIAL' | 'NONE';
+
+const hasPermission = (role: string, permissionKey: string | null): PermissionState => {
+  const rolePermissions = (permissions.value || {} as Record<string, string[]>)[role] || [];
+
+  // If permissionKey is null, we can't determine the module, so return NONE
+  // The checkbox should be unchecked for modules without permission_key
+  if (!permissionKey) return 'NONE';
+
+  // If it's a custom permission_key (starts with CAN_), check if it exists
+  if (permissionKey.startsWith('CAN_')) {
+    return rolePermissions.includes(permissionKey) ? 'ALL' : 'NONE';
+  }
+
+  // For standard modules, check if role has any of the 5 standard permissions
+  const standardPermissions = [
+    `CAN_VIEW_${permissionKey.toUpperCase()}`,
+    `CAN_CREATE_${permissionKey.toUpperCase()}`,
+    `CAN_UPDATE_${permissionKey.toUpperCase()}`,
+    `CAN_STATUS_${permissionKey.toUpperCase()}`,
+    `CAN_REPORT_${permissionKey.toUpperCase()}`
+  ];
+
+  const hasAll = standardPermissions.every(perm => rolePermissions.includes(perm));
+  const hasAny = standardPermissions.some(perm => rolePermissions.includes(perm));
+
+  if (hasAll) return 'ALL';
+  if (hasAny) return 'PARTIAL';
+  return 'NONE';
 };
 
 const isAllPermissionsCheckedForRole = (role: string): boolean => {
@@ -466,31 +636,31 @@ const toggleAllRoles = (checkAll: boolean) => {
   });
 };
 
+const generatePermissionKeys = (moduleTitle: string): string[] => {
+  // Generate 5 standard permission keys from module title
+  // Example: "Dashboard" -> ["CAN_VIEW_DASHBOARD", "CAN_CREATE_DASHBOARD", "CAN_UPDATE_DASHBOARD", "CAN_STATUS_DASHBOARD", "CAN_REPORT_DASHBOARD"]
+  const slug = moduleTitle.toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  const base = slug.toUpperCase();
+  return [
+    `CAN_VIEW_${base}`,
+    `CAN_CREATE_${base}`,
+    `CAN_UPDATE_${base}`,
+    `CAN_STATUS_${base}`,
+    `CAN_REPORT_${base}`
+  ];
+};
+
 const generatePermissionKey = (moduleTitle: string): string => {
-  // Generate permission key from module title
-  // Example: "Dashboard" -> "CAN_VIEW_DASHBOARD"
+  // Generate primary permission key from module title (for backward compatibility)
+  if (!moduleTitle) {
+    return '';
+  }
   const slug = moduleTitle.toLowerCase()
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '');
   return `CAN_VIEW_${slug.toUpperCase()}`;
-};
-
-const togglePermission = (role: string, permissionKey: string | null, moduleTitle?: string) => {
-  // Generate permission key if not exists
-  const key = permissionKey || (moduleTitle ? generatePermissionKey(moduleTitle) : null);
-
-  if (!key) return;
-
-  if (!permissions.value[role]) {
-    permissions.value[role] = [];
-  }
-
-  const index = permissions.value[role].indexOf(key);
-  if (index > -1) {
-    permissions.value[role].splice(index, 1);
-  } else {
-    permissions.value[role].push(key);
-  }
 };
 
 const startEditingPermissionKey = (moduleUlid: string, currentKey: string | null) => {
@@ -518,20 +688,24 @@ const toggleAllPermissionsForRole = (role: string, checkAll: boolean) => {
   }
 
   if (checkAll) {
-    // Add all permission keys for visible modules for this role
+    // Add all 5 permission keys for visible modules for this role
     paginatedModules.value.forEach(module => {
-      const key = module.permission_key || generatePermissionKey(module.title);
-      if (key && !permissions.value[role].includes(key)) {
-        permissions.value[role].push(key);
-      }
+      const keys = module.permission_key ? [module.permission_key] : generatePermissionKeys(module.title);
+      keys.forEach(key => {
+        if (key && !permissions.value[role].includes(key)) {
+          permissions.value[role].push(key);
+        }
+      });
     });
   } else {
-    // Remove permissions for visible modules for this role
+    // Remove all 5 permissions for visible modules for this role
     paginatedModules.value.forEach(module => {
-      const key = module.permission_key || generatePermissionKey(module.title);
-      if (key) {
-        permissions.value[role] = permissions.value[role].filter(p => p !== key);
-      }
+      const keys = module.permission_key ? [module.permission_key] : generatePermissionKeys(module.title);
+      keys.forEach(key => {
+        if (key) {
+          permissions.value[role] = permissions.value[role].filter(p => p !== key);
+        }
+      });
     });
   }
 };
@@ -539,6 +713,85 @@ const toggleAllPermissionsForRole = (role: string, checkAll: boolean) => {
 const hasUnsavedChanges = computed(() => {
   return JSON.stringify(permissions.value) !== JSON.stringify(originalPermissions.value);
 });
+
+// Checkbox Tree functions
+const toggleModuleExpansion = (moduleUlid: string, role: string) => {
+  if (!expandedModules.value[role]) {
+    expandedModules.value[role] = new Set();
+  }
+  if (expandedModules.value[role].has(moduleUlid)) {
+    expandedModules.value[role].delete(moduleUlid);
+  } else {
+    expandedModules.value[role].add(moduleUlid);
+  }
+};
+
+const isModuleExpanded = (moduleUlid: string, role: string): boolean => {
+  return expandedModules.value[role]?.has(moduleUlid) || false;
+};
+
+const toggleParentCheckbox = (module: Module, role: string, checked: boolean) => {
+  const keys = generatePermissionKeys(module.title);
+
+  if (!permissions.value[role]) {
+    permissions.value[role] = [];
+  }
+
+  if (checked) {
+    // Add all permissions
+    keys.forEach(key => {
+      if (!permissions.value[role].includes(key)) {
+        permissions.value[role].push(key);
+      }
+    });
+  } else {
+    // Remove all permissions
+    keys.forEach(key => {
+      const index = permissions.value[role].indexOf(key);
+      if (index > -1) {
+        permissions.value[role].splice(index, 1);
+      }
+    });
+  }
+};
+
+const toggleChildCheckbox = (module: Module, role: string, permissionKey: string) => {
+  if (!permissions.value[role]) {
+    permissions.value[role] = [];
+  }
+
+  const index = permissions.value[role].indexOf(permissionKey);
+  if (index > -1) {
+    permissions.value[role].splice(index, 1);
+  } else {
+    permissions.value[role].push(permissionKey);
+  }
+
+  // Update parent checkbox state (indeterminate will be handled by watcher)
+  const parentCheckbox = checkboxRefs.value[`${module.ulid}-${role}`];
+  if (parentCheckbox) {
+    const state = hasPermission(role, module.permission_key);
+    parentCheckbox.checked = state === 'ALL';
+    parentCheckbox.indeterminate = state === 'PARTIAL';
+  }
+};
+
+const getPermissionLabel = (key: string): string => {
+  const labels: Record<string, string> = {
+    'CAN_VIEW': 'Ver',
+    'CAN_CREATE': 'Crear',
+    'CAN_UPDATE': 'Actualizar',
+    'CAN_STATUS': 'Cambiar Estado',
+    'CAN_REPORT': 'Reportes'
+  };
+
+  for (const [prefix, label] of Object.entries(labels)) {
+    if (key.startsWith(prefix)) {
+      return label;
+    }
+  }
+  return key;
+};
 
 const isStaffWithoutTenant = computed(() => {
   return authStore.user?.is_staff && !authStore.tenantUlid;
@@ -561,33 +814,21 @@ const filteredModules = computed(() => {
 const paginatedModules = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage.value;
   const end = start + itemsPerPage.value;
-  return filteredModules.value.slice(start, end);
+  return (filteredModules.value || []).slice(start, end);
 });
 
 const rolesTotalPages = computed(() => {
-  const filtered = permissionMode.value === 'store' ? storeRoles.value : staffRoles.value;
-  return Math.ceil(filtered.length / rolesItemsPerPage.value);
+  return Math.ceil(roles.value.length / rolesItemsPerPage.value);
 });
 
 const paginatedRoles = computed(() => {
-  const filtered = permissionMode.value === 'store' ? storeRoles.value : staffRoles.value;
   const start = (rolesCurrentPage.value - 1) * rolesItemsPerPage.value;
   const end = start + rolesItemsPerPage.value;
-  return filtered.slice(start, end);
-});
-
-const storeRoles = computed(() => {
-  // Roles de tienda (is_staff_role=False)
-  return (allRoles.value || []).filter(role => !role.is_staff_role);
-});
-
-const staffRoles = computed(() => {
-  // Roles de staff (is_staff_role=True)
-  return (allRoles.value || []).filter(role => role.is_staff_role);
+  return roles.value.slice(start, end);
 });
 
 const activeRoles = computed(() => {
-  return paginatedRoles.value.map(role => role.code);
+  return paginatedRoles.value.map(role => role);
 });
 
 // Watch permissionMode to reset roles pagination and reload permissions
@@ -600,6 +841,21 @@ watch(permissionMode, async () => {
 watch(searchQuery, () => {
   currentPage.value = 1;
 });
+
+// Watch permissions to update indeterminate state
+watch(permissions, () => {
+  // Update indeterminate state for all checkboxes
+  paginatedModules.value.forEach(module => {
+    activeRoles.value.forEach(role => {
+      const key = `${module.ulid}-${role}`;
+      const checkbox = checkboxRefs.value[key];
+      if (checkbox) {
+        const state = hasPermission(role, module.permission_key);
+        checkbox.indeterminate = state === 'PARTIAL';
+      }
+    });
+  });
+}, { deep: true });
 
 const loadRoles = async () => {
   try {
@@ -650,18 +906,26 @@ const loadPermissionsMatrix = async () => {
   isLoading.value = true;
   try {
     const params: any = {};
-    
+
     if (permissionMode.value === 'blueprint') {
-      // Blueprint mode: mode=global, no tenant_id
+      // Blueprint mode: mode=global, no tenant_id, is_staff_role=false (store roles only)
       params.mode = 'global';
+      params.is_staff_role = 'false';
+    } else if (permissionMode.value === 'staff') {
+      // Staff mode: mode=global, no tenant_id, is_staff_role=true (staff roles only)
+      params.mode = 'global';
+      params.is_staff_role = 'true';
     } else {
-      // Store mode: mode=tenant, with tenant_id
+      // Store mode: mode=tenant, with tenant_id, is_staff_role=false (store roles only)
       const tenantId = authStore.tenantUlid || selectedTenantId.value || null;
       if (tenantId) {
         params.tenant_id = tenantId;
       }
       params.mode = 'tenant';
+      params.is_staff_role = 'false';
     }
+
+    console.log('Loading permissions matrix with params:', params);
 
     const data = await fetchApi<PermissionsData & { requires_tenant_selection?: boolean; message?: string; mode?: string }>('/api/role-permissions/matrix/', { params });
 
@@ -672,7 +936,8 @@ const loadPermissionsMatrix = async () => {
     if (data.requires_tenant_selection) {
       // Backend returned empty matrix indicating tenant selection is required
       roles.value = data.roles;
-      modules.value = data.modules;
+      // Extract modules array from object with "null" key
+      modules.value = data.modules && data.modules.null ? data.modules.null : [];
       permissions.value = { ...data.permissions };
       originalPermissions.value = JSON.parse(JSON.stringify(data.permissions));
       currentPage.value = 1; // Reset to first page
@@ -680,13 +945,29 @@ const loadPermissionsMatrix = async () => {
     }
 
     roles.value = data.roles;
-    modules.value = data.modules;
+    // Extract modules array from object with "null" key
+    modules.value = data.modules && data.modules.null ? data.modules.null : [];
     permissions.value = { ...data.permissions };
     originalPermissions.value = JSON.parse(JSON.stringify(data.permissions));
     currentPage.value = 1; // Reset to first page
     
-    // Load inheritance status for store mode
-    await loadInheritanceStatus();
+    // Handle inheritance status from backend
+    if (data.inheritance_status) {
+      inheritanceStatus.value = data.inheritance_status;
+      
+      // Update isUsingBlueprint for store owners
+      if (permissionMode.value === 'store' && !authStore.user?.is_staff) {
+        // Check if any role has inherited permissions
+        const hasInherited = Object.values(data.inheritance_status).some(status => status === 'inherited');
+        const hasCustom = Object.values(data.inheritance_status).some(status => status === 'custom');
+        
+        // Using blueprint if no custom permissions exist
+        isUsingBlueprint.value = !hasCustom && hasInherited;
+      }
+    } else {
+      // Fallback to separate call if inheritance_status not included
+      await loadInheritanceStatus();
+    }
   } catch (e: any) {
     console.error('Failed to load permissions matrix:', e);
     notifyError('Error cargando matriz de permisos');
@@ -702,13 +983,11 @@ const handleSave = async () => {
   }
 
   const result = await Swal.fire({
-    title: permissionMode.value === 'blueprint' ? '¿Guardar Blueprint Global?' : '¿Guardar cambios de permisos?',
-    text: permissionMode.value === 'blueprint' 
-      ? 'Esto actualizará el Blueprint Global. Las tiendas heredarán estos permisos por defecto.'
-      : 'Esto actualizará los permisos específicos de esta tienda. El menú de navegación se actualizará instantáneamente para todos los usuarios afectados.',
+    title: '¿Deseas actualizar la jerarquía de permisos del sistema?',
+    text: 'Esto afectará a todos los usuarios activos.',
     icon: 'warning',
     showCancelButton: true,
-    confirmButtonText: 'Sí, guardar',
+    confirmButtonText: 'Sí, actualizar',
     cancelButtonText: 'Cancelar',
     confirmButtonColor: '#0f172a',
     cancelButtonColor: '#6B7280',
@@ -719,15 +998,12 @@ const handleSave = async () => {
 
   isSaving.value = true;
   try {
-    const payload: any = { 
+    const payload: any = {
       permissions: permissions.value,
-      mode: permissionMode.value === 'blueprint' ? 'global' : 'tenant'
+      mode: permissionMode.value === 'store' ? 'tenant' : 'global'
     };
 
-    if (permissionMode.value === 'blueprint') {
-      // Blueprint mode: explicitly send tenant_id as null
-      payload.tenant_id = null;
-    } else {
+    if (permissionMode.value === 'store') {
       // Store mode: use tenant_id
       const tenantId = authStore.tenantUlid || selectedTenantId.value || null;
       if (!tenantId) {
@@ -736,6 +1012,9 @@ const handleSave = async () => {
         return;
       }
       payload.tenant_id = tenantId;
+    } else {
+      // Blueprint or Staff mode: explicitly send tenant_id as null
+      payload.tenant_id = null;
     }
 
     console.log('Sending payload:', JSON.stringify(payload, null, 2));
@@ -744,10 +1023,18 @@ const handleSave = async () => {
       method: 'POST',
       data: payload,
     });
-    notifySuccess(permissionMode.value === 'blueprint' 
+    notifySuccess(permissionMode.value === 'blueprint'
       ? 'Blueprint Global guardado exitosamente. Las tiendas heredarán estos permisos por defecto.'
+      : permissionMode.value === 'staff'
+      ? 'Permisos del equipo guardados exitosamente.'
       : 'Permisos guardados exitosamente. El menú de navegación se actualizará para los usuarios afectados.');
     originalPermissions.value = JSON.parse(JSON.stringify(permissions.value));
+    
+    // Emit permission change event for instant sidebar refresh
+    eventBus.emit(PERMISSION_EVENTS.ROLE_PERMISSIONS_UPDATED, {
+      mode: permissionMode.value,
+      tenantId: payload.tenant_id,
+    });
     
     // Reload inheritance status for store mode
     if (permissionMode.value === 'store') {

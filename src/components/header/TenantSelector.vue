@@ -2,7 +2,7 @@
   <div class="relative">
     <!-- Trigger Button - Show if user has multiple tenants -->
     <button
-      v-if="memberships.length > 0"
+      v-if="memberships && memberships.length > 0"
       @click="toggleDropdown"
       class="flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors"
       :class="{ 'ring-2 ring-brand-primary/20': isOpen }"
