@@ -276,7 +276,7 @@ const loadDashboardData = async () => {
     
     // Load document usage
     try {
-      const usageData = await fetchApi<any>('/api/v1/plans/document-usage/');
+      const usageData = await fetchApi<any>('/api/v1/subscription-plans/document-usage/');
       documentUsage.value = {
         used: usageData.used || 0,
         limit: usageData.limit || 100,

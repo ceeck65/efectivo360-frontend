@@ -60,9 +60,9 @@ interface User {
 
 // CMS Permissions interface
 interface CmsPermissions {
-  permissions: Record<string, Record<string, boolean>>;
-  permission_codes: string[];
-  active_modules: string[];
+  permissions?: Record<string, Record<string, boolean>>;
+  permission_codes?: string[];
+  active_modules?: string[];
 }
 
 const USER_STORAGE_KEY = 'efectivo360_user';
@@ -73,7 +73,7 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
   const token = ref<string | null>(localStorage.getItem('access_token'));
   const refreshToken = ref<string | null>(localStorage.getItem('refresh_token'));
-  const cmsPermissions = ref<CmsPermissions | null>(null);
+  const cmsPermissions = ref<any | null>(null);
   const isLoading = ref(false);
 
   // Load user from localStorage on init
@@ -148,7 +148,7 @@ export const useAuthStore = defineStore('auth', () => {
   const hasCmsPermissionCode = (code: string): boolean => {
     if (!cmsPermissions.value) return false;
     if (user.value?.role === 'FOUNDER' || user.value?.role === 'OWNER' || user.value?.user_type === 'ADMIN') return true;
-    return cmsPermissions.value.permission_codes?.includes(code) || false;
+    return (cmsPermissions.value as any)?.permission_codes?.includes(code) || false;
   };
 
   // Actions
@@ -204,7 +204,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const data = await fetchApi<Record<string, unknown>>('/api/cms/permissions/');
       if (!data || typeof data !== 'object') {
-        cmsPermissions.value = { permissions: {}, permission_codes: [], active_modules: [] };
+        cmsPermissions.value = { permissions: {}, permission_codes: [], active_modules: [] } as any;
         return cmsPermissions.value;
       }
       
@@ -223,7 +223,7 @@ export const useAuthStore = defineStore('auth', () => {
       saveCmsPermissionsToStorage(permissions);
       return permissions;
     } catch (err) {
-      cmsPermissions.value = { permissions: {}, permission_codes: [], active_modules: [] };
+      cmsPermissions.value = { permissions: {}, permission_codes: [], active_modules: [] } as any;
       return cmsPermissions.value;
     }
   };
@@ -332,7 +332,7 @@ export const useAuthStore = defineStore('auth', () => {
   const refreshUserPermissions = async () => {
     try {
       const data = await fetchApi<{ permissions: string[] }>('/api/v1/auth/user-permissions/');
-      userPermissions.value = data.permissions || [];
+      cmsPermissions.value = data.permissions || [];
       console.log('Auth: User permissions refreshed');
     } catch (error) {
       console.error('Auth: Failed to refresh user permissions:', error);

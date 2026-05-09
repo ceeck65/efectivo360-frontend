@@ -124,6 +124,20 @@
           </div>
         </button>
         <button
+          @click="activeTab = 'modules'"
+          :class="[
+            'py-4 px-1 border-b-2 font-medium text-sm transition-colors',
+            activeTab === 'modules'
+              ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+          ]"
+        >
+          <div class="flex items-center gap-2">
+            <Package class="h-4 w-4" />
+            Módulos
+          </div>
+        </button>
+        <button
           @click="activeTab = 'addons'"
           :class="[
             'py-4 px-1 border-b-2 font-medium text-sm transition-colors',
@@ -314,6 +328,90 @@
         </div>
       </div>
 
+      <!-- Modules Tab -->
+      <div v-if="activeTab === 'modules'" class="space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="relative w-64">
+            <Search class="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+            <input
+              v-model="moduleSearch"
+              type="text"
+              placeholder="Buscar módulos..."
+              class="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300"
+            />
+          </div>
+          <div class="flex gap-2">
+            <button
+              @click="openCreateModule"
+              class="inline-flex items-center justify-center gap-2 h-9 px-4 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700"
+            >
+              <Plus class="h-4 w-4" />
+              Nuevo Módulo
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm dark:border-white/[0.06] dark:bg-[#141824]">
+          <table class="w-full">
+            <thead class="bg-slate-50 dark:bg-[#1a1f2e] border-b border-slate-200 dark:border-white/[0.06]">
+              <tr>
+                <th class="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400">ULID</th>
+                <th class="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400">Nombre</th>
+                <th class="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400">Slug</th>
+                <th class="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400">Descripción</th>
+                <th class="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400">Estado</th>
+                <th class="px-6 py-3.5 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="loading">
+                <td colspan="6" class="px-6 py-10 text-center text-slate-500 dark:text-slate-400">
+                  Cargando...
+                </td>
+              </tr>
+              <tr v-else-if="filteredModules.length === 0">
+                <td colspan="6" class="px-6 py-10 text-center text-slate-500 dark:text-slate-400">
+                  No hay módulos para mostrar.
+                </td>
+              </tr>
+              <tr v-else v-for="module in filteredModules" :key="module.ulid" class="hover:bg-slate-50/50 dark:hover:bg-[#1a1f2e]/50">
+                <td class="px-6 py-4 font-mono text-xs text-slate-600 dark:text-slate-400">{{ module.ulid }}</td>
+                <td class="px-6 py-4 font-medium text-slate-900 dark:text-white">{{ module.name }}</td>
+                <td class="px-6 py-4 font-mono text-xs text-slate-600 dark:text-slate-400">{{ module.slug }}</td>
+                <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{{ module.description }}</td>
+                <td class="px-6 py-4">
+                  <span :class="[
+                    'inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium',
+                    module.is_active ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                  ]">
+                    {{ module.is_active ? 'Activo' : 'Inactivo' }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 text-right">
+                  <div class="flex items-center justify-end gap-2">
+                    <button
+                      @click="editModule(module)"
+                      class="inline-flex items-center justify-center gap-1 h-8 w-8 text-sm text-slate-600 hover:text-cyan-600 dark:text-slate-400 dark:hover:text-cyan-400"
+                    >
+                      <Edit class="h-4 w-4" />
+                    </button>
+                    <button
+                      @click="toggleModuleStatus(module)"
+                      :class="[
+                        'inline-flex items-center justify-center gap-1 h-8 w-8 text-sm',
+                        module.is_active ? 'text-slate-600 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400' : 'text-slate-600 hover:text-green-600 dark:text-slate-400 dark:hover:text-green-400'
+                      ]"
+                    >
+                      <Power class="h-4 w-4" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Plans Tab -->
       <div v-if="activeTab === 'plans'" class="space-y-4">
         <div class="flex items-center justify-between">
@@ -327,13 +425,6 @@
             />
           </div>
           <div class="flex gap-2">
-            <button
-              @click="createCompetenciaPlan"
-              class="inline-flex items-center justify-center gap-2 h-9 px-4 text-sm font-medium text-white bg-orange-600 rounded-lg hover:bg-orange-700"
-            >
-              <Target class="h-4 w-4" />
-              Crear Plan Competencia
-            </button>
             <button
               @click="openCreatePlan"
               class="inline-flex items-center justify-center gap-2 h-9 px-4 text-sm font-medium text-white bg-cyan-600 rounded-lg hover:bg-cyan-700"
@@ -349,7 +440,7 @@
             <table class="w-full text-left text-sm">
               <thead class="bg-slate-50/50 dark:bg-[#1a1f2e]/50">
                 <tr>
-                  <th class="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400">Código</th>
+                  <th class="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400">SKU</th>
                   <th class="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400">Nombre</th>
                   <th class="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400">Precio Mensual</th>
                   <th class="px-6 py-3.5 text-xs font-semibold text-slate-500 uppercase tracking-wider dark:text-slate-400">Límites</th>
@@ -375,36 +466,38 @@
                       'hover:bg-slate-50/50 dark:hover:bg-[#1a1f2e]/50',
                       !plan.is_active && 'opacity-50'
                     ]">
-                  <td class="px-6 py-4 font-mono text-xs text-slate-600 dark:text-slate-400">{{ plan.code }}</td>
+                  <td class="px-6 py-4 font-mono text-xs text-slate-600 dark:text-slate-400">{{ plan.sku }}</td>
                   <td class="px-6 py-4">
                     <div class="font-medium text-slate-900 dark:text-white">{{ plan.name }}</div>
                     <div v-if="plan.description" class="text-sm text-slate-500 dark:text-slate-400">{{ plan.description }}</div>
                   </td>
                   <td class="px-6 py-4">
                     <div class="text-sm font-medium text-slate-900 dark:text-white">
-                      ${{ plan.monthly_price }}
-                      <span v-if="plan.annual_price > 0" class="text-xs text-slate-500 dark:text-slate-400">/ ${{ plan.annual_price }}/año</span>
+                      <span v-if="plan.config?.is_courtesy" class="text-green-600 font-medium">Gratis</span>
+                      <div v-else class="space-y-1">
+                        <div v-for="(price, frequency) in plan.prices" :key="String(frequency)" class="flex items-center gap-1">
+                          <span class="font-medium">${{ price.amount }}</span>
+                          <span class="text-xs text-slate-500 dark:text-slate-400">({{ getFrequencyLabel(String(frequency)) }})</span>
+                        </div>
+                      </div>
                     </div>
                   </td>
                   <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
                     <div class="space-y-1">
-                      <div v-if="plan.max_monthly_documents !== undefined">
-                        Documentos: {{ plan.max_monthly_documents === 0 ? 'Ilimitado' : plan.max_monthly_documents + '/mes' }}
+                      <div v-if="plan.config?.limits?.doc_limit !== undefined">
+                        Documentos: {{ plan.config.limits.doc_limit === -1 ? 'Ilimitado' : plan.config.limits.doc_limit }}
                       </div>
-                      <div v-if="plan.limits?.max_users">Usuarios: {{ plan.limits.max_users }}</div>
-                      <div v-if="plan.limits?.max_cajas">Cajas: {{ plan.limits.max_cajas }}</div>
-                      <div v-if="plan.limits?.max_productos">Productos: {{ plan.limits.max_productos }}</div>
-                      <div v-if="plan.limits?.max_sucursales">Sucursales: {{ plan.limits.max_sucursales }}</div>
+                      <div v-if="plan.config?.limits?.vault_limit !== undefined">
+                        Vault: {{ plan.config.limits.vault_limit === -1 ? 'Ilimitado' : plan.config.limits.vault_limit }}
+                      </div>
                     </div>
                   </td>
                   <td class="px-6 py-4">
                     <div class="flex flex-wrap gap-1">
-                      <template v-for="(value, key) in plan.enabled_modules" :key="key">
-                        <span v-if="value"
-                          class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300">
-                          {{ getModuleDisplayName(key) }}
-                        </span>
-                      </template>
+                      <span v-for="moduleUlid in plan.config?.modules || []" :key="moduleUlid"
+                        class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300">
+                        {{ getModuleNameByUlid(moduleUlid) }}
+                      </span>
                     </div>
                   </td>
                   <td class="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">{{ plan.tenant_count || 0 }}</td>
@@ -557,12 +650,7 @@
                   {{ addon.addon_type === 'CONSUMO' ? addon.units_included : '-' }}
                 </td>
                 <td class="px-6 py-4">
-                  <span :class="[
-                    'inline-flex items-center px-2 py-1 rounded text-xs font-medium',
-                    addon.is_active 
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
-                      : 'bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:text-slate-400'
-                  ]">
+                  <span :class="addon.is_active ? 'inline-flex items-center px-2 py-1 rounded-full px-2.5 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'inline-flex items-center px-2 py-1 rounded-full px-2.5 py-1 text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:text-slate-400'">
                     {{ addon.is_active ? 'Activo' : 'Inactivo' }}
                   </span>
                 </td>
@@ -957,8 +1045,8 @@
             <h4 class="text-sm font-medium text-slate-900 dark:text-white">Información Básica</h4>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Código *</label>
-                <input v-model="newPlan.code" type="text" placeholder="Ej: COMPETENCIA" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
+                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">SKU *</label>
+                <input v-model="newPlan.sku" type="text" placeholder="Ej: COMPETENCIA" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
               </div>
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Nombre *</label>
@@ -969,14 +1057,89 @@
               <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Descripción</label>
               <textarea v-model="newPlan.description" rows="2" placeholder="Descripción del plan..." class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300"></textarea>
             </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Precio Mensual (USD) *</label>
-                <input v-model.number="newPlan.monthly_price" type="number" step="0.01" min="0" placeholder="25.00" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
+            <!-- Precios Dinámicos -->
+            <div class="space-y-4">
+              <div class="flex items-center justify-between">
+                <h4 class="text-sm font-medium text-slate-900 dark:text-white">Precios</h4>
+                <button
+                  type="button"
+                  @click="addPlanPrice"
+                  :disabled="newPlan.config?.is_courtesy"
+                  class="inline-flex items-center gap-1 px-3 py-1 text-sm bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  <Plus class="h-3 w-3" />
+                  Añadir Precio
+                </button>
               </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Precio Anual (USD)</label>
-                <input v-model.number="newPlan.annual_price" type="number" step="0.01" min="0" placeholder="250.00" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
+              
+              <div v-if="newPlan.config?.is_courtesy" class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 dark:bg-yellow-900/20 dark:border-yellow-800">
+                <p class="text-sm text-yellow-800 dark:text-yellow-300">Los precios están deshabilitados porque este es un plan de cortesía (costo $0).</p>
+              </div>
+              
+              <div v-if="planPricesList.length === 0 && !newPlan.config?.is_courtesy" class="text-sm text-slate-500 dark:text-slate-400 text-center py-4">
+                No hay precios configurados. Haz clic en "Añadir Precio" para agregar uno.
+              </div>
+              
+              <div v-for="(price, index) in planPricesList" :key="price.id" class="border border-slate-200 rounded-lg p-4 space-y-3 dark:border-white/[0.06]">
+                <div class="flex items-center justify-between">
+                  <h5 class="text-sm font-medium text-slate-900 dark:text-white">Precio #{{ index + 1 }}</h5>
+                  <button
+                    type="button"
+                    @click="removePlanPrice(price.id)"
+                    class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                  >
+                    <X class="h-4 w-4" />
+                  </button>
+                </div>
+                
+                <div class="grid grid-cols-3 gap-3">
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Frecuencia</label>
+                    <select
+                      :value="price.frequency"
+                      @input="updatePlanPriceFrequency(price.id, $event)"
+                      :disabled="newPlan.config?.is_courtesy"
+                      class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300 disabled:bg-gray-100"
+                    >
+                      <option value="">Seleccionar...</option>
+                      <option value="monthly">Mensual</option>
+                      <option value="quarterly">Trimestral</option>
+                      <option value="yearly">Anual</option>
+                      <option value="weekly">Semanal</option>
+                      <option value="biannual">Semestral</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Monto (USD)</label>
+                    <input
+                      :value="price.amount"
+                      @input="updatePlanPriceAmount(price.id, $event)"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      :disabled="newPlan.config?.is_courtesy"
+                      placeholder="0.00"
+                      class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300 disabled:bg-gray-100"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Moneda</label>
+                    <select
+                      :value="price.currency"
+                      @input="updatePlanPriceCurrency(price.id, $event)"
+                      :disabled="newPlan.config?.is_courtesy"
+                      class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300 disabled:bg-gray-100"
+                    >
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                      <option value="GBP">GBP</option>
+                      <option value="MXN">MXN</option>
+                      <option value="COP">COP</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -986,56 +1149,92 @@
             <h4 class="text-sm font-medium text-slate-900 dark:text-white">Límites del Plan</h4>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Documentos Mensuales</label>
-                <input v-model.number="newPlan.max_monthly_documents" type="number" min="0" placeholder="100" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
-                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">0 = Ilimitado</p>
+                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Límite de Documentos</label>
+                <input 
+  :value="newPlan.config?.limits?.doc_limit" 
+  @input="handleLimitInput('doc_limit', $event)" 
+  type="number" 
+  min="-1" 
+  placeholder="100" 
+  class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" 
+/>
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">-1 = Ilimitado</p>
               </div>
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Máximo de Usuarios</label>
-                <input v-model.number="newPlan.limits!.max_users" type="number" min="1" placeholder="3" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
+                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Límite de Vault</label>
+                <input 
+  :value="newPlan.config?.limits?.vault_limit" 
+  @input="handleLimitInput('vault_limit', $event)" 
+  type="number" 
+  min="-1" 
+  placeholder="3" 
+  class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" 
+/>
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">-1 = Ilimitado</p>
               </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Máximo de Cajas (POS)</label>
-                <input v-model.number="newPlan.limits!.max_cajas" type="number" min="1" placeholder="1" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
+            </div>
+          </div>
+
+          <!-- Estado y Promociones -->
+          <div class="space-y-4">
+            <h4 class="text-sm font-medium text-slate-900 dark:text-white">Estado y Promociones</h4>
+            <div class="space-y-3">
+              <label class="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  :checked="newPlan.config?.is_trial || false"
+                  @input="handleNewPlanConfig('is_trial', $event)"
+                  class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                />
+                <span class="text-sm text-slate-700 dark:text-slate-300">Activar periodo de prueba</span>
+              </label>
+              
+              <div v-if="newPlan.config?.is_trial" class="ml-6">
+                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Días de prueba</label>
+                <input
+                  v-model.number="newPlan.config.trial_days"
+                  type="number"
+                  min="1"
+                  max="365"
+                  placeholder="7"
+                  class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300"
+                />
               </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Máximo de Productos</label>
-                <input v-model.number="newPlan.limits!.max_productos" type="number" min="1" placeholder="100" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Máximo de Sucursales</label>
-                <input v-model.number="newPlan.limits!.max_sucursales" type="number" min="1" placeholder="1" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
-              </div>
+              
+              <label class="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  :checked="newPlan.config?.has_promo || false"
+                  @input="handleNewPlanConfig('has_promo', $event)"
+                  class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                />
+                <span class="text-sm text-slate-700 dark:text-slate-300">Tiene promoción activa</span>
+              </label>
+              
+              <label class="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  :checked="newPlan.config?.is_courtesy || false"
+                  @input="handleNewPlanConfig('is_courtesy', $event)"
+                  class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                />
+                <span class="text-sm text-slate-700 dark:text-slate-300">Es un plan de cortesía</span>
+              </label>
             </div>
           </div>
 
           <!-- Módulos -->
           <div class="space-y-4">
-            <h4 class="text-sm font-medium text-slate-900 dark:text-white">Módulos Activos</h4>
+            <h4 class="text-sm font-medium text-slate-900 dark:text-white">Módulos</h4>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Selecciona los módulos disponibles para este plan</p>
             <div class="grid grid-cols-2 gap-3">
-              <label class="flex items-center gap-2">
-                <input v-model="newPlan.enabled_modules!.efi_assistant" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
-                <span class="text-sm text-slate-700 dark:text-slate-300">IA Efi</span>
-              </label>
-              <label class="flex items-center gap-2">
-                <input v-model="newPlan.enabled_modules!.fiscal_module" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
-                <span class="text-sm text-slate-700 dark:text-slate-300">Módulo Fiscal</span>
-              </label>
-              <label class="flex items-center gap-2">
-                <input v-model="newPlan.enabled_modules!.dashboard_auditor" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
-                <span class="text-sm text-slate-700 dark:text-slate-300">Dashboard Auditor</span>
-              </label>
-              <label class="flex items-center gap-2">
-                <input v-model="newPlan.enabled_modules!.advanced_analytics" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
-                <span class="text-sm text-slate-700 dark:text-slate-300">Análisis Avanzado</span>
-              </label>
-              <label class="flex items-center gap-2">
-                <input v-model="newPlan.enabled_modules!.inventory_management" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
-                <span class="text-sm text-slate-700 dark:text-slate-300">Gestión de Inventario</span>
-              </label>
-              <label class="flex items-center gap-2">
-                <input v-model="newPlan.enabled_modules!.sales_management" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
-                <span class="text-sm text-slate-700 dark:text-slate-300">Gestión de Ventas</span>
+              <label v-for="module in availableModules" :key="module.ulid" class="flex items-center gap-2">
+                <input 
+                  @change="() => toggleNewModule(module.ulid)"
+                  type="checkbox" 
+                  class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" 
+                />
+                <span class="text-sm text-slate-700 dark:text-slate-300">{{ module.name }}</span>
               </label>
             </div>
           </div>
@@ -1070,8 +1269,8 @@
             <h4 class="text-sm font-medium text-slate-900 dark:text-white">Información Básica</h4>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Código</label>
-                <input v-model="editingPlan.code" type="text" disabled class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
+                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">SKU</label>
+                <input v-model="editingPlan.sku" type="text" disabled class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
               </div>
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Nombre *</label>
@@ -1082,14 +1281,89 @@
               <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Descripción</label>
               <textarea v-model="editingPlan.description" rows="2" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300"></textarea>
             </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Precio Mensual (USD) *</label>
-                <input v-model.number="editingPlan.monthly_price" type="number" step="0.01" min="0" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
+            <!-- Precios Dinámicos -->
+            <div class="space-y-4">
+              <div class="flex items-center justify-between">
+                <h4 class="text-sm font-medium text-slate-900 dark:text-white">Precios</h4>
+                <button
+                  type="button"
+                  @click="addEditPlanPrice"
+                  :disabled="editingPlan.config?.is_courtesy"
+                  class="inline-flex items-center gap-1 px-3 py-1 text-sm bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                >
+                  <Plus class="h-3 w-3" />
+                  Añadir Precio
+                </button>
               </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Precio Anual (USD)</label>
-                <input v-model.number="editingPlan.annual_price" type="number" step="0.01" min="0" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
+              
+              <div v-if="editingPlan.config?.is_courtesy" class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 dark:bg-yellow-900/20 dark:border-yellow-800">
+                <p class="text-sm text-yellow-800 dark:text-yellow-300">Los precios están deshabilitados porque este es un plan de cortesía (costo $0).</p>
+              </div>
+              
+              <div v-if="editPlanPricesList.length === 0 && !editingPlan.config?.is_courtesy" class="text-sm text-slate-500 dark:text-slate-400 text-center py-4">
+                No hay precios configurados. Haz clic en "Añadir Precio" para agregar uno.
+              </div>
+              
+              <div v-for="(price, index) in editPlanPricesList" :key="price.id" class="border border-slate-200 rounded-lg p-4 space-y-3 dark:border-white/[0.06]">
+                <div class="flex items-center justify-between">
+                  <h5 class="text-sm font-medium text-slate-900 dark:text-white">Precio #{{ index + 1 }}</h5>
+                  <button
+                    type="button"
+                    @click="removeEditPlanPrice(price.id)"
+                    class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                  >
+                    <X class="h-4 w-4" />
+                  </button>
+                </div>
+                
+                <div class="grid grid-cols-3 gap-3">
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Frecuencia</label>
+                    <select
+                      :value="price.frequency"
+                      @input="updateEditPlanPriceFrequency(price.id, $event)"
+                      :disabled="editingPlan.config?.is_courtesy"
+                      class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300 disabled:bg-gray-100"
+                    >
+                      <option value="">Seleccionar...</option>
+                      <option value="monthly">Mensual</option>
+                      <option value="quarterly">Trimestral</option>
+                      <option value="yearly">Anual</option>
+                      <option value="weekly">Semanal</option>
+                      <option value="biannual">Semestral</option>
+                    </select>
+                  </div>
+                  
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Monto (USD)</label>
+                    <input
+                      :value="price.amount"
+                      @input="updateEditPlanPriceAmount(price.id, $event)"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      :disabled="editingPlan.config?.is_courtesy"
+                      placeholder="0.00"
+                      class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300 disabled:bg-gray-100"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Moneda</label>
+                    <select
+                      :value="price.currency"
+                      @input="updateEditPlanPriceCurrency(price.id, $event)"
+                      :disabled="editingPlan.config?.is_courtesy"
+                      class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300 disabled:bg-gray-100"
+                    >
+                      <option value="USD">USD</option>
+                      <option value="EUR">EUR</option>
+                      <option value="GBP">GBP</option>
+                      <option value="MXN">MXN</option>
+                      <option value="COP">COP</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -1099,56 +1373,102 @@
             <h4 class="text-sm font-medium text-slate-900 dark:text-white">Límites del Plan</h4>
             <div class="grid grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Documentos Mensuales</label>
-                <input v-model.number="editingPlan.max_monthly_documents" type="number" min="0" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
-                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">0 = Ilimitado</p>
+                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Límite de Documentos</label>
+                <input 
+  :value="editingPlan.config?.limits?.doc_limit" 
+  @input="handleEditLimitInput('doc_limit', $event)" 
+  type="number" 
+  min="-1" 
+  class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" 
+/>
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">-1 = Ilimitado</p>
               </div>
               <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Máximo de Usuarios</label>
-                <input v-model.number="editingPlan.limits!.max_users" type="number" min="1" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
+                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Límite de Vault</label>
+                <input 
+  :value="editingPlan.config?.limits?.vault_limit" 
+  @input="handleEditLimitInput('vault_limit', $event)" 
+  type="number" 
+  min="-1" 
+  class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" 
+/>
+                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">-1 = Ilimitado</p>
               </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Máximo de Cajas (POS)</label>
-                <input v-model.number="editingPlan.limits!.max_cajas" type="number" min="1" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
+            </div>
+          </div>
+
+          <!-- Estado y Promociones -->
+          <div class="space-y-4">
+            <h4 class="text-sm font-medium text-slate-900 dark:text-white">Estado y Promociones</h4>
+            <div class="space-y-3">
+              <label class="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  :checked="editingPlan.config?.is_trial || false"
+                  @input="handleEditPlanConfig('is_trial', $event)"
+                  class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                />
+                <span class="text-sm text-slate-700 dark:text-slate-300">Activar periodo de prueba</span>
+              </label>
+              
+              <div v-if="editingPlan.config?.is_trial" class="ml-6">
+                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Días de prueba</label>
+                <input
+                  v-model.number="editingPlan.config.trial_days"
+                  type="number"
+                  min="1"
+                  max="365"
+                  placeholder="7"
+                  class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300"
+                />
               </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Máximo de Productos</label>
-                <input v-model.number="editingPlan.limits!.max_productos" type="number" min="1" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Máximo de Sucursales</label>
-                <input v-model.number="editingPlan.limits!.max_sucursales" type="number" min="1" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
-              </div>
+              
+              <label class="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  :checked="editingPlan.config?.has_promo || false"
+                  @input="handleEditPlanConfig('has_promo', $event)"
+                  class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                />
+                <span class="text-sm text-slate-700 dark:text-slate-300">Tiene promoción activa</span>
+              </label>
+              
+              <label class="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  :checked="editingPlan.config?.is_courtesy || false"
+                  @input="handleEditPlanConfig('is_courtesy', $event)"
+                  class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+                />
+                <span class="text-sm text-slate-700 dark:text-slate-300">Es un plan de cortesía</span>
+              </label>
             </div>
           </div>
 
           <!-- Módulos -->
           <div class="space-y-4">
-            <h4 class="text-sm font-medium text-slate-900 dark:text-white">Módulos Activos</h4>
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="text-sm font-medium text-slate-900 dark:text-white">Módulos</h4>
+              <div class="relative w-64">
+                <Search class="absolute left-2.5 top-2.5 h-4 w-4 text-slate-400" />
+                <input
+                  v-model="moduleSearch"
+                  type="text"
+                  placeholder="Buscar módulos..."
+                  class="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300"
+                />
+              </div>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Selecciona los módulos disponibles para este plan</p>
             <div class="grid grid-cols-2 gap-3">
-              <label class="flex items-center gap-2">
-                <input v-model="editingPlan.enabled_modules.efi_assistant" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
-                <span class="text-sm text-slate-700 dark:text-slate-300">IA Efi</span>
-              </label>
-              <label class="flex items-center gap-2">
-                <input v-model="editingPlan.enabled_modules.fiscal_module" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
-                <span class="text-sm text-slate-700 dark:text-slate-300">Módulo Fiscal</span>
-              </label>
-              <label class="flex items-center gap-2">
-                <input v-model="editingPlan.enabled_modules.dashboard_auditor" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
-                <span class="text-sm text-slate-700 dark:text-slate-300">Dashboard Auditor</span>
-              </label>
-              <label class="flex items-center gap-2">
-                <input v-model="editingPlan.enabled_modules.advanced_analytics" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
-                <span class="text-sm text-slate-700 dark:text-slate-300">Análisis Avanzado</span>
-              </label>
-              <label class="flex items-center gap-2">
-                <input v-model="editingPlan.enabled_modules.inventory_management" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
-                <span class="text-sm text-slate-700 dark:text-slate-300">Gestión de Inventario</span>
-              </label>
-              <label class="flex items-center gap-2">
-                <input v-model="editingPlan.enabled_modules.sales_management" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" />
-                <span class="text-sm text-slate-700 dark:text-slate-300">Gestión de Ventas</span>
+              <label v-for="module in filteredModules" :key="module.ulid" class="flex items-center gap-2">
+                <input 
+                  :checked="isEditModuleSelected(module.ulid)" 
+                  @change="() => toggleEditModule(module.ulid)"
+                  type="checkbox" 
+                  class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500" 
+                />
+                <span class="text-sm text-slate-700 dark:text-slate-300">{{ module.name }}</span>
               </label>
             </div>
           </div>
@@ -1270,7 +1590,13 @@
               </div>
               <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Precio (USD) *</label>
-                <input v-model.number="editingAddon.price" type="number" step="0.01" min="0" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" />
+                <input 
+  v-model.number="editingAddon.price" 
+  type="number" 
+  step="0.01" 
+  min="0" 
+  class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" 
+/>
               </div>
               <div v-if="editingAddon.addon_type === 'CONSUMO'">
                 <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Unidades Incluidas *</label>
@@ -1299,6 +1625,140 @@
             @click="updateAddon"
             :disabled="isSaving"
             class="inline-flex items-center justify-center gap-2 h-9 px-4 text-sm font-medium text-white bg-cyan-600 rounded-lg hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw v-if="isSaving" class="h-4 w-4 animate-spin" />
+            <span v-else>Guardar cambios</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Module Modal -->
+    <div v-if="showCreateModule" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 dark:bg-[#141824]">
+        <div class="border-b border-slate-200 p-6 dark:border-white/[0.06]">
+          <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Nuevo Módulo</h3>
+        </div>
+        <div class="p-6 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Nombre *</label>
+            <input 
+              v-model="newModule.name" 
+              type="text" 
+              placeholder="ej: Gestión de Inventario" 
+              class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" 
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Slug *</label>
+            <input 
+              v-model="newModule.slug" 
+              type="text" 
+              placeholder="ej: gestion-inventario" 
+              class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" 
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Descripción</label>
+            <textarea 
+              v-model="newModule.description" 
+              rows="3" 
+              placeholder="Descripción del módulo..." 
+              class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300"
+            ></textarea>
+          </div>
+          <div class="flex items-center gap-3">
+            <input
+              id="create-module-active"
+              v-model="newModule.is_active"
+              type="checkbox"
+              class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+            />
+            <label for="create-module-active" class="text-sm text-slate-700 dark:text-slate-300">Activo</label>
+          </div>
+        </div>
+        <div class="border-t border-slate-200 p-6 flex justify-end gap-2 dark:border-white/[0.06]">
+          <button 
+            @click="showCreateModule = false" 
+            class="inline-flex items-center justify-center gap-2 h-9 px-4 text-sm font-medium text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 dark:text-slate-300 dark:border-white/[0.06] dark:hover:bg-[#1a1f2e]"
+          >
+            Cancelar
+          </button>
+          <button
+            @click="createModule"
+            :disabled="isSaving"
+            class="inline-flex items-center justify-center gap-2 h-9 px-4 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw v-if="isSaving" class="h-4 w-4 animate-spin" />
+            <Plus v-else class="h-4 w-4" />
+            <span v-if="isSaving">Creando...</span>
+            <span v-else>Crear Módulo</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Module Modal -->
+    <div v-if="showEditModule && editingModule" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 dark:bg-[#141824]">
+        <div class="border-b border-slate-200 p-6 dark:border-white/[0.06]">
+          <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Editar Módulo</h3>
+        </div>
+        <div class="p-6 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">ULID</label>
+            <input 
+              v-model="editingModule.ulid" 
+              type="text" 
+              disabled 
+              class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" 
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Nombre *</label>
+            <input 
+              v-model="editingModule.name" 
+              type="text" 
+              class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" 
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Slug *</label>
+            <input 
+              v-model="editingModule.slug" 
+              type="text" 
+              class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300" 
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Descripción</label>
+            <textarea 
+              v-model="editingModule.description" 
+              rows="3" 
+              class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300"
+            ></textarea>
+          </div>
+          <div class="flex items-center gap-3">
+            <input
+              id="edit-module-active"
+              v-model="editingModule.is_active"
+              type="checkbox"
+              class="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500"
+            />
+            <label for="edit-module-active" class="text-sm text-slate-700 dark:text-slate-300">Activo</label>
+          </div>
+        </div>
+        <div class="border-t border-slate-200 p-6 flex justify-end gap-2 dark:border-white/[0.06]">
+          <button 
+            @click="showEditModule = false; editingModule = null" 
+            class="inline-flex items-center justify-center gap-2 h-9 px-4 text-sm font-medium text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 dark:text-slate-300 dark:border-white/[0.06] dark:hover:bg-[#1a1f2e]"
+          >
+            Cancelar
+          </button>
+          <button
+            @click="updateModule"
+            :disabled="isSaving"
+            class="inline-flex items-center justify-center gap-2 h-9 px-4 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <RefreshCw v-if="isSaving" class="h-4 w-4 animate-spin" />
             <span v-else>Guardar cambios</span>
@@ -1339,32 +1799,47 @@ interface Category {
   parent?: { nombre: string };
 }
 
-interface EnabledModules {
-  efi_assistant: boolean;
-  fiscal_module: boolean;
-  dashboard_auditor: boolean;
-  advanced_analytics: boolean;
-  inventory_management: boolean;
-  sales_management: boolean;
-}
 
 interface Plan {
   id: number;
-  code: string;
+  ulid: string;
+  sku: string;
   name: string;
   description?: string;
-  monthly_price: number;
-  annual_price: number;
-  max_monthly_documents: number;
-  limits?: {
-    max_users?: number;
-    max_cajas?: number;
-    max_productos?: number;
-    max_sucursales?: number;
+  prices?: {
+    [frequency: string]: { amount: string; currency: string };
   };
-  enabled_modules: EnabledModules;
+  config?: {
+    modules?: string[];
+    limits?: {
+      doc_limit?: number;
+      vault_limit?: number;
+    };
+    is_trial?: boolean;
+    has_promo?: boolean;
+    is_courtesy?: boolean;
+    trial_days?: number;
+  };
   is_active: boolean;
+  is_public: boolean;
+  sort_order?: number;
   tenant_count?: number;
+}
+
+interface PlanPrice {
+  id: string;
+  frequency: string;
+  amount: string;
+  currency: string;
+}
+
+interface AppModule {
+  id: number;
+  ulid: string;
+  name: string;
+  slug: string;
+  description: string;
+  is_active: boolean;
 }
 
 const authStore = useAuthStore();
@@ -1374,17 +1849,20 @@ const { showInput } = useAlert();
 
 const loading = ref(true);
 const isSaving = ref(false);
-const activeTab = ref<'blueprints' | 'categories' | 'plans' | 'addons' | 'permissions' | 'config'>('blueprints');
+const activeTab = ref<'blueprints' | 'categories' | 'plans' | 'addons' | 'modules' | 'permissions' | 'config'>('blueprints');
 const blueprintSearch = ref('');
 const categorySearch = ref('');
 const planSearch = ref('');
 const addonSearch = ref('');
+const moduleSearch = ref('');
 
 const blueprints = ref<Blueprint[]>([]);
 const categories = ref<Category[]>([]);
 const plans = ref<Plan[]>([]);
 const addons = ref<any[]>([]);
+const modules = ref<AppModule[]>([]);
 const permissions = ref<any[]>([]);
+const availableModules = ref<any[]>([]);
 const selectedTenant = ref<any>(null);
 const selectedAddon = ref<any>(null);
 const assignAddonQuantity = ref(100);
@@ -1398,9 +1876,18 @@ const showEditPlan = ref(false);
 const showIconPicker = ref(false);
 const showCreateAddon = ref(false);
 const showEditAddon = ref(false);
+const showCreateModule = ref(false);
+const showEditModule = ref(false);
+const editingModule = ref<AppModule | null>(null);
+const newModule = ref({
+  name: '',
+  slug: '',
+  description: '',
+  is_active: true
+});
 const editingBlueprint = ref<Blueprint | null>(null);
 const editingCategory = ref<Category | null>(null);
-const editingPlan = ref<Plan | null>(null);
+const editingPlan = ref<Partial<Plan> | null>(null);
 const editingAddon = ref<any | null>(null);
 const configBlueprint = ref<Blueprint | null>(null);
 const configFeatures = ref<string[]>([]);
@@ -1411,29 +1898,33 @@ const newBlueprint = ref({
   icon: '',
   features: ''
 });
-const newPlan = ref<Omit<Plan, 'id'>>({
-  code: '',
+const newPlan = ref({
+  ulid: '',
+  sku: '',
   name: '',
   description: '',
-  monthly_price: 0,
-  annual_price: 0,
-  max_monthly_documents: 100,
-  is_active: true,
-  limits: {
-    max_users: 3,
-    max_cajas: 1,
-    max_productos: 100,
-    max_sucursales: 1
+  prices: {},
+  config: {
+    modules: [],
+    limits: {
+      doc_limit: 100,
+      vault_limit: 3
+    },
+    is_trial: false,
+    has_promo: false,
+    is_courtesy: false,
+    trial_days: 7
   },
-  enabled_modules: {
-    efi_assistant: false,
-    fiscal_module: false,
-    dashboard_auditor: false,
-    advanced_analytics: false,
-    inventory_management: false,
-    sales_management: false
-  }
+  is_active: true,
+  is_public: true,
+  sort_order: 0
 });
+
+// Dynamic prices list for new plan
+const planPricesList = ref<PlanPrice[]>([]);
+
+// Dynamic prices list for edit plan
+const editPlanPricesList = ref<PlanPrice[]>([]);
 
 const newAddon = ref({
   code: '',
@@ -1480,19 +1971,22 @@ const filteredPlans = computed(() => {
   if (!planSearch.value.trim()) return plans.value;
   const q = planSearch.value.toLowerCase();
   return plans.value.filter(plan => 
-    plan.code.toLowerCase().includes(q) || 
+    plan.sku.toLowerCase().includes(q) || 
     plan.name.toLowerCase().includes(q) ||
     plan.description?.toLowerCase().includes(q)
   );
 });
 
 const filteredAddons = computed(() => {
-  if (!addonSearch.value.trim()) return addons.value;
+  if (!Array.isArray(addons.value)) return [];
+  if (!addonSearch.value.trim()) return addons.value.filter(addon => addon != null);
   const q = addonSearch.value.toLowerCase();
   return addons.value.filter(addon => 
-    addon.name.toLowerCase().includes(q) ||
-    addon.code.toLowerCase().includes(q) ||
-    addon.description.toLowerCase().includes(q)
+    addon != null && (
+      addon.name.toLowerCase().includes(q) ||
+      addon.code.toLowerCase().includes(q) ||
+      addon.description.toLowerCase().includes(q)
+    )
   );
 });
 
@@ -1509,6 +2003,47 @@ const getBlueprintName = (id?: number) => {
   return bp?.name || '-';
 };
 
+const loadAppModules = async () => {
+  try {
+    console.log('Loading modules from API...');
+    const response = await fetchApi<AppModule[] | { results?: AppModule[] } | { data?: AppModule[] | { results?: AppModule[] } }>('/api/v1/app-modules/');
+    console.log('API response:', response);
+
+    // Handle different response structures
+    if (Array.isArray(response)) {
+      console.log('Response is direct array, length:', response.length);
+      modules.value = response;
+      availableModules.value = response;
+    } else if ('results' in response && Array.isArray(response.results)) {
+      modules.value = response.results;
+      availableModules.value = response.results;
+    } else if ('data' in response && response.data) {
+      const data = response.data;
+      if (Array.isArray(data)) {
+        modules.value = data;
+        availableModules.value = data;
+      } else if ('results' in data && Array.isArray(data.results)) {
+        modules.value = data.results;
+        availableModules.value = data.results;
+      } else {
+        modules.value = [];
+        availableModules.value = [];
+      }
+    } else {
+      modules.value = [];
+      availableModules.value = [];
+    }
+    
+    console.log('Final modules value:', modules.value);
+    console.log('Final availableModules value:', availableModules.value);
+  } catch (error: any) {
+    console.error('Error loading modules:', error);
+    notifyError('Error al cargar módulos');
+    modules.value = [];
+    availableModules.value = [];
+  }
+};
+
 const loadAllData = async () => {
   try {
     loading.value = true;
@@ -1518,6 +2053,7 @@ const loadAllData = async () => {
       loadPlans(),
       loadAddons(),
       loadPermissions(),
+      loadAppModules(),
       loadTenantCount()
     ]);
   } finally {
@@ -1547,7 +2083,7 @@ const loadCategories = async () => {
 
 const loadPlans = async () => {
   try {
-    const data = await fetchApi<any[] | { results?: any[] }>('/api/v1/plans/');
+    const data = await fetchApi<any[] | { results?: any[] }>('/api/v1/subscription-plans/');
     plans.value = Array.isArray(data) ? data : (data as { results?: any[] }).results ?? [];
   } catch (error) {
     console.error('Error loading plans:', error);
@@ -1558,10 +2094,12 @@ const loadPlans = async () => {
 const loadAddons = async () => {
   try {
     const data = await fetchApi<any[]>('/api/v1/addons/');
-    addons.value = data;
+    console.log('Addons loaded:', data);
+    addons.value = Array.isArray(data) ? data : (data as { results?: any[] }).results ?? [];
   } catch (error) {
     console.error('Error loading addons:', error);
     notifyError('Error al cargar add-ons');
+    addons.value = [];
   }
 };
 
@@ -1899,42 +2437,407 @@ const toggleCategoryActive = async (cat: Category) => {
   }
 };
 
-// Plan management functions
-const getModuleDisplayName = (moduleKey: string) => {
-  const moduleNames: Record<string, string> = {
-    'efi_assistant': 'IA Efi',
-    'fiscal_module': 'Módulo Fiscal',
-    'dashboard_auditor': 'Dashboard Auditor',
-    'advanced_analytics': 'Análisis Avanzado',
-    'inventory_management': 'Gestión de Inventario',
-    'sales_management': 'Gestión de Ventas'
+// Module management functions
+const openCreateModule = () => {
+  newModule.value = {
+    name: '',
+    slug: '',
+    description: '',
+    is_active: true
   };
-  return moduleNames[moduleKey] || moduleKey;
+  showCreateModule.value = true;
+};
+
+const editModule = (module: AppModule) => {
+  editingModule.value = { ...module };
+  showEditModule.value = true;
+};
+
+const toggleModuleStatus = async (module: AppModule) => {
+  try {
+    await fetchApi(`/api/v1/app-modules/${module.ulid}/`, {
+      method: 'PATCH',
+      data: { is_active: !module.is_active }
+    });
+    
+    const index = modules.value.findIndex(m => m.ulid === module.ulid);
+    if (index !== -1) {
+      modules.value[index].is_active = !module.is_active;
+    }
+    
+    notifySuccess(module.is_active ? 'Módulo desactivado' : 'Módulo activado');
+  } catch (error: any) {
+    console.error('Error toggling module status:', error);
+    notifyError('Error al cambiar estado del módulo');
+  }
+};
+
+const createModule = async () => {
+  if (isSaving.value) return;
+  
+  if (!newModule.value.name || !newModule.value.slug) {
+    notifyError('Complete los campos requeridos');
+    return;
+  }
+  
+  isSaving.value = true;
+  try {
+    console.log('Creating module with data:', newModule.value);
+    const createdModule = await fetchApi('/api/v1/app-modules/', {
+      method: 'POST',
+      data: newModule.value
+    });
+    console.log('Module created successfully:', createdModule);
+    
+    await loadAppModules();
+    showCreateModule.value = false;
+    notifySuccess('Módulo creado correctamente');
+  } catch (error: any) {
+    console.error('Error creating module:', error);
+    notifyError(`Error al crear módulo: ${error.data?.detail || error.message}`);
+  } finally {
+    isSaving.value = false;
+  }
+};
+
+const updateModule = async () => {
+  if (isSaving.value || !editingModule.value) return;
+  
+  if (!editingModule.value.name || !editingModule.value.slug) {
+    notifyError('Complete los campos requeridos');
+    return;
+  }
+  
+  isSaving.value = true;
+  try {
+    await fetchApi(`/api/v1/app-modules/${editingModule.value.ulid}/`, {
+      method: 'PATCH',
+      data: editingModule.value
+    });
+    
+    await loadAppModules();
+    showEditModule.value = false;
+    editingModule.value = null;
+    notifySuccess('Módulo actualizado correctamente');
+  } catch (error: any) {
+    console.error('Error updating module:', error);
+    notifyError('Error al actualizar módulo');
+  } finally {
+    isSaving.value = false;
+  }
+};
+
+// Plan management functions
+const getModuleNameByUlid = (moduleUlid: string) => {
+  const module = availableModules.value.find(m => m.ulid === moduleUlid);
+  return module ? module.name : moduleUlid;
+};
+
+const filteredModules = computed(() => {
+  if (!moduleSearch.value) return availableModules.value;
+  const search = moduleSearch.value.toLowerCase();
+  return availableModules.value.filter(module => 
+    module.name.toLowerCase().includes(search) ||
+    module.slug.toLowerCase().includes(search) ||
+    module.description.toLowerCase().includes(search)
+  );
+});
+
+const getFrequencyLabel = (frequency: string): string => {
+  const labels: { [key: string]: string } = {
+    'monthly': 'Mensual',
+    'quarterly': 'Trimestral',
+    'yearly': 'Anual',
+    'weekly': 'Semanal',
+    'biannual': 'Semestral'
+  }
+  return labels[frequency] || frequency
+};
+
+// Dynamic prices functions
+const addPlanPrice = () => {
+  const newPrice: PlanPrice = {
+    id: Math.random().toString(36).substr(2, 9),
+    frequency: '',
+    amount: '',
+    currency: 'USD'
+  }
+  planPricesList.value.push(newPrice)
+}
+
+const removePlanPrice = (id: string) => {
+  const index = planPricesList.value.findIndex(p => p.id === id)
+  if (index > -1) {
+    planPricesList.value.splice(index, 1)
+    updatePlanPricesObject()
+  }
+}
+
+const updatePlanPriceFrequency = (id: string, event: Event) => {
+  const target = event.target as HTMLSelectElement
+  const price = planPricesList.value.find(p => p.id === id)
+  if (price) {
+    price.frequency = target.value
+    updatePlanPricesObject()
+  }
+}
+
+const updatePlanPriceAmount = (id: string, event: Event) => {
+  const target = event.target as HTMLInputElement
+  const price = planPricesList.value.find(p => p.id === id)
+  if (price) {
+    price.amount = target.value
+    updatePlanPricesObject()
+  }
+}
+
+const updatePlanPriceCurrency = (id: string, event: Event) => {
+  const target = event.target as HTMLSelectElement
+  const price = planPricesList.value.find(p => p.id === id)
+  if (price) {
+    price.currency = target.value
+    updatePlanPricesObject()
+  }
+}
+
+const updatePlanPricesObject = () => {
+  const prices: { [frequency: string]: { amount: string; currency: string } } = {}
+  planPricesList.value.forEach(price => {
+    if (price.frequency && price.amount) {
+      prices[price.frequency] = {
+        amount: price.amount,
+        currency: price.currency
+      }
+    }
+  })
+  newPlan.value.prices = prices
+}
+
+const handleNewPlanConfig = (field: 'is_trial' | 'has_promo' | 'is_courtesy', event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (!newPlan.value.config) {
+    newPlan.value.config = {
+      modules: [],
+      limits: {
+        doc_limit: 100,
+        vault_limit: 3
+      },
+      is_trial: false,
+      has_promo: false,
+      is_courtesy: false,
+      trial_days: 7
+    }
+  }
+  
+  newPlan.value.config[field] = target.checked
+  
+  // If courtesy is enabled, clear all prices
+  if (field === 'is_courtesy' && target.checked) {
+    planPricesList.value = []
+    newPlan.value.prices = {}
+  }
+}
+
+// Edit plan dynamic prices functions
+const addEditPlanPrice = () => {
+  const newPrice: PlanPrice = {
+    id: Math.random().toString(36).substr(2, 9),
+    frequency: '',
+    amount: '',
+    currency: 'USD'
+  }
+  editPlanPricesList.value.push(newPrice)
+}
+
+const removeEditPlanPrice = (id: string) => {
+  const index = editPlanPricesList.value.findIndex(p => p.id === id)
+  if (index > -1) {
+    editPlanPricesList.value.splice(index, 1)
+    updateEditPlanPricesObject()
+  }
+}
+
+const updateEditPlanPriceFrequency = (id: string, event: Event) => {
+  const target = event.target as HTMLSelectElement
+  const price = editPlanPricesList.value.find(p => p.id === id)
+  if (price) {
+    price.frequency = target.value
+    updateEditPlanPricesObject()
+  }
+}
+
+const updateEditPlanPriceAmount = (id: string, event: Event) => {
+  const target = event.target as HTMLInputElement
+  const price = editPlanPricesList.value.find(p => p.id === id)
+  if (price) {
+    price.amount = target.value
+    updateEditPlanPricesObject()
+  }
+}
+
+const updateEditPlanPriceCurrency = (id: string, event: Event) => {
+  const target = event.target as HTMLSelectElement
+  const price = editPlanPricesList.value.find(p => p.id === id)
+  if (price) {
+    price.currency = target.value
+    updateEditPlanPricesObject()
+  }
+}
+
+const updateEditPlanPricesObject = () => {
+  if (!editingPlan.value) return
+  
+  const prices: { [frequency: string]: { amount: string; currency: string } } = {}
+  editPlanPricesList.value.forEach(price => {
+    if (price.frequency && price.amount) {
+      prices[price.frequency] = {
+        amount: price.amount,
+        currency: price.currency
+      }
+    }
+  })
+  editingPlan.value.prices = prices
+}
+
+const handleEditPlanConfig = (field: 'is_trial' | 'has_promo' | 'is_courtesy', event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (!editingPlan.value?.config) {
+    if (!editingPlan.value) return
+    editingPlan.value.config = {
+      modules: [],
+      limits: {
+        doc_limit: 100,
+        vault_limit: 3
+      },
+      is_trial: false,
+      has_promo: false,
+      is_courtesy: false,
+      trial_days: 7
+    }
+  }
+  
+  editingPlan.value.config[field] = target.checked
+  
+  // If courtesy is enabled, clear all prices
+  if (field === 'is_courtesy' && target.checked) {
+    editPlanPricesList.value = []
+    if (editingPlan.value) {
+      editingPlan.value.prices = {}
+    }
+  }
+}
+
+const isEditModuleSelected = (moduleUlid: string) => {
+  return (editingPlan.value?.config?.modules as string[] || []).includes(moduleUlid);
+};
+
+const toggleNewModule = (moduleUlid: string) => {
+  if (!newPlan.value.config) {
+    newPlan.value.config = { 
+      modules: [], 
+      limits: { doc_limit: 100, vault_limit: 3 },
+      is_trial: false,
+      has_promo: false,
+      is_courtesy: false,
+      trial_days: 7
+    };
+  }
+  
+  const modules = newPlan.value.config.modules as string[];
+  const index = modules.indexOf(moduleUlid);
+  if (index > -1) {
+    modules.splice(index, 1);
+  } else {
+    modules.push(moduleUlid);
+  }
+};
+
+const toggleEditModule = (moduleUlid: string) => {
+  if (!editingPlan.value?.config) {
+    if (!editingPlan.value) return;
+    editingPlan.value.config = {
+      modules: [],
+      limits: {
+        doc_limit: 100,
+        vault_limit: 3
+      },
+      is_trial: false,
+      has_promo: false,
+      is_courtesy: false,
+      trial_days: 7
+    };
+  }
+  
+  const modules = editingPlan.value.config.modules as string[];
+  const index = modules.indexOf(moduleUlid);
+  if (index > -1) {
+    modules.splice(index, 1);
+  } else {
+    modules.push(moduleUlid);
+  }
+};
+
+
+const handleEditLimitInput = (limitType: 'doc_limit' | 'vault_limit', event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const value = Number(target.value || 0);
+  
+  if (!editingPlan.value) return;
+  
+  if (!editingPlan.value.config) {
+    editingPlan.value.config = { modules: [], limits: { doc_limit: 100, vault_limit: 3 } };
+  }
+  
+  if (!editingPlan.value.config.limits) {
+    editingPlan.value.config.limits = { doc_limit: 100, vault_limit: 3 };
+  }
+  
+  editingPlan.value.config.limits[limitType] = value;
+};
+
+const handleLimitInput = (limitType: 'doc_limit' | 'vault_limit', event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const value = Number(target.value || 0);
+  
+  if (!newPlan.value.config) {
+    newPlan.value.config = { 
+      modules: [], 
+      limits: { doc_limit: 100, vault_limit: 3 },
+      is_trial: false,
+      has_promo: false,
+      is_courtesy: false,
+      trial_days: 7
+    };
+  }
+  
+  if (!newPlan.value.config.limits) {
+    newPlan.value.config.limits = { doc_limit: 100, vault_limit: 3 };
+  }
+  
+  newPlan.value.config.limits[limitType] = value;
 };
 
 const openCreatePlan = () => {
   newPlan.value = {
-    code: '',
+    ulid: '',
+    sku: '',
     name: '',
     description: '',
-    monthly_price: 0,
-    annual_price: 0,
-    max_monthly_documents: 100,
-    is_active: true,
-    limits: {
-      max_users: 3,
-      max_cajas: 1,
-      max_productos: 100,
-      max_sucursales: 1
+    prices: {},
+    config: {
+      modules: [],
+      limits: {
+        doc_limit: 100,
+        vault_limit: 3
+      },
+      is_trial: false,
+      has_promo: false,
+      is_courtesy: false,
+      trial_days: 7
     },
-    enabled_modules: {
-      efi_assistant: false,
-      fiscal_module: false,
-      dashboard_auditor: false,
-      advanced_analytics: false,
-      inventory_management: false,
-      sales_management: false
-    }
+    is_active: true,
+    is_public: true,
+    sort_order: 0
   };
   showCreatePlan.value = true;
 };
@@ -1942,7 +2845,7 @@ const openCreatePlan = () => {
 const createPlan = async () => {
   if (isSaving.value) return;
   
-  if (!newPlan.value.code || !newPlan.value.name || newPlan.value.monthly_price < 0) {
+  if (!newPlan.value.sku || !newPlan.value.name) {
     notifyError('Complete los campos requeridos');
     return;
   }
@@ -1951,12 +2854,12 @@ const createPlan = async () => {
   try {
     const planData = {
       ...newPlan.value,
-      code: newPlan.value.code.toUpperCase(),
+      sku: newPlan.value.sku.toUpperCase(),
       is_active: true,
-      display_order: plans.value.length + 1
+      sort_order: plans.value.length + 1
     };
 
-    const createdPlan = await fetchApi<Plan>('/api/v1/plans/', {
+    const createdPlan = await fetchApi<Plan>('/api/v1/subscription-plans/', {
       method: 'POST',
       data: planData
     });
@@ -1973,25 +2876,36 @@ const createPlan = async () => {
 };
 
 const editPlan = (plan: any) => {
+  // Initialize editing plan with complete data
   editingPlan.value = {
     ...plan,
-    max_monthly_documents: plan.max_monthly_documents || 100,
     is_active: plan.is_active ?? true,
-    limits: plan.limits || {
-      max_users: 3,
-      max_cajas: 1,
-      max_productos: 100,
-      max_sucursales: 1
+    config: plan.config || {
+      modules: [],
+      limits: {
+        doc_limit: 100,
+        vault_limit: 3
+      },
+      is_trial: false,
+      has_promo: false,
+      is_courtesy: false
     },
-    enabled_modules: plan.enabled_modules || {
-      efi_assistant: false,
-      fiscal_module: false,
-      dashboard_auditor: false,
-      advanced_analytics: false,
-      inventory_management: false,
-      sales_management: false
-    }
+    prices: plan.prices || {}
   };
+  
+  // Initialize edit plan prices list from existing prices
+  editPlanPricesList.value = [];
+  const prices = plan.prices || {};
+  Object.entries(prices).forEach(([frequency, price]) => {
+    const priceObj = price as { amount: string; currency: string };
+    editPlanPricesList.value.push({
+      id: Math.random().toString(36).substr(2, 9),
+      frequency,
+      amount: priceObj.amount,
+      currency: priceObj.currency
+    });
+  });
+  
   showEditPlan.value = true;
 };
 
@@ -2002,11 +2916,10 @@ const updatePlan = async () => {
   try {
     const planData = {
       ...editingPlan.value,
-      limits: editingPlan.value.limits,
-      enabled_modules: editingPlan.value.enabled_modules
+      config: editingPlan.value.config
     };
 
-    await fetchApi(`/api/v1/plans/${editingPlan.value.id}/`, {
+    await fetchApi(`/api/v1/subscription-plans/${editingPlan.value.ulid}/`, {
       method: 'PATCH',
       data: planData
     });
@@ -2046,7 +2959,7 @@ const togglePlanActive = async (plan: any) => {
 
   if (result.isConfirmed) {
     try {
-      await fetchApi(`/api/v1/plans/${plan.id}/`, {
+      await fetchApi(`/api/v1/subscription-plans/${plan.id}/`, {
         method: 'PATCH',
         data: { is_active: !plan.is_active }
       });
@@ -2057,12 +2970,6 @@ const togglePlanActive = async (plan: any) => {
       notifyError('Error al actualizar estado');
     }
   }
-};
-
-const createCompetenciaPlan = async () => {
-  if (isSaving.value) return;
-
-  isSaving.value = true;
 };
 
 // Add-on CRUD functions
@@ -2180,6 +3087,7 @@ const toggleAddonActive = async (addon: any) => {
     }
   }
 };
+
 
 
 onMounted(() => {

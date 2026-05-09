@@ -10,14 +10,14 @@ export function usePermissions() {
    * @param code - Permission code (e.g., 'mnu_dashboard', 'CAN_VIEW_SALES')
    * @returns boolean
    */
-  const hasPerm = (module: string, code: string): boolean => {
+  const hasPerm = (_module: string, code: string): boolean => {
     if (!authStore.user) return false;
     
     // Superusers have all permissions
     if (authStore.user.is_superuser) return true;
     
     // Check if user has the specific permission
-    const userPermissions = authStore.userPermissions || [];
+    const userPermissions = authStore.cmsPermissions as string[] || [];
     return userPermissions.includes(code);
   };
 
@@ -30,7 +30,7 @@ export function usePermissions() {
     if (!authStore.user) return false;
     if (authStore.user.is_superuser) return true;
     
-    const userPermissions = authStore.userPermissions || [];
+    const userPermissions = authStore.cmsPermissions as string[] || [];
     return permissions.some(perm => userPermissions.includes(perm));
   };
 
@@ -43,7 +43,7 @@ export function usePermissions() {
     if (!authStore.user) return false;
     if (authStore.user.is_superuser) return true;
     
-    const userPermissions = authStore.userPermissions || [];
+    const userPermissions = authStore.cmsPermissions as string[] || [];
     return permissions.every(perm => userPermissions.includes(perm));
   };
 

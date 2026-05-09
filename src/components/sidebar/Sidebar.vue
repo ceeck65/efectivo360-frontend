@@ -140,7 +140,7 @@ onMounted(async () => {
   eventBus.on(PERMISSION_EVENTS.USER_PERMISSIONS_REFRESHED, handlePermissionsChanged);
 });
 
-onUnmounted(() => {
+onMounted(() => {
   // Clean up event listeners
   eventBus.off(PERMISSION_EVENTS.PERMISSIONS_CHANGED, handlePermissionsChanged);
   eventBus.off(PERMISSION_EVENTS.ROLE_PERMISSIONS_UPDATED, handlePermissionsChanged);

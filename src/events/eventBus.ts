@@ -1,4 +1,3 @@
-import { ref } from 'vue';
 
 // Simple event bus for permission changes
 type EventCallback = (...args: any[]) => void;
