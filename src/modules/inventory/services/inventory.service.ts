@@ -157,6 +157,49 @@ export const InventoryService = {
     return response.data.data;
   },
 
+  // ==================== BLUEPRINT / CHAMELEON FORM ====================
+
+  /**
+   * Obtiene la configuración del blueprint activo para el tenant actual.
+   * Usado para adaptar el formulario de productos al tipo de negocio.
+   * @returns {Promise<object>} Configuración del blueprint
+   */
+  async getBlueprintConfig(): Promise<Record<string, unknown>> {
+    const response = await httpClient.get(`/v1/blueprints/config/`);
+    return response.data;
+  },
+
+  /**
+   * Valida que un producto sea coherente con el rubro del tenant.
+   * @param {string} productName - Nombre del producto
+   * @returns {Promise<object>} Resultado de validación
+   */
+  async validateProduct(productName: string): Promise<Record<string, unknown>> {
+    const response = await httpClient.post(`/v1/inventory/validate-product/`, {
+      product_name: productName,
+    });
+    return response.data;
+  },
+
+  // ==================== CATEGORÍAS INTELIGENTES (EFI) ====================
+
+  /**
+   * Sugiere una categoría para un producto usando el motor Efi
+   * @param {string} productName - Nombre del producto
+   * @param {string} [businessTypeId] - ID del tipo de negocio (IndustryBlueprint)
+   * @returns {Promise<{ suggested: boolean; category: object | null }>} Sugerencia
+   */
+  async suggestCategory(
+    productName: string,
+    businessTypeId?: string
+  ): Promise<{ suggested: boolean; category: object | null }> {
+    const response = await httpClient.post(`/v1/inventory/suggest-category/`, {
+      product_name: productName,
+      business_type_id: businessTypeId,
+    });
+    return response.data;
+  },
+
   // ==================== CATEGORÍAS ====================
 
   /**

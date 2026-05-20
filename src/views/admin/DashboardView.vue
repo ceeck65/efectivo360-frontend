@@ -24,7 +24,9 @@ import {
 import { useAuthStore } from '@/stores/auth';
 import { t } from '@/lib/navigation';
 import { useApi } from '@/composables/useApi';
-import StaffDashboard from './StaffDashboard.vue';
+import { useCurrency } from '@/lib/currency';
+
+const { formatAmount } = useCurrency();
 import FiscalWidget from '@/components/widgets/FiscalWidget.vue';
 import EfiWidget from '@/components/widgets/EfiWidget.vue';
 import CurrencyWidget from '@/components/widgets/CurrencyWidget.vue';
@@ -209,14 +211,14 @@ const kpis = computed<KpiData[]>(() => [
   {
     accent: 'sales',
     title: t('backoffice.kpiSalesToday', 'Ventas hoy'),
-    value: new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(salesToday.value),
+    value: formatAmount(salesToday.value, 'USD'),
     sub: t('backoffice.kpiSalesSub', 'vs. ayer'),
     trend: salesTrend.value,
   },
   {
     accent: 'credits',
     title: t('backoffice.kpiCredits', 'Créditos pendientes'),
-    value: new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(creditsReceivable.value),
+    value: formatAmount(creditsReceivable.value, 'USD'),
     sub: t('backoffice.kpiCreditsSub', 'CxC total'),
     trend: creditsTrend.value,
   },
@@ -512,7 +514,7 @@ onMounted(() => {
                 <p class="truncate text-sm font-medium text-slate-900 dark:text-white">{{ sale.label }}</p>
                 <p class="text-[11px] text-slate-500 dark:text-slate-400">Hace {{ sale.since }}</p>
               </div>
-              <span class="shrink-0 tabular-nums text-xs font-semibold text-sky-600 dark:text-sky-300">{{ new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'USD' }).format(sale.total) }}</span>
+              <span class="shrink-0 tabular-nums text-xs font-semibold text-sky-600 dark:text-sky-300">{{ formatAmount(sale.total, 'USD') }}</span>
             </li>
             <li v-if="pendingSales.length === 0" class="rounded-xl border border-dashed border-slate-200/90 bg-slate-50/50 py-8 text-center text-xs text-slate-500 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-400">
               Sin ventas en espera

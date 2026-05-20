@@ -1,0 +1,2 @@
+var e=e=>{if(!e)return{fields:[]};if(typeof e==`string`)try{let t=e;for(;typeof t==`string`&&t.startsWith(`"`);)try{t=JSON.parse(t)}catch{break}return typeof t==`string`&&(t=JSON.parse(t)),t&&typeof t==`object`&&Array.isArray(t.fields)?t:{fields:[]}}catch{return{fields:[]}}return e};export{e as t};
+//# sourceMappingURL=metadata-DVginaLv.js.map

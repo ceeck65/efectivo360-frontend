@@ -188,6 +188,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { Plus, Archive, CheckCircle, XCircle, Settings, DollarSign, Shield, CreditCard, Smartphone, Wallet, Building2 } from 'lucide-vue-next'
 import { httpClient } from '@/core/services/axios.config'
+import { useCurrency } from '@/lib/currency'
+
+const { formatAmount } = useCurrency()
 
 // State
 const loading = ref(false)
@@ -248,11 +251,7 @@ const getVaultTypeName = (type) => {
 }
 
 const formatCurrency = (amount, currency) => {
-  return new Intl.NumberFormat('es-VE', {
-    style: 'currency',
-    currency: currency === 'VES' ? 'VES' : 'USD',
-    minimumFractionDigits: 2,
-  }).format(amount)
+  return formatAmount(amount, currency)
 }
 
 const getRandomBalance = () => {

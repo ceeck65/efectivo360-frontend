@@ -53,13 +53,18 @@
                 </td>
                 <td class="px-6 py-4">
                   <div class="flex flex-wrap gap-1">
-                    <span
-                      v-for="module in plan.config.modules"
-                      :key="module"
-                      class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                    >
-                      {{ getModuleName(module) }}
-                    </span>
+                    <template v-if="plan.modules_detail">
+                      <span v-for="mod in plan.modules_detail" :key="mod.ulid"
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {{ mod.name }}
+                      </span>
+                    </template>
+                    <template v-else>
+                      <span v-for="module in plan.config.modules" :key="module"
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {{ getModuleName(module) }}
+                      </span>
+                    </template>
                   </div>
                 </td>
                 <td class="px-6 py-4">
@@ -196,6 +201,7 @@ interface Plan {
   is_public?: boolean
   sort_order: number
   ulid?: string
+  modules_detail?: Array<{ id: number; ulid: string; name: string; slug: string }>
 }
 
 // Reactive data

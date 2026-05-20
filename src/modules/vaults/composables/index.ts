@@ -5,12 +5,10 @@
 
 import { ref, computed, reactive } from 'vue';
 import { vaultsService } from '../services';
+import { useCurrency } from '@/lib/currency';
 
-// Toast notification (usando console.log como fallback)
-const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-  console.log(`[${type.toUpperCase()}] ${message}`);
-  // TODO: Implementar toast cuando vue-toastification esté disponible
-};
+const { formatAmount } = useCurrency();
+
 import type { 
   Vault, 
   VaultFilters, 
@@ -21,6 +19,10 @@ import type {
   VaultStats,
   VaultType
 } from '../types';
+
+const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+  console.log(`[${type.toUpperCase()}] ${message}`);
+};
 
 // =============================================================================
 // COMPOSABLES
@@ -284,11 +286,7 @@ export function useVaultUtils() {
   };
 
   const formatCurrency = (amount: number, currency: string) => {
-    return new Intl.NumberFormat('es-VE', {
-      style: 'currency',
-      currency: currency === 'VES' ? 'VES' : 'USD',
-      minimumFractionDigits: 2,
-    }).format(amount);
+    return formatAmount(amount, currency);
   };
 
   const validateFinancialRules = (rules: any) => {

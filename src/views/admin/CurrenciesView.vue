@@ -141,6 +141,7 @@ import { RouterLink } from 'vue-router';
 import { ArrowLeft, Plus, Pencil, Trash2, CircleDollarSign } from 'lucide-vue-next';
 import { useCurrencies } from '@/composables/useCurrencies';
 import { useNotify } from '@/composables/useNotify';
+import { fetchApi } from '@/composables/useApi';
 import type { Currency } from '@/types';
 import type { CurrencyFormData } from '@/composables/useCurrencies';
 import CurrencyFormModal from '@/components/currencies/CurrencyFormModal.vue';
@@ -158,9 +159,26 @@ const { success: notifySuccess, error: notifyError } = useNotify();
 
 const modalOpen = ref(false);
 const editingCurrency = ref<Currency | null>(null);
+const currentPage = ref(1);
+const pageSize = ref(100);
+const totalCurrencies = ref(0);
 
 onMounted(() => {
   loadCurrencies();
+});
+
+const loadCurrenciesPaged = async () => {
+  const params = new URLSearchParams({
+    page: String(currentPage.value),
+    page_size: String(pageSize.value),
+  });
+  const data = await fetchApi<{ results: Currency[]; count: number }>(`/api/currencies/?${params}`);
+  currencies.value = data.results || [];
+  totalCurrencies.value = data.count || 0;
+};
+
+onMounted(() => {
+  loadCurrenciesPaged();
 });
 
 // Format example for display

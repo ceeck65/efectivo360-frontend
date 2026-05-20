@@ -168,6 +168,7 @@ export const staffMenu: NavItem[] = [
   { href: '/admin/vaults', label: 'Gestión de Gavetas', icon: Wallet },
   { href: paths.masterCategories, label: 'Categorías ERP', icon: Waypoints },
   { href: paths.masterCommerceTypes, label: 'Tipos de Comercio', icon: Building2 },
+  { href: '/admin/master/blueprint-attributes', label: 'Perfiles de Atributos', icon: Ruler },
   { href: '/admin/master/notifications', label: 'Notificaciones Push', icon: Tag },
   { href: paths.users, label: 'Gestión de Usuarios', icon: ShieldCheck },
 ];

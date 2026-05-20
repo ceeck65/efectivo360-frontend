@@ -38,10 +38,16 @@
           </p>
         </div>
         <div class="text-right">
-          <p class="text-4xl font-bold text-slate-900">
+          <p class="text-4xl font-bold text-slate-900 flex items-center justify-end gap-2">
+            <TrendingUp v-if="trend === 'up'" class="h-6 w-6 text-emerald-500" />
+            <TrendingDown v-else-if="trend === 'down'" class="h-6 w-6 text-red-500" />
+            <Equal v-else-if="previousDayRate !== null" class="h-6 w-6 text-amber-500" />
             {{ currentRate?.rate?.toFixed(2) || '---' }} VES
           </p>
           <p class="text-sm text-slate-600 mt-1">USD 1.00</p>
+          <p v-if="previousDayRate !== null" class="text-xs text-slate-400 mt-0.5">
+            Con respecto al día anterior
+          </p>
         </div>
       </div>
       
@@ -129,7 +135,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { AlertTriangle } from 'lucide-vue-next';
+import { AlertTriangle, TrendingUp, TrendingDown, Equal } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
 import { useAlert } from '@/composables/useAlert';
 import { useAuthStore } from '@/stores/auth';
@@ -172,6 +178,24 @@ const formatDate = (dateString: string | undefined) => {
   });
 };
 
+const previousDayRate = computed(() => {
+  if (!currentRate.value?.rate || history.value.length === 0) return null;
+  const today = new Date().toDateString();
+  for (const h of history.value) {
+    const hDate = new Date(h.created_at).toDateString();
+    if (hDate !== today) return h.new_rate;
+  }
+  return null;
+});
+
+const trend = computed(() => {
+  if (previousDayRate.value === null || !currentRate.value?.rate) return 'equal';
+  const diff = currentRate.value.rate - previousDayRate.value;
+  if (diff > 0) return 'up';
+  if (diff < 0) return 'down';
+  return 'equal';
+});
+
 const calculateChange = (previous: number, current: number) => {
   if (previous === 0) return 'N/A';
   const change = ((current - previous) / previous) * 100;
@@ -209,15 +233,17 @@ const handlePanicUpdate = async () => {
   try {
     const response = await apiClient.post('/api/v1/admin/forex/manual-update/');
     
-    console.log('Tasa Actualizada:', {
-      rate: response.data.rate,
-      source: response.data.source
-    });
-    
-    showSuccess(
-      'Tasa Actualizada',
-      `Nueva tasa: ${response.data.rate.toFixed(2)} VES (${response.data.source})`
-    );
+    if (response.data.detail && response.data.detail.includes('actualizada')) {
+      showSuccess(
+        'Tasa Actualizada',
+        response.data.detail
+      );
+    } else {
+      showSuccess(
+        'Tasa Actualizada',
+        `Nueva tasa: ${response.data.rate.toFixed(2)} VES (${response.data.source})`
+      );
+    }
     
     // Refresh current rate and history
     await fetchCurrentRate();

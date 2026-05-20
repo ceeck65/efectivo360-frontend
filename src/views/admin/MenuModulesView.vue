@@ -8,8 +8,8 @@
             <ArrowLeft class="h-5 w-5 text-slate-600" />
           </RouterLink>
           <div>
-            <h1 class="text-xl font-bold text-slate-900">Gestión de Módulos</h1>
-            <p class="text-xs text-slate-500">Organiza los ítems del menú por grupos</p>
+            <h1 class="text-xl font-bold text-slate-900">Gestión de Permisos de Menú</h1>
+            <p class="text-xs text-slate-500">Organiza los ítems del menú (MenuPermissions) por grupos</p>
           </div>
         </div>
         <div class="flex items-center gap-2">
@@ -277,6 +277,7 @@ interface MenuModule {
   shortcut: string | null;
   parent_ulid: string | null;
   parent?: string | null;
+  app_module_ulid: string | null;
 }
 
 interface MenuGroup {

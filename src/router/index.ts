@@ -61,6 +61,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/admin/welcome-to-360',
+      name: 'WelcomeTo360',
+      component: () => import('@/components/admin/WelcomeInvitation.vue'),
+      meta: { requiresAuth: true, hideSidebar: true },
+    },
+    {
       path: '/admin/setup',
       name: 'ShopSetup',
       component: () => import('@/views/ShopWizardView.vue'),
@@ -81,7 +87,7 @@ const router = createRouter({
     {
       path: '/admin/super-console',
       name: 'SuperAdminConsole',
-      component: () => import('@/views/admin/SuperAdminConsole.vue'),
+      component: () => import('@/views/admin/super-console'),
       meta: { requiresAuth: true, requiresStaff: true },
     },
     // Auditor routes - for EXTERNAL_AUDITOR role
@@ -134,15 +140,53 @@ const router = createRouter({
       component: () => import('@/views/admin/ForexRatesView.vue'),
       meta: { requiresAuth: true },
     },
-    // Payment Methods - Separación de responsabilidades
-    {
-      path: '/admin/staff/payment-templates',
-      name: 'StaffPaymentTemplates',
-      component: () => import('@/views/admin/GlobalPaymentMethodsView.vue'),
-      meta: { requiresAuth: true, requiresStaff: true },
-    },
-    {
-      path: '/admin/billing/saas-payments',
+// Payment Methods - Separación de responsabilidades
+     {
+       path: '/admin/staff/payment-templates',
+       name: 'StaffPaymentTemplates',
+       component: () => import('@/views/admin/GlobalPaymentMethodsView.vue'),
+       meta: { requiresAuth: true, requiresStaff: true },
+     },
+// Treasury - Available to authenticated users (staff and tenants)
+     {
+       path: '/admin/staff/treasury',
+       name: 'Treasury',
+       component: () => import('@/views/admin/staff/treasury/TreasuryView.vue'),
+       meta: { requiresAuth: true },
+     },
+     // Egresos y Gastos
+     {
+       path: '/admin/staff/expenses',
+       name: 'Expenses',
+        component: () => import('@/views/admin/expenses/ExpenseDashboard.vue'),
+         meta: { requiresAuth: true },
+       },
+       {
+         path: '/admin/staff/incomes',
+         name: 'Incomes',
+         component: () => import('@/views/admin/expenses/IncomeDashboard.vue'),
+         meta: { requiresAuth: true },
+       },
+       {
+         path: '/admin/staff/cxp',
+         name: 'Cxp',
+         component: () => import('@/views/admin/cxp/CxpReadonlyDashboard.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: '/admin/staff/purchases',
+        name: 'Purchases',
+        component: () => import('@/views/purchases/PurchaseDashboard.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: '/admin/staff/cxc',
+        name: 'Cxc',
+        component: () => import('@/views/admin/cxc/CustomerDebtsView.vue'),
+        meta: { requiresAuth: true },
+      },
+     {
+       path: '/admin/billing/saas-payments',
       name: 'TenantSaasPayments',
       component: () => import('@/views/admin/TenantSaasPaymentsView.vue'),
       meta: { requiresAuth: true },
@@ -235,6 +279,21 @@ router.beforeEach((to, _from, next) => {
     if (authStore.user?.role === 'EXTERNAL_AUDITOR' && to.path.startsWith('/admin/dashboard')) {
       isRedirecting = true;
       next('/auditor/dashboard');
+      setTimeout(() => { isRedirecting = false; }, 100);
+      return;
+    }
+
+    // Tenant requirement: redirect users without tenant to welcome page
+    if (
+      !authStore.isStaff &&
+      !authStore.hasTenant &&
+      !to.path.startsWith('/admin/dashboard') &&
+      !to.path.startsWith('/admin/welcome-to-360') &&
+      !to.path.startsWith('/admin/setup') &&
+      !to.path.startsWith('/admin/onboarding')
+    ) {
+      isRedirecting = true;
+      next('/admin/welcome-to-360');
       setTimeout(() => { isRedirecting = false; }, 100);
       return;
     }

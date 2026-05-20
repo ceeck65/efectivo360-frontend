@@ -58,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, RouterView, useRouter } from 'vue-router';
 import LandingNav from '@/components/landing/LandingNav.vue';
 import LandingFooter from '@/components/landing/LandingFooter.vue';
@@ -69,11 +69,13 @@ import EfiChatBubble from '@/modules/assistant/components/EfiChatBubble.vue';
 import EfiChatWindow from '@/components/efi/EfiChatWidget.vue';
 import TenantConfigurationBanner from '@/components/tenant/TenantConfigurationBanner.vue';
 import { useAuthStore } from '@/stores/auth';
+import { useConfigStore } from '@/stores/config';
 import { useForexRate } from '@/composables/useForexRate';
 
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
+const configStore = useConfigStore();
 const showSplash = ref(true);
 const isMobileMenuOpen = ref(false);
 const isSidebarCollapsed = ref(false);
@@ -97,7 +99,7 @@ const isAdminRoute = computed(() => {
 // Check if current route is a simple route (no sidebar/header)
 const isSimpleRoute = computed(() => {
   const path = route.path;
-  return path.startsWith('/admin/setup') || path.startsWith('/admin/onboarding');
+  return path.startsWith('/admin/setup') || path.startsWith('/admin/onboarding') || path.startsWith('/admin/welcome-to-360');
 });
 
 // Check if user needs to be redirected to shop wizard
@@ -108,6 +110,7 @@ const needsShopWizard = computed(() => {
     !authStore.isStaff &&
     !authStore.hasConfiguredTenant &&
     !route.path.startsWith('/admin/setup') && // Don't redirect if already on setup
+    !route.path.startsWith('/admin/welcome-to-360') && // Don't redirect if on welcome
     !route.path.startsWith('/admin/chat') // Don't redirect if on chat
   );
 });
@@ -168,6 +171,10 @@ const messages = computed(() => {
       },
     },
   };
+});
+
+onMounted(() => {
+  configStore.initialize();
 });
 
 </script>

@@ -120,6 +120,14 @@
           </tbody>
         </table>
       </div>
+      <SimplePagination
+        v-if="totalCountries > 0"
+        :page="currentPage"
+        :page-size="pageSize"
+        :total="totalCountries"
+        @update:page="currentPage = $event; loadCountries()"
+        @update:page-size="pageSize = $event; currentPage = 1; loadCountries()"
+      />
     </div>
 
     <!-- Country Form Modal -->
@@ -138,6 +146,7 @@ import { RouterLink } from 'vue-router';
 import { ArrowLeft, Plus, Globe, Pencil, Trash2 } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
+import { SimplePagination } from '@/shared/index.js';
 import type { Country } from '@/types';
 import CountryFormModal from '@/components/geography/CountryFormModal.vue';
 import Swal from 'sweetalert2';
@@ -149,6 +158,11 @@ const countries = ref<Country[]>([]);
 const isLoading = ref(true);
 const modalOpen = ref(false);
 const editingCountry = ref<Country | null>(null);
+
+// Paginación
+const currentPage = ref(1);
+const pageSize = ref(100);
+const totalCountries = ref(0);
 
 // Translation helper
 const t = (key: string): string => {
@@ -171,8 +185,13 @@ const t = (key: string): string => {
 const loadCountries = async () => {
   isLoading.value = true;
   try {
-    const data = await fetchApi<{ results: Country[] }>('/api/geography/countries/');
+    const params = new URLSearchParams({
+      page: String(currentPage.value),
+      page_size: String(pageSize.value),
+    });
+    const data = await fetchApi<{ results: Country[]; count: number }>(`/api/geography/countries/?${params}`);
     countries.value = data.results || [];
+    totalCountries.value = data.count || 0;
   } catch (error: any) {
     if (error?.status === 403) {
       notifyError('Acceso denegado. Solo Staff puede gestionar geografía.');

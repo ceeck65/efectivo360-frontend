@@ -11,6 +11,9 @@ export { default as LoadingSpinner } from './components/LoadingSpinner.vue';
 export { default as ErrorMessage } from './components/ErrorMessage.vue';
 export { default as DataTable } from './components/DataTable.vue';
 export { default as DataTableJerarquica } from './components/DataTableJerarquica.vue';
+export { default as TablePagination } from './components/TablePagination.vue';
+export { default as SimplePagination } from './components/SimplePagination.vue';
+export { default as PaginatedTable } from './components/PaginatedTable.vue';
 export { default as LocationSelector } from './components/LocationSelector.vue';
 export { default as TheSidebar } from './components/TheSidebar.vue';
 

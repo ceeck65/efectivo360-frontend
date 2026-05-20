@@ -193,7 +193,7 @@ export const useGeographyStore = defineStore('geography', () => {
     }
   }
 
-  async function fetchStatesByCountry(countryId: number) {
+  async function fetchStatesByCountry(countryId: number | string) {
     try {
       const response = await fetchApi<{ results?: State[] } | State[]>(`/api/geography/states/by-country/?country=${countryId}`);
       return Array.isArray(response) ? response : response.results || [];
@@ -268,7 +268,7 @@ export const useGeographyStore = defineStore('geography', () => {
     }
   }
 
-  async function fetchCitiesByState(stateId: number) {
+  async function fetchCitiesByState(stateId: number | string) {
     try {
       const response = await fetchApi<{ results?: City[] } | City[]>(`/api/geography/cities/by-state/?state=${stateId}`);
       return Array.isArray(response) ? response : response.results || [];

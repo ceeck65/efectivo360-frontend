@@ -124,6 +124,14 @@
           </tbody>
         </table>
       </div>
+      <SimplePagination
+        v-if="totalStates > 0"
+        :page="currentPage"
+        :page-size="pageSize"
+        :total="totalStates"
+        @update:page="currentPage = $event; loadData()"
+        @update:page-size="pageSize = $event; currentPage = 1; loadData()"
+      />
     </div>
 
     <!-- State Form Modal -->
@@ -143,6 +151,7 @@ import { RouterLink } from 'vue-router';
 import { ArrowLeft, Plus, Map, Pencil, Trash2 } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
+import { SimplePagination } from '@/shared/index.js';
 import type { State, Country } from '@/types';
 import StateFormModal from '@/components/geography/StateFormModal.vue';
 import Swal from 'sweetalert2';
@@ -155,6 +164,9 @@ const countries = ref<Country[]>([]);
 const isLoading = ref(true);
 const modalOpen = ref(false);
 const editingState = ref<State | null>(null);
+const currentPage = ref(1);
+const pageSize = ref(100);
+const totalStates = ref(0);
 
 // Translation helper
 const t = (key: string): string => {
@@ -178,11 +190,16 @@ const t = (key: string): string => {
 const loadData = async () => {
   isLoading.value = true;
   try {
+    const params = new URLSearchParams({
+      page: String(currentPage.value),
+      page_size: String(pageSize.value),
+    });
     const [statesData, countriesData] = await Promise.all([
-      fetchApi<{ results: State[] }>('/api/geography/states/'),
+      fetchApi<{ results: State[]; count: number }>(`/api/geography/states/?${params}`),
       fetchApi<{ results: Country[] }>('/api/geography/countries/'),
     ]);
     states.value = statesData.results || [];
+    totalStates.value = statesData.count || 0;
     countries.value = countriesData.results || [];
   } catch (error: any) {
     if (error?.status === 403) {
