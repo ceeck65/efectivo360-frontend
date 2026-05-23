@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => {
       port: 3000,
       allowedHosts: ['efectivo360.test'],
       hmr: {
-        clientPort: 80,
+        clientPort: 3000,
       },
       proxy: {
         '/api': {

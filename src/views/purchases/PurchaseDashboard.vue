@@ -17,6 +17,11 @@ const summary = ref({ total_pending_usd: 0, orders_count: 0, pending_count: 0, b
 const orders = ref<any[]>([]);
 const vendors = ref<any[]>([]);
 
+// Quick vendor modal
+const showQuickVendor = ref(false);
+const savingVendor = ref(false);
+const quickVendor = ref({ name: '', rif: '', rifType: 'J', phone: '' });
+
 // Create form
 const createForm = ref({
   vendor_id: null as number | null,
@@ -24,8 +29,7 @@ const createForm = ref({
   control_number: '',
   payment_condition: 'CREDITO' as 'CONTADO' | 'CREDITO' | 'CONSIGNACION',
   total_amount_usd: 0,
-  vault_id: null as number | null,
-  payment_method: 'EFECTIVO_VES',
+  payment_instance_id: null as number | null,
   reference_number: '',
   payment_data: {} as any,
 });
@@ -34,9 +38,8 @@ const createForm = ref({
 const showPayModal = ref(false);
 const payingOrder = ref<any>(null);
 const payForm = ref({
-  vault_id: null as number | null,
+  payment_instance_id: null as number | null,
   amount_usd: 0,
-  payment_method: 'EFECTIVO_VES' as string,
   reference_number: '',
   rate_applied: 0,
   official_rate: 0,
@@ -58,24 +61,34 @@ const filteredOrders = computed(() => {
 
 const canAbonar = (o: any) => o.status === 'POR_PAGAR' || o.status === 'CONSIGNACION_ABIERTA';
 
-const needReference = computed(() =>
-  !['EFECTIVO_USD', 'EFECTIVO_VES'].includes(payForm.value.payment_method)
-);
-
 const validPayAmount = computed(() => {
   if (!payingOrder.value) return true;
   if (payingOrder.value.payment_condition === 'CONSIGNACION') return payForm.value.amount_usd > 0;
   return payForm.value.amount_usd > 0 && payForm.value.amount_usd <= payingOrder.value.remaining_amount_usd;
 });
 
-const vaultOpts = [
-  { id: 1, label: 'Caja Principal Bs (VES)' },
-  { id: 2, label: 'Caja Principal USD' },
-  { id: 3, label: 'Banco Provincial (VES)' },
-  { id: 4, label: 'Cuenta Zelle (USD)' },
-];
+const paymentInstances = ref<any[]>([]);
 
-const paymentMethods = ['EFECTIVO_USD', 'EFECTIVO_VES', 'PAGO_MOVIL', 'TRANSFERENCIA', 'ZELLE'];
+// ---- Quick Vendor ----
+async function saveQuickVendor() {
+  if (!quickVendor.value.name.trim() || !quickVendor.value.rif.trim()) {
+    errorMsg.value = 'Nombre y RIF/Cédula son obligatorios.'; return;
+  }
+  savingVendor.value = true; errorMsg.value = '';
+  try {
+    const fullRif = quickVendor.value.rifType + quickVendor.value.rif;
+    const resp: any = await fetchApi('/api/v1/purchases/vendors/', {
+      method: 'POST', data: { name: quickVendor.value.name, rif: fullRif },
+    });
+    const newVendor = resp?.id ? resp : { id: Date.now(), name: quickVendor.value.name, rif: fullRif };
+    vendors.value.unshift(newVendor);
+    createForm.value.vendor_id = newVendor.id;
+    showQuickVendor.value = false;
+    quickVendor.value = { name: '', rif: '', rifType: 'J', phone: '' };
+    toast.success('Proveedor creado');
+  } catch (e: any) { errorMsg.value = e?.data?.error || 'Error al crear proveedor'; }
+  finally { savingVendor.value = false; }
+}
 
 // ---- API ----
 async function loadAll() {
@@ -89,6 +102,10 @@ async function loadAll() {
     summary.value = s || summary.value;
     orders.value = o?.results || o || [];
     vendors.value = v?.results || v || [];
+    try {
+      const pi: any = await fetchApi('/api/v1/treasury/payment-instances/?active=true');
+      paymentInstances.value = pi?.instances || [];
+    } catch (_) {}
   } catch (e) { errorMsg.value = 'Error al cargar datos'; }
   finally { loading.value = false; }
 }
@@ -112,9 +129,9 @@ async function submitCreate() {
     if (orderId && createForm.value.payment_condition === 'CONTADO') {
       await fetchApi(`/api/v1/purchases/orders/${orderId}/process/`, {
         method: 'POST', data: {
-          vault_id: createForm.value.vault_id,
+          vault_id: createForm.value.payment_instance_id,
           payment_data: {
-            payment_method: createForm.value.payment_method,
+            payment_method: 'EFECTIVO_VES',
             reference_number: createForm.value.reference_number,
           },
         },
@@ -132,18 +149,18 @@ async function submitCreate() {
 }
 
 async function submitPayment() {
-  if (!payForm.value.vault_id || !payForm.value.amount_usd) {
-    errorMsg.value = 'Gavetero y monto requeridos.'; return;
+  if (!payForm.value.payment_instance_id || !payForm.value.amount_usd) {
+    errorMsg.value = 'Método de pago y monto requeridos.'; return;
   }
   if (!validPayAmount.value) { errorMsg.value = 'Monto supera el saldo pendiente.'; return; }
   submitting.value = true;
   try {
     await fetchApi(`/api/v1/purchases/orders/${payingOrder.value.id}/pay/`, {
       method: 'POST', data: {
-        vault_id: payForm.value.vault_id,
+        vault_id: payForm.value.payment_instance_id,
         amount_usd: payForm.value.amount_usd,
         payment_data: {
-          payment_method: payForm.value.payment_method,
+          payment_method: 'EFECTIVO_VES',
           reference_number: payForm.value.reference_number,
           rate_applied: payForm.value.rate_applied || undefined,
           official_rate: payForm.value.official_rate || undefined,
@@ -160,9 +177,8 @@ async function submitPayment() {
 function openPay(order: any) {
   payingOrder.value = order;
   payForm.value = {
-    vault_id: null, amount_usd: order.remaining_amount_usd || 0,
-    payment_method: 'EFECTIVO_VES', reference_number: '',
-    rate_applied: 0, official_rate: 0,
+    payment_instance_id: null, amount_usd: order.remaining_amount_usd || 0,
+    reference_number: '', rate_applied: 0, official_rate: 0,
   };
   showPayModal.value = true;
 }
@@ -171,7 +187,7 @@ function resetCreateForm() {
   createForm.value = {
     vendor_id: null, invoice_number: '', control_number: '',
     payment_condition: 'CREDITO', total_amount_usd: 0,
-    vault_id: null, payment_method: 'EFECTIVO_VES', reference_number: '', payment_data: {},
+    payment_instance_id: null, reference_number: '', payment_data: {},
   };
 }
 
@@ -251,10 +267,13 @@ onMounted(loadAll);
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block text-xs font-medium text-slate-600 mb-1">Proveedor *</label>
-          <select v-model="createForm.vendor_id" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white">
-            <option :value="null">Seleccionar...</option>
-            <option v-for="v in vendors" :key="v.id" :value="v.id">{{ v.name }} ({{ v.rif }})</option>
-          </select>
+          <div class="flex gap-2">
+            <select v-model="createForm.vendor_id" class="flex-1 h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white">
+              <option :value="null">Seleccionar...</option>
+              <option v-for="v in vendors" :key="v.id" :value="v.id">{{ v.name }} ({{ v.rif }})</option>
+            </select>
+            <button @click="showQuickVendor = true" class="shrink-0 h-9 w-9 flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-lg font-medium dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-slate-400 dark:hover:bg-white/[0.06]">+</button>
+          </div>
         </div>
         <div>
           <label class="block text-xs font-medium text-slate-600 mb-1">Condición</label>
@@ -280,19 +299,13 @@ onMounted(loadAll);
 
       <!-- Treasury fields (only for CONTADO) -->
       <div v-if="createForm.payment_condition === 'CONTADO'" class="border-t border-slate-100 pt-4 space-y-3 dark:border-white/[0.04]">
-        <p class="text-xs text-amber-600 font-medium">Pago inmediato requerido — seleccioná gavetero y método.</p>
-        <div class="grid grid-cols-3 gap-3">
+        <p class="text-xs text-amber-600 font-medium">Pago inmediato requerido — seleccioná el método de pago.</p>
+        <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">Gavetero *</label>
-            <select v-model="createForm.vault_id" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white">
+            <label class="block text-xs font-medium text-slate-600 mb-1">Método de Pago *</label>
+            <select v-model="createForm.payment_instance_id" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white">
               <option :value="null">Seleccionar...</option>
-              <option v-for="v in vaultOpts" :key="v.id" :value="v.id">{{ v.label }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">Método</label>
-            <select v-model="createForm.payment_method" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white">
-              <option v-for="m in paymentMethods" :key="m" :value="m">{{ m }}</option>
+              <option v-for="pi in paymentInstances" :key="pi.id" :value="pi.id">{{ pi.label || pi.blueprint_name || pi.name }} ({{ pi.vault_label || '' }})</option>
             </select>
           </div>
           <div>
@@ -367,22 +380,14 @@ onMounted(loadAll);
               <input v-model.number="payForm.amount_usd" type="number" step="0.01" min="0" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white" />
               <p v-if="!validPayAmount && payForm.amount_usd > 0" class="text-[10px] text-red-500 mt-1">Supera el saldo pendiente</p>
             </div>
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-xs font-medium text-slate-600 mb-1">Gavetero *</label>
-                <select v-model="payForm.vault_id" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white">
-                  <option :value="null">Seleccionar...</option>
-                  <option v-for="v in vaultOpts" :key="v.id" :value="v.id">{{ v.label }}</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-xs font-medium text-slate-600 mb-1">Método</label>
-                <select v-model="payForm.payment_method" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white">
-                  <option v-for="m in paymentMethods" :key="m" :value="m">{{ m }}</option>
-                </select>
-              </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Método de Pago / Gavetero *</label>
+              <select v-model="payForm.payment_instance_id" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white">
+                <option :value="null">Seleccionar...</option>
+                <option v-for="pi in paymentInstances" :key="pi.id" :value="pi.id">{{ pi.label || pi.blueprint_name || pi.name }} ({{ pi.vault_label || '' }})</option>
+              </select>
             </div>
-            <div v-if="needReference">
+            <div>
               <label class="block text-xs font-medium text-slate-600 mb-1">N° Referencia</label>
               <input v-model="payForm.reference_number" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white" />
             </div>
@@ -404,5 +409,67 @@ onMounted(loadAll);
         </div>
       </div>
     </Teleport>
+
+    <!-- Quick Vendor Modal (Bottom Sheet on mobile) -->
+    <Teleport to="body">
+      <div v-if="showQuickVendor" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" @click.self="showQuickVendor = false">
+        <div class="bg-white w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl border border-slate-200 shadow-xl p-5 space-y-4 sm:mb-0 dark:border-white/[0.06] dark:bg-[#141824] animate-slide-up">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Nuevo Proveedor</h3>
+            <button @click="showQuickVendor = false" class="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
+          </div>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">RIF / Cédula <span class="text-red-500">*</span></label>
+              <div class="flex gap-2">
+                <select v-model="quickVendor.rifType" class="w-16 shrink-0 h-9 px-2 rounded-lg border border-slate-200 bg-white text-xs font-mono dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white">
+                  <option value="J">J</option>
+                  <option value="V">V</option>
+                  <option value="E">E</option>
+                  <option value="G">G</option>
+                </select>
+                <input
+                  v-model="quickVendor.rif"
+                  class="flex-1 h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs font-mono dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white"
+                  :placeholder="quickVendor.rifType === 'V' ? '12345678-0' : quickVendor.rifType === 'E' ? '12345678-0' : quickVendor.rifType === 'G' ? '12345678-0' : '12345678-9'"
+                  @input="(e: Event) => { const t = e.target as HTMLInputElement; if (t.value.length <= 10) quickVendor.rif = t.value.replace(/[^0-9-]/g,''); }"
+                />
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Razón Social <span class="text-red-500">*</span></label>
+              <input v-model="quickVendor.name" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white" placeholder="Nombre del proveedor" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Teléfono</label>
+              <input v-model="quickVendor.phone" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white" placeholder="Opcional" />
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button @click="showQuickVendor = false" class="h-8 px-3 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 dark:text-slate-400 dark:border-white/[0.08]">Cancelar</button>
+            <button @click="saveQuickVendor" :disabled="savingVendor" class="h-8 px-3 text-xs font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 disabled:opacity-60">{{ savingVendor ? '...' : 'Guardar' }}</button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
+
+<style scoped>
+.animate-slide-up {
+  animation: slideUp 0.25s ease-out;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@media (min-width: 640px) {
+  .animate-slide-up {
+    animation: fadeIn 0.2s ease-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+}
+</style>

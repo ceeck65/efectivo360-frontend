@@ -3,20 +3,18 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGeographyStore } from '@/stores/geography';
 import { useAuthStore } from '@/stores/auth';
-import { useConfigStore } from '@/stores/config';
 import { fetchApi } from '@/composables/useApi';
 import { toast } from 'vue3-toastify';
 import {
-  Store, MapPin, Dna, Wallet, Zap, ArrowRight, ArrowLeft, Check, X, Plus,
-  Camera, Building2, FileBadge, Phone, MapPinned, Globe, Landmark, CreditCard,
-  Sparkles, Banknote, Loader2,
+  Store, MapPin, Dna, Wallet, Zap, ArrowRight, ArrowLeft, Check, Plus, ChevronRight, ChevronLeft, ChevronDown,
+  Camera, Building2, FileBadge, Phone, MapPinned, Globe, Landmark,
+  Sparkles, Banknote, Loader2, CreditCard, Pencil,
 } from 'lucide-vue-next';
 import LucideIcon from '@/components/lucide/LucideIcon.vue';
 
 const router = useRouter();
 const geography = useGeographyStore();
 const authStore = useAuthStore();
-const configStore = useConfigStore();
 const logoInput = ref<HTMLInputElement | null>(null);
 
 const step = ref(1);
@@ -219,97 +217,203 @@ const step3Valid = computed(() => selectedBlueprint.value !== null);
 
 const blueprintFeatures = computed(() => {
   const bp = selectedBlueprint.value;
-  if (!bp) return [];
-  const fs: string[] = [];
-  const c = bp.category_structure;
-  if (c?.manejo_tallas || bp.code === 'calzado' || bp.code === 'ropa') fs.push('Manejo de Tallas y Colores');
-  if (c?.lotes || bp.code === 'farmacia' || bp.code === 'viveres') fs.push('Control de Lotes y Caducidad');
-  if (c?.servicios || bp.code === 'restaurante') fs.push('Gestión de Servicios y Mesas');
-  if (c?.garantias || bp.code === 'tecnologia') fs.push('Control de Garantías');
-  fs.push('Gaveteros financieros automáticos');
-  fs.push('Dashboard de ventas y gastos');
-  return fs;
+  return bp?.features || bp?.description ? [(bp?.description || ''), ...(bp?.features || [])].filter(Boolean).slice(0, 4) : [];
 });
-
-const activeCurrencies = computed(() =>
-  configStore.currencies?.filter((c: any) => c.is_active) || []
-);
-const vaultTemplates = ref<any[]>([]);
-const paymentMethodTemplates = ref<any[]>([]);
 
 const fin = ref({
-  currencyIds: [] as string[],
-  vaults: [] as { code: string, name: string, vault_type: string, currency: string, alias: string, initialBalance: number }[],
-  paymentMethods: [] as { slug: string, name: string, alias: string, vaultCode: string, config: Record<string, any> }[],
+  currencyIds: ['USD', 'VES'] as string[],
   initialRate: 0,
 });
-const step4Valid = computed(() => fin.value.currencyIds.length > 0 && fin.value.vaults.length > 0);
-function addPaymentMethod(tpl: any) {
-  if (fin.value.paymentMethods.some(pm => pm.slug === tpl.slug)) return;
-  fin.value.paymentMethods.push({
-    slug: tpl.slug,
-    name: tpl.name,
-    alias: '',
-    vaultCode: '',
-    config: {},
-  });
-}
-function removePaymentMethod(idx: number) { fin.value.paymentMethods.splice(idx, 1); }
 
-const showVaultModal = ref(false);
-const showVaultConfig = ref(false);
-const vaultConfig = ref({ code: '', name: '', currency: '', vault_type: '', alias: '', initialBalance: 0 });
-function openVaultModal() { showVaultModal.value = true; }
-function closeVaultModal() { showVaultModal.value = false; }
-function selectVaultTemplate(tpl: any) {
-  vaultConfig.value = { code: tpl.code, name: tpl.name, currency: tpl.default_currency, vault_type: tpl.vault_type, alias: '', initialBalance: 0 };
-  showVaultModal.value = false;
-  showVaultConfig.value = true;
-}
-function confirmVault() {
-  fin.value.vaults.push({ ...vaultConfig.value });
-  showVaultConfig.value = false;
-}
-function removeVault(idx: number) { fin.value.vaults.splice(idx, 1); }
+// Step 4 — Treasury: Cargar del Blueprint (API) + configurar instancias
+const bpMethods = ref<any[]>([]);
+const bpVaults = ref<any[]>([]);
+const configVaults = ref<{ code: string; name: string; vault_type: string; alias: string; currency: string }[]>([]);
+const enabledMethods = ref<{ code: string; name: string; alias: string; vaultCode: string; configData?: Record<string, any> }[]>([]);
+const loadingStep4 = ref(true);
 
-const templatesForSelectedCurrencies = computed(() => {
-  const codes = new Set<string>();
-  for (const curId of fin.value.currencyIds) {
-    const cur = activeCurrencies.value.find((c: any) => c.code === curId || c.id === curId);
-    if (cur) codes.add(cur.code);
-  }
-  return vaultTemplates.value.filter((v: any) => codes.has(v.default_currency));
-});
-const availableMethods = computed(() => {
-  const codes = new Set<string>();
-  for (const curId of fin.value.currencyIds) {
-    const cur = activeCurrencies.value.find((c: any) => c.code === curId || c.id === curId);
-    if (cur) codes.add(cur.code);
-  }
-  const pmByCurrency: Record<string, any[]> = {};
-  for (const pm of paymentMethodTemplates.value) {
-    if (!pm.is_active) continue;
-    const curCode = pm.currency?.code || pm.currency_code || '__';
-    if (!pmByCurrency[curCode]) pmByCurrency[curCode] = [];
-    pmByCurrency[curCode].push(pm);
-  }
-  const ids = new Set<string>();
-  for (const code of codes) {
-    for (const pm of (pmByCurrency[code] || [])) ids.add(pm.id);
-  }
-  return paymentMethodTemplates.value.filter((pm: any) => ids.has(pm.id));
-});
+// Unified Stepped Modal
+const showSteppedModal = ref(false);
+const modalContext = ref<'vault' | 'payment'>('vault');
+const modalStep = ref(1);  // 1 = Select Blueprint, 2 = Customize Instance
+const selectedTpl = ref<any>(null);
+const customInstance = ref({ alias: '', currency: 'USD', configData: {} as Record<string, any>, bankCode: '' });
+const availableBanks = ref<any[]>([]);
+const modalError = ref('');
+const editingIndex = ref(-1); // -1 = new, >= 0 = editing existing
 
-const addableMethods = computed(() =>
-  availableMethods.value.filter((m: any) => !fin.value.paymentMethods.some((p: any) => p.slug === m.slug))
+async function loadStep4Data() {
+  try {
+    const [vaultsRes, methodsRes] = await Promise.all([
+      fetchApi('/api/v1/treasury/vaults/') as Promise<any>,
+      fetchApi('/api/v1/treasury/payment-methods/') as Promise<any>,
+    ]);
+    bpVaults.value = vaultsRes?.vaults || [];
+    bpMethods.value = methodsRes?.payment_methods || [];
+  } catch {
+    // fallback: leave empty
+  } finally {
+    loadingStep4.value = false;
+  }
+}
+
+function openSteppedModal(context: 'vault' | 'payment', editIdx = -1) {
+  modalContext.value = context;
+  modalStep.value = 1;
+  selectedTpl.value = null;
+  modalError.value = '';
+  editingIndex.value = editIdx;
+
+  // If editing, jump to step 2 with pre-filled data
+  if (editIdx >= 0) {
+    const list = context === 'vault' ? configVaults.value : enabledMethods.value;
+    const item = list[editIdx];
+    if (item) {
+      // Find matching blueprint
+      const bps = context === 'vault' ? bpVaults.value : bpMethods.value;
+      const tpl = bps.find((b: any) => b.code === item.code);
+      if (tpl) selectedTpl.value = tpl;
+      // Restore configData from existing entry, merging with schema defaults
+      const restoredConfig: Record<string, any> = { ...((item as any).configData || {}) };
+      for (const f of (tpl?.config_schema?.fields || [])) {
+        if (!(f.key in restoredConfig) && f.default !== undefined) {
+          restoredConfig[f.key] = f.default;
+        }
+      }
+      customInstance.value = {
+        alias: item.alias || '',
+        currency: (item as any).currency || 'USD',
+        configData: restoredConfig,
+        bankCode: (item as any).vaultCode || '',
+      };
+      // Load banks if the blueprint has bank/bank_code field
+      if (tpl) loadBanksForBlueprint(tpl);
+      modalStep.value = 2;
+    }
+  }
+
+  showSteppedModal.value = true;
+}
+
+function removeEnabledMethod(idx: number) {
+  enabledMethods.value.splice(idx, 1);
+}
+
+function removeConfigVault(idx: number) {
+  configVaults.value.splice(idx, 1);
+}
+
+function goBackToStep1() {
+  modalStep.value = 1;
+  selectedTpl.value = null;
+  modalError.value = '';
+  editingIndex.value = -1;
+}
+
+function confirmAndSave() {
+  modalError.value = '';
+  if (!customInstance.value.alias.trim() && modalContext.value === 'payment') {
+    modalError.value = 'El nombre personalizado es requerido';
+    return;
+  }
+
+  if (modalContext.value === 'vault') {
+    const entry = {
+      code: selectedTpl.value.code,
+      name: selectedTpl.value.name,
+      vault_type: selectedTpl.value.vault_type,
+      alias: customInstance.value.alias || selectedTpl.value.name,
+      currency: customInstance.value.currency,
+    };
+    if (editingIndex.value >= 0) {
+      configVaults.value[editingIndex.value] = entry;
+    } else {
+      configVaults.value.push(entry);
+    }
+  } else {
+    const bankCode = customInstance.value.configData?.bank || customInstance.value.configData?.bank_code || customInstance.value.bankCode;
+    const entry = {
+      code: selectedTpl.value.code,
+      name: selectedTpl.value.name,
+      alias: customInstance.value.alias || selectedTpl.value.name,
+      vaultCode: bankCode || configVaults.value[0]?.code || '',
+      configData: { ...customInstance.value.configData },
+    };
+    if (editingIndex.value >= 0) {
+      enabledMethods.value[editingIndex.value] = entry;
+    } else {
+      enabledMethods.value.push(entry);
+    }
+  }
+
+  showSteppedModal.value = false;
+  selectedTpl.value = null;
+  modalStep.value = 1;
+  editingIndex.value = -1;
+}
+
+// Load banks for a blueprint's country
+async function loadBanksForBlueprint(bp: any) {
+  availableBanks.value = [];
+  const bankField = bp.config_schema?.fields?.find((f: any) => ['bank', 'bank_code'].includes(f.key));
+  if (!bankField) return;
+  const countries = bankField.countries || ['VE'];
+  try {
+    for (const cc of countries.slice(0, 1)) { // Load first country's banks
+      const data = await fetchApi(`/api/v1/public/financial-entities/?country_code=${cc}&is_active=true`) as any;
+      if (Array.isArray(data)) availableBanks.value = [...availableBanks.value, ...data];
+    }
+  } catch (_) { availableBanks.value = []; }
+}
+
+function selectTpl(bp: any) {
+  selectedTpl.value = bp;
+  customInstance.value = {
+    alias: bp.name,
+    currency: (bp.financial_rules?.allowed_currencies || ['USD'])[0],
+    configData: {},
+    bankCode: '',
+  };
+  // Pre-fill config data from schema defaults
+  for (const f of bp.config_schema?.fields || []) {
+    if (f.default !== undefined) customInstance.value.configData[f.key] = f.default;
+  }
+  loadBanksForBlueprint(bp);
+  modalStep.value = 2;
+}
+
+const step4Valid = computed(() =>
+  enabledMethods.value.length > 0 &&
+  configVaults.value.length > 0 &&
+  configVaults.value.every(v => v.alias.trim())
 );
 
-const selectedPlan = ref('pro');
-const plans = [
-  { id: 'basic', name: 'Básico', price: 'Gratis', period: 'Siempre', features: ['1 Gavetero', 'Reportes básicos', '50 ventas/mes', 'Soporte email'], popular: false },
-  { id: 'pro', name: 'Pro', price: '$29', period: '/mes', features: ['5 Gaveteros', 'Reportes avanzados', 'Multimoneda', 'API básica', 'Soporte prioritario'], popular: true },
-  { id: 'enterprise', name: 'Enterprise', price: '$99', period: '/mes', features: ['Ilimitado', 'API personalizada', 'Multi-sucursal', 'Soporte 24/7', 'Onboarding dedicado'], popular: false },
-];
+const selectedPlanId = ref('');
+const planOptions = ref<any[]>([]);
+
+const filteredPlans = computed(() => {
+  const bpCode = selectedBlueprint.value?.code || '';
+  return planOptions.value.filter(p => {
+    const industries: string[] = p.config?.only_for_industries;
+    // Empty or missing → show to everyone
+    if (!industries || !Array.isArray(industries) || industries.length === 0) return true;
+    // Has specific industries → only show if blueprint matches
+    return industries.includes(bpCode);
+  }).filter(p => {
+    // Hide free plans
+    return p.prices?.monthly?.amount !== '0.00';
+  });
+});
+
+const expandedPlans = ref<Set<string>>(new Set());
+
+function togglePlanDetails(planUlid: string, event: Event) {
+  event.stopPropagation(); // don't select the plan
+  const next = new Set(expandedPlans.value);
+  if (next.has(planUlid)) next.delete(planUlid);
+  else next.add(planUlid);
+  expandedPlans.value = next;
+}
 
 function onLogoDrop(e: DragEvent) { e.preventDefault(); const f = e.dataTransfer?.files?.[0]; if (f && f.type.startsWith('image/')) setLogo(f); }
 function onLogoSelected(e: Event) { const f = (e.target as HTMLInputElement).files?.[0]; if (f) setLogo(f); }
@@ -317,18 +421,13 @@ function setLogo(file: File) { biz.value.logo = file; biz.value.logoPreview = UR
 
 onMounted(async () => {
   restoreForm();
+  if (step.value >= 4) loadStep4Data();
   try {
     const [bps, _countries] = await Promise.all([
       fetchApi('/api/v1/industry-blueprints/') as Promise<any>,
       geography.fetchCountries(),
     ]);
     blueprints.value = bps?.results || bps || [];
-    const [vaultsRes, paymentsRes] = await Promise.all([
-      fetchApi('/api/v1/treasury/vaults/') as Promise<any>,
-      fetchApi('/api/staff/payment-templates/') as Promise<any>,
-    ]);
-    vaultTemplates.value = vaultsRes?.vaults || vaultsRes?.results || [];
-    paymentMethodTemplates.value = paymentsRes?.results || paymentsRes || [];
     if (blueprintRestoreId.value && blueprints.value.length) {
       const bp = blueprints.value.find((b: any) => b.id === blueprintRestoreId.value);
       if (bp) selectedBlueprint.value = bp;
@@ -340,6 +439,12 @@ onMounted(async () => {
         loc.value.country = ve.name;
       }
     }
+    // Fetch subscription plans
+    const plansRes = await fetchApi('/api/v1/subscription-plans/?is_active=true') as any;
+    planOptions.value = plansRes?.results || plansRes || [];
+    if (!selectedPlanId.value && planOptions.value.length) {
+      selectedPlanId.value = planOptions.value[0].ulid || '';
+    }
   } catch { /* silent */ }
 });
 
@@ -350,8 +455,8 @@ function saveForm() {
     biz: { legalName: biz.value.legalName, rifType: biz.value.rifType, rifNumber: biz.value.rifNumber, phoneCountry: biz.value.phoneCountry, phoneNumber: biz.value.phoneNumber, address: biz.value.address, logoPreview: biz.value.logoPreview },
     loc: { countryId: loc.value.countryId, stateId: loc.value.stateId, cityId: loc.value.cityId, country: loc.value.country, state: loc.value.state, city: loc.value.city },
     blueprintId: selectedBlueprint.value?.id || null,
-    fin: { currencyIds: fin.value.currencyIds, vaults: fin.value.vaults, paymentMethods: fin.value.paymentMethods, initialRate: fin.value.initialRate },
-    selectedPlan: selectedPlan.value,
+    fin: { currencyIds: fin.value.currencyIds, enabledMethods: enabledMethods.value, configVaults: configVaults.value, initialRate: fin.value.initialRate },
+    selectedPlanId: selectedPlanId.value,
     localStates: localStates.value,
     localCities: localCities.value,
   });
@@ -365,8 +470,8 @@ function restoreForm() {
     if (data.step) step.value = data.step;
     if (data.biz) { biz.value.legalName = data.biz.legalName || ''; biz.value.rifType = data.biz.rifType || 'J'; biz.value.rifNumber = data.biz.rifNumber || ''; biz.value.phoneCountry = data.biz.phoneCountry || 'VE'; biz.value.phoneNumber = data.biz.phoneNumber || ''; biz.value.address = data.biz.address || ''; biz.value.logoPreview = data.biz.logoPreview || ''; }
     if (data.loc) { loc.value.countryId = data.loc.countryId || ''; loc.value.stateId = data.loc.stateId || ''; loc.value.cityId = data.loc.cityId || ''; loc.value.country = data.loc.country || ''; loc.value.state = data.loc.state || ''; loc.value.city = data.loc.city || ''; }
-    if (data.fin) { fin.value.currencyIds = data.fin.currencyIds || []; fin.value.vaults = data.fin.vaults || []; fin.value.paymentMethods = data.fin.paymentMethods || []; fin.value.initialRate = data.fin.initialRate || 0; }
-    if (data.selectedPlan) selectedPlan.value = data.selectedPlan;
+    if (data.fin) { fin.value.currencyIds = data.fin.currencyIds || []; enabledMethods.value = data.fin.enabledMethods || []; configVaults.value = data.fin.configVaults || []; fin.value.initialRate = data.fin.initialRate || 0; }
+    if (data.selectedPlanId) selectedPlanId.value = data.selectedPlanId;
     if (data.localStates) localStates.value = data.localStates;
     if (data.localCities) localCities.value = data.localCities;
     if (data.blueprintId) blueprintRestoreId.value = data.blueprintId;
@@ -376,7 +481,12 @@ function clearForm() { try { localStorage.removeItem(STORAGE_KEY); } catch { /* 
 
 const blueprintRestoreId = ref<number | null>(null);
 
-watch(() => step.value, () => { setTimeout(saveForm, 0); });
+watch(() => step.value, (newStep) => {
+  setTimeout(saveForm, 0);
+  if (newStep === 4 && loadingStep4.value) {
+    loadStep4Data();
+  }
+});
 watch(() => biz.value.legalName, () => { setTimeout(saveForm, 0); });
 watch(() => biz.value.rifType, () => { setTimeout(saveForm, 0); });
 watch(() => biz.value.rifNumber, () => { setTimeout(saveForm, 0); });
@@ -388,10 +498,9 @@ watch(() => loc.value.countryId, () => { setTimeout(saveForm, 0); });
 watch(() => loc.value.stateId, () => { setTimeout(saveForm, 0); });
 watch(() => loc.value.cityId, () => { setTimeout(saveForm, 0); });
 watch(() => fin.value.currencyIds?.length, () => { setTimeout(saveForm, 0); });
-watch(() => fin.value.vaults?.length, () => { setTimeout(saveForm, 0); });
-watch(() => fin.value.paymentMethods?.length, () => { setTimeout(saveForm, 0); });
-watch(() => fin.value.initialRate, () => { setTimeout(saveForm, 0); });
-watch(selectedPlan, () => { setTimeout(saveForm, 0); });
+watch(() => configVaults.value?.length, () => { setTimeout(saveForm, 0); });
+watch(() => enabledMethods.value?.length, () => { setTimeout(saveForm, 0); });
+watch(selectedPlanId, () => { setTimeout(saveForm, 0); });
 watch(selectedBlueprint, () => { setTimeout(saveForm, 0); });
 window.addEventListener('beforeunload', saveForm);
 
@@ -407,6 +516,7 @@ async function handleNext() {
   if (!canGoNext()) return;
   loadingNext.value = true;
   saveForm();
+
   setTimeout(() => {
     loadingNext.value = false;
     step.value++;
@@ -427,10 +537,10 @@ async function finishSetup() {
       city: loc.value.city,
       blueprintCode: selectedBlueprint.value?.code || '',
       currencyIds: fin.value.currencyIds,
-      vaults: fin.value.vaults,
-      paymentMethods: fin.value.paymentMethods,
+      selectedMethods: enabledMethods.value.map(m => ({ code: m.code, alias: m.alias, vaultCode: m.vaultCode, configData: m.configData || {} })),
+      vaults: configVaults.value.map(v => ({ name: v.alias.trim(), currency: v.currency, blueprint_code: v.code })),
       mainCurrency: fin.value.currencyIds[0] || 'VES',
-      plan: selectedPlan.value,
+      plan: selectedPlanId.value,
       initialRate: fin.value.initialRate || null,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     };
@@ -687,94 +797,205 @@ const progressPct = computed(() => Math.round((step.value / totalSteps) * 100));
               <Wallet class="w-7 h-7 text-cyan-600" />
               <h1 class="text-lg font-semibold text-slate-900">Tesorería</h1>
             </div>
-            <p class="text-sm mt-1 text-slate-500">Monedas, gaveteros y métodos de pago</p>
+            <p class="text-sm mt-1 text-slate-500">Configura tus métodos de pago y gaveteros desde el Blueprint Global</p>
           </div>
 
-          <!-- Monedas -->
-          <div>
-            <p class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">Monedas Activas</p>
-            <div class="flex flex-wrap gap-2">
-              <button v-for="c in activeCurrencies" :key="c.id"
-                @click="fin.currencyIds.includes(String(c.id)) ? fin.currencyIds = fin.currencyIds.filter(x => x !== String(c.id)) : fin.currencyIds.push(String(c.id))"
-                class="px-3 py-2 rounded-lg border text-xs font-semibold transition-all"
-                :class="fin.currencyIds.includes(String(c.id)) ? 'border-cyan-500 bg-cyan-50 text-cyan-700' : 'border-slate-200 bg-white text-slate-500'">
-                {{ c.symbol }} {{ c.code }}
-              </button>
-            </div>
-          </div>
+          <div v-if="loadingStep4" class="text-center py-6 text-sm text-slate-400">Cargando blueprint...</div>
 
-          <!-- Gaveteros -->
-          <div v-if="templatesForSelectedCurrencies.length && fin.currencyIds.length">
-            <div class="flex items-center justify-between mb-2">
-              <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Gaveteros</p>
-              <span class="text-xs text-slate-400">{{ fin.vaults.length }} configurado(s)</span>
-            </div>
-
-            <div v-if="fin.vaults.length" class="space-y-2 mb-3">
-              <div v-for="(v, i) in fin.vaults" :key="i"
-                class="p-3 rounded-xl border border-slate-200 bg-slate-50">
-                <div class="flex items-center gap-3">
-                  <Banknote class="w-5 h-5 text-cyan-600 shrink-0" />
-                  <div class="flex-1 min-w-0">
-                    <input v-model="v.alias" :placeholder="'Alias: ' + v.name"
-                      class="w-full text-xs font-medium text-slate-900 outline-none bg-transparent" />
-                    <p class="text-[10px] text-slate-400 mt-0.5">{{ v.name }} · {{ v.currency }}</p>
-                  </div>
-                  <button @click="removeVault(i)" class="shrink-0 text-slate-400 hover:text-red-500 transition-colors">
-                    <X class="w-4 h-4" />
-                  </button>
-                </div>
+          <template v-else>
+            <!-- Monedas (fixed for VE) -->
+            <div>
+              <p class="text-xs font-semibold uppercase tracking-widest text-slate-400 mb-2">Monedas</p>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="p-3 rounded-xl border-2 border-cyan-500 bg-cyan-50 text-center"><p class="text-sm font-bold text-cyan-700">$ USD</p><p class="text-[10px] text-cyan-600 mt-0.5">Dólares</p></div>
+                <div class="p-3 rounded-xl border-2 border-cyan-500 bg-cyan-50 text-center"><p class="text-sm font-bold text-cyan-700">Bs VES</p><p class="text-[10px] text-cyan-600 mt-0.5">Bolívares</p></div>
               </div>
             </div>
 
-            <button @click="openVaultModal"
-              class="w-full inline-flex items-center justify-center gap-2 h-10 px-4 rounded-xl text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 transition-colors">
-              <Plus class="w-4 h-4" /> Agregar Gavetero
-            </button>
-          </div>
-
-          <!-- Métodos de Pago (solo si hay gaveteros) -->
-          <div v-if="fin.vaults.length && availableMethods.length">
-            <div class="flex items-center justify-between mb-2">
-              <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Métodos de Pago</p>
-              <span class="text-xs text-slate-400">{{ fin.paymentMethods.length }} configurado(s)</span>
-            </div>
-
-            <div v-if="fin.paymentMethods.length" class="space-y-2 mb-3">
-              <div v-for="(pm, i) in fin.paymentMethods" :key="i"
-                class="p-3 rounded-xl border border-slate-200 bg-slate-50">
-                <div class="flex items-center gap-3">
+            <!-- Métodos de Pago -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Métodos de Pago</p>
+                <span class="text-[10px] text-slate-400">{{ enabledMethods.length }}</span>
+              </div>
+              <div v-if="enabledMethods.length" class="space-y-2 mb-3">
+                <div v-for="(m, i) in enabledMethods" :key="i"
+                  class="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white">
                   <CreditCard class="w-5 h-5 text-cyan-600 shrink-0" />
                   <div class="flex-1 min-w-0">
-                    <input v-model="pm.alias" :placeholder="'Alias: ' + pm.name"
-                      class="w-full text-xs font-medium text-slate-900 outline-none bg-transparent" />
+                    <p class="text-xs font-semibold text-slate-800">{{ m.alias }}</p>
+                    <p class="text-[10px] text-slate-400">{{ m.name }}</p>
+                  </div>
+                  <button @click="openSteppedModal('payment', i)" class="shrink-0 text-slate-400 hover:text-cyan-600" title="Editar">
+                    <Pencil class="w-4 h-4" />
+                  </button>
+                  <button @click="removeEnabledMethod(i)" class="shrink-0 text-slate-400 hover:text-red-500" title="Eliminar">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                  </button>
+                </div>
+              </div>
+              <button @click="openSteppedModal('payment')"
+                class="w-full inline-flex items-center justify-center gap-2 h-9 px-4 rounded-xl text-xs font-medium text-slate-600 border border-dashed border-slate-300 hover:border-slate-400 hover:bg-slate-50 transition-colors">
+                <Plus class="w-4 h-4" /> Agregar Método de Pago
+              </button>
+              <div v-if="modalError" class="text-xs text-red-500 mt-1.5">{{ modalError }}</div>
+            </div>
+
+            <!-- Gaveteros -->
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <p class="text-xs font-semibold uppercase tracking-widest text-slate-400">Gaveteros</p>
+                <span class="text-[10px] text-slate-400">{{ configVaults.length }}</span>
+              </div>
+              <div v-if="configVaults.length" class="space-y-2 mb-3">
+                <div v-for="(v, i) in configVaults" :key="i"
+                  class="flex items-center gap-2 p-3 rounded-xl border border-slate-200 bg-white">
+                  <Banknote class="w-5 h-5 text-cyan-600 shrink-0" />
+                  <div class="flex-1 min-w-0">
+                    <input v-model="v.alias" :placeholder="v.name || 'Alias del gavetero'"
+                      class="w-full text-xs font-medium text-slate-900 outline-none bg-transparent border-b border-transparent focus:border-cyan-300 transition-colors" />
                     <div class="flex gap-2 mt-1">
-                      <select v-model="pm.vaultCode"
-                        class="text-[10px] rounded border border-slate-200 bg-white text-slate-600">
-                        <option value="">Sin gavetero</option>
-                        <option v-for="v in fin.vaults" :key="v.code" :value="v.code">{{ v.alias || v.name }} ({{ v.currency }})</option>
+                      <span class="text-[10px] text-slate-400 px-2 py-0.5 rounded bg-slate-100">{{ v.vault_type }}</span>
+                      <select v-model="v.currency" class="text-[10px] rounded border border-slate-200 px-1 text-slate-600">
+                        <option value="USD">USD</option><option value="VES">VES</option>
                       </select>
                     </div>
                   </div>
-                  <button @click="removePaymentMethod(i)" class="shrink-0 text-slate-400 hover:text-red-500 transition-colors">
-                    <X class="w-4 h-4" />
+                  <button @click="openSteppedModal('vault', i)" class="shrink-0 text-slate-400 hover:text-cyan-600" title="Editar">
+                    <Pencil class="w-4 h-4" />
+                  </button>
+                  <button @click="removeConfigVault(i)" class="shrink-0 text-slate-400 hover:text-red-500" title="Eliminar">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                   </button>
                 </div>
               </div>
-            </div>
-
-            <div class="space-y-1">
-              <p class="text-[10px] text-slate-400 mb-1">Agregar plantilla:</p>
-              <button v-for="method of addableMethods" :key="(method as any).id"
-                @click="addPaymentMethod(method)"
-                class="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all text-left">
-                <CreditCard class="w-4 h-4 text-slate-400" />
-                <span class="text-xs font-semibold text-slate-700">{{ (method as any).name }}</span>
-                <span class="text-xs text-slate-400">({{ (method as any).currency?.code || '' }})</span>
+              <button @click="openSteppedModal('vault')"
+                class="w-full inline-flex items-center justify-center gap-2 h-9 px-4 rounded-xl text-xs font-medium text-slate-600 border border-dashed border-slate-300 hover:border-slate-400 hover:bg-slate-50 transition-colors">
+                <Plus class="w-4 h-4" /> Agregar Gavetero
               </button>
             </div>
-          </div>
+          </template>
         </div>
+
+        <!-- UNIFIED Stepped Modal: Payment Methods + Vault Templates -->
+        <Teleport to="body">
+          <div v-if="showSteppedModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showSteppedModal = false; editingIndex = -1">
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-sm">
+              <!-- Step 1: Select Blueprint -->
+              <template v-if="modalStep === 1">
+                <div class="flex items-center justify-between border-b px-5 py-3">
+                  <h3 class="text-sm font-semibold text-slate-900">{{ modalContext === 'vault' ? 'Agregar Gavetero' : 'Agregar Método de Pago' }}</h3>
+                  <button @click="showSteppedModal = false; editingIndex = -1" class="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
+                </div>
+                <div class="p-5 space-y-2 max-h-80 overflow-y-auto">
+                  <p class="text-xs text-slate-500 mb-2">Paso 1/2 — Selecciona una plantilla del Blueprint:</p>
+                  <button v-for="bp in (modalContext === 'vault' ? bpVaults : bpMethods)" :key="bp.code"
+                    @click="selectTpl(bp)"
+                    class="w-full text-left flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-white hover:border-cyan-300 transition-all">
+                    <component :is="modalContext === 'vault' ? Banknote : CreditCard" class="w-5 h-5 text-slate-500 shrink-0" />
+                    <div>
+                      <p class="text-xs font-semibold text-slate-800">{{ bp.name }}</p>
+                      <p class="text-[10px] text-slate-400">
+                        <template v-if="modalContext === 'vault'">{{ bp.vault_type }} · {{ (bp.financial_rules?.allowed_currencies || ['USD'])[0] }}</template>
+                        <template v-else>{{ bp.config_schema?.fields?.map((f: any) => f.key).join(', ') || 'Sin campos' }}</template>
+                      </p>
+                    </div>
+                    <ChevronRight class="w-4 h-4 text-slate-300 ml-auto shrink-0" />
+                  </button>
+                </div>
+                <div class="border-t px-5 py-3 flex justify-end">
+                  <button @click="showSteppedModal = false; editingIndex = -1" class="h-8 px-3 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
+                </div>
+              </template>
+
+              <!-- Step 2: Customize Instance -->
+              <template v-if="modalStep === 2 && selectedTpl">
+                <div class="flex items-center justify-between border-b px-5 py-3">
+                  <h3 class="text-sm font-semibold text-slate-900">{{ editingIndex >= 0 ? 'Editar' : 'Personalizar' }} {{ selectedTpl.name }}</h3>
+                  <button @click="showSteppedModal = false; editingIndex = -1" class="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
+                </div>
+                <div class="p-5 space-y-4">
+                  <p class="text-xs text-slate-500">Paso 2/2 — Personaliza la instancia:</p>
+
+                  <!-- Alias -->
+                  <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Nombre Personalizado <span class="text-red-500">*</span></label>
+                    <input v-model="customInstance.alias" :placeholder="selectedTpl.name"
+                      class="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs" />
+                  </div>
+
+                  <!-- Vault context: simple type + currency -->
+                  <template v-if="modalContext === 'vault'">
+                    <div class="grid grid-cols-2 gap-3">
+                      <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Tipo</label>
+                        <span class="inline-flex items-center px-2.5 py-1.5 rounded text-xs font-medium bg-slate-100 text-slate-600">{{ selectedTpl.vault_type }}</span>
+                      </div>
+                      <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Moneda</label>
+                        <select v-model="customInstance.currency" class="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs">
+                          <option v-for="c in (selectedTpl.financial_rules?.allowed_currencies || ['USD','VES'])" :key="c" :value="c">{{ c }}</option>
+                        </select>
+                      </div>
+                    </div>
+                  </template>
+
+                  <!-- Payment context: credential fields + bank + vault -->
+                  <template v-if="modalContext === 'payment'">
+                    <!-- Credential fields from config_schema -->
+                    <div v-for="f in (selectedTpl.config_schema?.fields || [])" :key="f.key" class="space-y-1">
+                      <template v-if="['bank', 'bank_code'].includes(f.key) && availableBanks.length > 0">
+                        <label class="block text-xs font-medium text-slate-600 mb-1">{{ f.label || 'Banco' }} <span v-if="f.required" class="text-red-500">*</span></label>
+                        <select v-model="customInstance.configData[f.key]" class="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs">
+                          <option value="">Seleccionar banco...</option>
+                          <option v-for="b in availableBanks" :key="b.id" :value="b.name">{{ b.name }}</option>
+                        </select>
+                      </template>
+                      <template v-else-if="f.type === 'boolean'">
+                        <label class="block text-xs font-medium text-slate-600 mb-1.5">{{ f.label || f.key }}</label>
+                        <div class="flex gap-4">
+                          <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="radio" :value="true" v-model="customInstance.configData[f.key]" class="w-3.5 h-3.5 text-cyan-600 focus:ring-cyan-500" />
+                            <span class="text-xs text-slate-700">SI</span>
+                          </label>
+                          <label class="flex items-center gap-1.5 cursor-pointer">
+                            <input type="radio" :value="false" v-model="customInstance.configData[f.key]" class="w-3.5 h-3.5 text-cyan-600 focus:ring-cyan-500" />
+                            <span class="text-xs text-slate-700">NO</span>
+                          </label>
+                        </div>
+                      </template>
+                      <template v-else-if="f.type === 'select' && f.options">
+                        <label class="block text-xs font-medium text-slate-600 mb-1">{{ f.label || f.key }} <span v-if="f.required" class="text-red-500">*</span></label>
+                        <select v-model="customInstance.configData[f.key]" class="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs">
+                          <option v-for="o in f.options" :key="o.value" :value="o.value">{{ o.label }}</option>
+                        </select>
+                      </template>
+                      <template v-else>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">{{ f.label || f.key }} <span v-if="f.required" class="text-red-500">*</span></label>
+                        <input v-model="customInstance.configData[f.key]" :type="f.type === 'number' ? 'number' : 'text'"
+                          :placeholder="f.placeholder || f.label || ''"
+                          class="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs" />
+                      </template>
+                    </div>
+                    <!-- Vault selector -->
+                    <div v-if="configVaults.length > 0">
+                      <label class="block text-xs font-medium text-slate-600 mb-1">Gavetero asociado</label>
+                      <select v-model="customInstance.bankCode" class="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs">
+                        <option v-for="v in configVaults" :key="v.code" :value="v.code">{{ v.alias || v.name }}</option>
+                      </select>
+                    </div>
+                  </template>
+                </div>
+                <div class="border-t px-5 py-3 flex items-center justify-between">
+                  <button @click="goBackToStep1" class="h-8 px-3 text-xs font-medium text-slate-500 hover:text-slate-700 flex items-center gap-1">
+                    <ChevronLeft class="w-3.5 h-3.5" /> Regresar a Plantillas
+                  </button>
+                  <button @click="confirmAndSave" class="h-8 px-4 text-xs font-medium text-white bg-cyan-600 rounded-lg hover:bg-cyan-700">{{ editingIndex >= 0 ? 'Guardar Cambios' : 'Confirmar y Guardar' }}</button>
+                </div>
+              </template>
+            </div>
+          </div>
+        </Teleport>
 
         <!-- Step 5 -->
         <div v-if="step === 5" class="space-y-4">
@@ -785,28 +1006,48 @@ const progressPct = computed(() => Math.round((step.value / totalSteps) * 100));
             </div>
             <p class="text-sm mt-1 text-slate-500">Selecciona el plan ideal</p>
           </div>
+          <div v-if="!filteredPlans.length && planOptions.length" class="text-center py-6 text-sm text-slate-400">
+            No hay planes para el rubro seleccionado. Regresa y selecciona otro tipo de negocio.
+          </div>
           <div class="space-y-2.5">
-            <button v-for="plan in plans" :key="plan.id" @click="selectedPlan = plan.id"
+            <button v-for="plan in filteredPlans" :key="plan.ulid" @click="selectedPlanId = plan.ulid"
               class="w-full p-4 rounded-lg border text-left transition-all relative"
-              :class="selectedPlan === plan.id ? 'border-cyan-500 bg-cyan-50' : 'border-slate-200 bg-white'">
-              <div v-if="plan.popular"
-                class="absolute -top-2 right-4 px-2 py-0.5 rounded-full text-[9px] font-bold text-white bg-cyan-600">
-                Popular
+              :class="selectedPlanId === plan.ulid ? 'border-cyan-500 bg-cyan-50' : 'border-slate-200 bg-white'">
+              <!-- Trial badge -->
+              <div v-if="plan.config?.limits?.has_trial && plan.config?.limits?.trial_days"
+                class="absolute -top-2 right-4 px-2 py-0.5 rounded-full text-[9px] font-bold text-white bg-amber-500">
+                {{ plan.config.limits.trial_days }} días gratis
               </div>
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-sm font-semibold"
-                    :class="selectedPlan === plan.id ? 'text-cyan-700' : 'text-slate-900'">
+                    :class="selectedPlanId === plan.ulid ? 'text-cyan-700' : 'text-slate-900'">
                     {{ plan.name }}
                   </p>
-                  <p class="text-xs mt-0.5 text-slate-400">{{ plan.features.slice(0, 2).join(' · ') }}</p>
+                  <p class="text-xs mt-0.5 text-slate-400">{{ plan.config?.module_slugs?.length || 0 }} módulos disponibles</p>
+                  <!-- Toggle description -->
+                  <button v-if="plan.description"
+                    @click="(e) => togglePlanDetails(plan.ulid, e)"
+                    class="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 hover:text-cyan-600 transition-colors cursor-pointer"
+                  >
+                    <ChevronDown
+                      class="w-3 h-3 transition-transform duration-200"
+                      :style="{ transform: expandedPlans.has(plan.ulid) ? 'rotate(180deg)' : '' }"
+                    />
+                    {{ expandedPlans.has(plan.ulid) ? 'Ocultar detalles' : 'Ver detalles' }}
+                  </button>
+                  <div v-if="expandedPlans.has(plan.ulid) && plan.description"
+                    class="mt-2 pt-2 border-t border-slate-100 text-xs text-slate-500 leading-relaxed"
+                    v-html="plan.description">
+                  </div>
                 </div>
                 <div class="text-right">
                   <span class="text-lg font-bold"
-                    :class="selectedPlan === plan.id ? 'text-cyan-700' : 'text-slate-900'">
-                    {{ plan.price }}
+                    :class="selectedPlanId === plan.ulid ? 'text-cyan-700' : 'text-slate-900'">
+                    {{ plan.prices?.monthly?.amount === '0.00' ? 'Gratis' : '$' + plan.prices?.monthly?.amount }}
                   </span>
-                  <span class="text-[10px] text-slate-400">{{ plan.period }}</span>
+                  <span v-if="plan.prices?.monthly?.amount !== '0.00'" class="text-[10px] text-slate-400">/mes</span>
+                  <span v-else class="text-[10px] text-slate-400">Siempre</span>
                 </div>
               </div>
             </button>
@@ -848,70 +1089,6 @@ const progressPct = computed(() => Math.round((step.value / totalSteps) * 100));
       </div>
       </div>
 
-      <!-- MODAL: Seleccionar Gavetero -->
-      <Teleport to="body">
-        <div v-if="showVaultModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="closeVaultModal">
-          <div class="bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
-            <div class="sticky top-0 z-10 flex items-center justify-between border-b border-slate-100 bg-white px-5 py-4">
-              <h2 class="text-base font-semibold text-slate-900">Seleccionar Gavetero</h2>
-              <button @click="closeVaultModal" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"><X class="h-5 w-5" /></button>
-            </div>
-            <div class="p-5">
-              <p class="text-xs text-slate-500 mb-3">Elige una plantilla de Bóveda del Blueprint</p>
-              <div class="grid grid-cols-2 gap-2">
-                <button v-for="vt in templatesForSelectedCurrencies" :key="vt.code"
-                  @click="selectVaultTemplate(vt)"
-                  class="w-full text-left flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 hover:border-cyan-300 hover:bg-cyan-50/30 transition-all">
-                  <Banknote class="w-5 h-5 text-slate-500 shrink-0 mt-0.5" />
-                  <div class="min-w-0 flex-1">
-                    <div class="flex items-center gap-2">
-                      <span class="text-sm font-semibold text-slate-900">{{ vt.name }}</span>
-                      <span class="text-[10px] text-slate-400">{{ vt.code }}</span>
-                    </div>
-                    <p v-if="vt.description" class="text-xs text-slate-500 mt-0.5">{{ vt.description }}</p>
-                    <span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium bg-slate-100 text-slate-600 mt-1.5">{{ vt.vault_type }} · {{ vt.default_currency }}</span>
-                  </div>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </Teleport>
-
-      <!-- MODAL: Configurar Gavetero -->
-      <Teleport to="body">
-        <div v-if="showVaultConfig" class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" @click.self="showVaultConfig = false">
-          <div class="bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-md">
-            <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-              <h2 class="text-base font-semibold text-slate-900">Configurar {{ vaultConfig.name }}</h2>
-              <button @click="showVaultConfig = false" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"><X class="h-5 w-5" /></button>
-            </div>
-            <div class="p-5 space-y-4">
-              <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Alias</label>
-                <input v-model="vaultConfig.alias" type="text" :placeholder="'Ej: ' + vaultConfig.name"
-                  class="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 placeholder-slate-400 outline-none focus:border-cyan-300 focus:ring-1 focus:ring-cyan-200" />
-              </div>
-              <div class="flex items-center gap-2 text-xs text-slate-500">
-                <span class="inline-flex items-center rounded px-1.5 py-0.5 bg-slate-100 text-slate-600">{{ vaultConfig.vault_type }}</span>
-                <span>{{ vaultConfig.currency }}</span>
-              </div>
-            </div>
-            <div class="border-t border-slate-100 px-5 py-4 flex items-center justify-end gap-3">
-              <button @click="showVaultConfig = false"
-                class="inline-flex items-center justify-center h-9 px-4 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-colors">
-                Cancelar
-              </button>
-              <button @click="confirmVault"
-                class="inline-flex items-center justify-center h-9 px-4 rounded-lg text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 transition-colors">
-                Agregar Gavetero
-              </button>
-            </div>
-          </div>
-        </div>
-      </Teleport>
-
-      <p class="mt-5 text-[11px] text-slate-300">Efectivo 360 · Cifrado de grado bancario</p>
     </div>
   </div>
 </template>

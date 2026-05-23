@@ -131,8 +131,15 @@
               </div>
             </div>
             <div>
-              <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Descripción</label>
-              <textarea v-model="form.description" rows="2" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300"></textarea>
+              <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Descripción (HTML)</label>
+              <QuillEditor
+                v-model:content="form.description"
+                content-type="html"
+                theme="snow"
+                toolbar="full"
+                class="bg-white rounded-lg border border-slate-200 dark:border-white/[0.06]"
+                :style="{ minHeight: '180px' }"
+              />
             </div>
           </div>
 
@@ -247,6 +254,8 @@ import { SimplePagination } from '@/shared/index.js';
 import { useApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
 import Swal from 'sweetalert2';
+import { QuillEditor } from '@vueup/vue-quill';
+import '@vueup/vue-quill/dist/vue-quill.snow.css';
 
 interface PlanPrice {
   id: string;
