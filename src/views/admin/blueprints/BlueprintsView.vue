@@ -16,12 +16,12 @@ const activeTab = ref<typeof tabs[number]['id']>('payments');
 <template>
   <div class="min-h-screen bg-slate-50/50 dark:bg-[#0D0F14]">
     <!-- Tabs -->
-    <div class="border-b border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#141824] px-6">
-      <div class="max-w-7xl mx-auto flex gap-1">
+    <div class="border-b border-slate-200 dark:border-white/[0.06] bg-white dark:bg-[#141824] px-3 sm:px-6 overflow-x-auto">
+      <div class="max-w-7xl mx-auto flex gap-1 flex-nowrap">
         <button
           v-for="tab in tabs" :key="tab.id"
           @click="activeTab = tab.id"
-          :class="['px-5 py-3.5 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-2',
+          :class="['px-3 sm:px-5 py-2.5 sm:py-3.5 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-2 whitespace-nowrap',
             activeTab === tab.id ? 'border-cyan-500 text-cyan-600 dark:text-cyan-400' : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300']">
           <component :is="tab.icon" class="h-4 w-4" />
           {{ tab.label }}
@@ -31,7 +31,7 @@ const activeTab = ref<typeof tabs[number]['id']>('payments');
 
     <!-- Tab Content -->
     <PaymentBlueprintsDashboard v-if="activeTab === 'payments'" />
-    <div v-else class="p-6 max-w-7xl mx-auto">
+    <div v-else class="p-4 sm:p-6 max-w-7xl mx-auto">
       <VaultTemplatesSection v-if="activeTab === 'vaults'" />
       <BankEntitiesSection v-if="activeTab === 'banks'" />
     </div>

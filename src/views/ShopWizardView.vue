@@ -237,7 +237,7 @@ const showSteppedModal = ref(false);
 const modalContext = ref<'vault' | 'payment'>('vault');
 const modalStep = ref(1);  // 1 = Select Blueprint, 2 = Customize Instance
 const selectedTpl = ref<any>(null);
-const customInstance = ref({ alias: '', currency: 'USD', configData: {} as Record<string, any>, bankCode: '' });
+const customInstance = ref({ alias: '', currency: 'USD', configData: {} as Record<string, any>, bankCode: '', bankName: '', holderName: '', accountNumber: '', accountType: 'ahorros' });
 const availableBanks = ref<any[]>([]);
 const modalError = ref('');
 const editingIndex = ref(-1); // -1 = new, >= 0 = editing existing
@@ -285,6 +285,10 @@ function openSteppedModal(context: 'vault' | 'payment', editIdx = -1) {
         currency: (item as any).currency || 'USD',
         configData: restoredConfig,
         bankCode: (item as any).vaultCode || '',
+        bankName: (item as any).bankName || '',
+        holderName: (item as any).holderName || '',
+        accountNumber: (item as any).accountNumber || '',
+        accountType: (item as any).accountType || 'ahorros',
       };
       // Load banks if the blueprint has bank/bank_code field
       if (tpl) loadBanksForBlueprint(tpl);
@@ -373,6 +377,10 @@ function selectTpl(bp: any) {
     currency: (bp.financial_rules?.allowed_currencies || ['USD'])[0],
     configData: {},
     bankCode: '',
+    bankName: '',
+    holderName: '',
+    accountNumber: '',
+    accountType: 'ahorros',
   };
   // Pre-fill config data from schema defaults
   for (const f of bp.config_schema?.fields || []) {
@@ -592,8 +600,8 @@ const progressPct = computed(() => Math.round((step.value / totalSteps) * 100));
       </div>
 
       <!-- Stepper -->
-      <div class="w-full max-w-2xl mb-8">
-        <div class="flex items-center justify-between">
+      <div class="w-full max-w-2xl mb-8 overflow-x-auto">
+        <div class="flex items-center justify-between min-w-[480px] sm:min-w-0">
           <template v-for="s in totalSteps" :key="s">
             <div class="flex items-center">
               <div class="flex flex-col items-center">
@@ -680,8 +688,8 @@ const progressPct = computed(() => Math.round((step.value / totalSteps) * 100));
                   :class="biz.rifNumber && !rifRegex.test(rifClean) ? 'border-red-300 bg-red-50 text-slate-900' : 'border-slate-200 text-slate-900 placeholder-slate-400 focus:border-cyan-300 focus:ring-1 focus:ring-cyan-200'" />
               </div>
             </div>
-            <div class="grid grid-cols-2 gap-4">
-              <div class="flex gap-2 col-span-2">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="flex flex-col sm:flex-row gap-2 sm:col-span-2">
                 <div class="relative shrink-0">
                   <Phone class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 z-10" />
                   <select v-model="biz.phoneCountry" @change="biz.phoneNumber = ''"
@@ -767,7 +775,7 @@ const progressPct = computed(() => Math.round((step.value / totalSteps) * 100));
             </div>
             <p class="text-sm mt-1 text-slate-500">Selecciona tu rubro</p>
           </div>
-          <div class="grid grid-cols-3 gap-3">
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <button v-for="bp in blueprints" :key="bp.id" @click="selectedBlueprint = bp"
               class="p-4 rounded-xl border text-center transition-all duration-200"
               :class="selectedBlueprint?.id === bp.id ? 'border-cyan-500 bg-cyan-50 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300'">
@@ -926,19 +934,35 @@ const progressPct = computed(() => Math.round((step.value / totalSteps) * 100));
 
                   <!-- Vault context: simple type + currency -->
                   <template v-if="modalContext === 'vault'">
-                    <div class="grid grid-cols-2 gap-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label class="block text-xs font-medium text-slate-600 mb-1">Tipo</label>
-                        <span class="inline-flex items-center px-2.5 py-1.5 rounded text-xs font-medium bg-slate-100 text-slate-600">{{ selectedTpl.vault_type }}</span>
+                        <label class="block text-xs font-medium text-slate-500 mb-1.5">Nombre del Banco</label>
+                        <input v-model="customInstance.bankName" placeholder="Ej. Banco Mercantil" class="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs" />
                       </div>
                       <div>
-                        <label class="block text-xs font-medium text-slate-600 mb-1">Moneda</label>
-                        <select v-model="customInstance.currency" class="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs">
-                          <option v-for="c in (selectedTpl.financial_rules?.allowed_currencies || ['USD','VES'])" :key="c" :value="c">{{ c }}</option>
-                        </select>
+                        <label class="block text-xs font-medium text-slate-500 mb-1.5">Titular</label>
+                        <input v-model="customInstance.holderName" placeholder="Nombre del titular" class="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs" />
                       </div>
-                    </div>
-                  </template>
+                      <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1.5">Nro. Cuenta / Cta. Contable</label>
+                        <input v-model="customInstance.accountNumber" placeholder="0000-0000-00-0000000000" class="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs" />
+                      </div>
+                      <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1.5">Tipo de Cuenta</label>
+                        <select v-model="customInstance.accountType" class="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs">
+                    <option value="ahorros">Ahorros</option>
+                    <option value="corriente">Corriente</option>
+                    <option value="contable">Contable</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-600 mb-1">Moneda</label>
+                <select v-model="customInstance.currency" class="w-full h-9 px-3 rounded-lg border border-slate-200 text-xs">
+                  <option v-for="c in (selectedTpl.financial_rules?.allowed_currencies || ['USD','VES'])" :key="c" :value="c">{{ c }}</option>
+                </select>
+              </div>
+            </template>
 
                   <!-- Payment context: credential fields + bank + vault -->
                   <template v-if="modalContext === 'payment'">
@@ -1055,7 +1079,7 @@ const progressPct = computed(() => Math.round((step.value / totalSteps) * 100));
         </div>
 
         <!-- Navigation -->
-        <div class="flex items-center justify-between mt-6 pt-5 border-t border-slate-100">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 pt-5 border-t border-slate-100">
           <button v-if="step > 1" @click="step--"
             class="inline-flex items-center gap-1.5 h-10 px-4 rounded-lg text-sm font-medium border border-slate-200 text-slate-600 bg-white hover:bg-slate-50 transition-all">
             <ArrowLeft class="w-4 h-4" /> Atrás

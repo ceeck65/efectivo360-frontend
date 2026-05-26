@@ -171,7 +171,7 @@ onMounted(loadAll);
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50/50 dark:bg-[#0D0F14] p-6">
+  <div class="min-h-screen bg-slate-50/50 dark:bg-[#0D0F14] p-4 sm:p-6">
     <div v-if="loading" class="flex justify-center py-20">
       <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
     </div>
@@ -189,7 +189,7 @@ onMounted(loadAll);
             <p class="text-sm text-slate-500 dark:text-slate-400">Control de gastos operativos y compras</p>
           </div>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 flex-wrap">
           <select v-model="quickDays" @change="handleQuickChange"
             class="h-8 px-2 rounded-lg border border-slate-200 bg-white text-xs truncate w-28 dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white">
             <option value="">Fecha</option>
@@ -301,7 +301,7 @@ onMounted(loadAll);
         <div v-if="wizard" class="fixed inset-0 z-40 flex items-center justify-center bg-black/50 p-4"
           @click.self="closeWizard">
           <div class="bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto dark:bg-[#141824]">
-            <div class="flex items-center gap-3 px-6 py-4 border-b border-slate-200 dark:border-white/[0.06]">
+            <div class="flex items-center gap-3 px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-white/[0.06]">
               <button v-if="step > 1" @click="prevStep"
                 class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06]">
                 <ArrowLeft class="h-4 w-4" />
@@ -315,9 +315,9 @@ onMounted(loadAll);
               </button>
             </div>
             <!-- Step 1 -->
-            <div v-if="step === 1" class="p-6">
+            <div v-if="step === 1" class="p-4 sm:p-6">
               <div v-if="!categories.length" class="text-center py-8 text-slate-500">No hay categorías</div>
-              <div v-else class="grid grid-cols-2 gap-3">
+              <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button v-for="cat in categories" :key="cat.id" @click="selectCategory(cat)"
                   :class="['flex items-center gap-3 p-4 rounded-xl border transition-all', w.category?.id === cat.id ? 'border-blue-500 bg-blue-50 dark:border-blue-500/50 dark:bg-blue-500/10' : 'border-slate-200 hover:border-slate-300 dark:border-white/[0.08] dark:hover:border-white/[0.12]']">
                   <span class="text-2xl shrink-0">{{ cat.icon_name || '📌' }}</span><span
@@ -326,10 +326,10 @@ onMounted(loadAll);
               </div>
             </div>
             <!-- Step 2 -->
-            <div v-if="step === 2" class="p-6 space-y-4">
+            <div v-if="step === 2" class="p-4 sm:p-6 space-y-4">
               <div class="text-center">
                 <p class="text-xs text-slate-500 uppercase tracking-wider mb-2">{{ w.category?.name || 'Gasto' }}</p>
-                <div class="flex justify-center gap-2 mb-3">
+                <div class="flex justify-center gap-2 mb-3 flex-wrap">
                   <button v-for="cc in availCurrencies" :key="cc" @click="w.currency = cc"
                     :class="['px-4 py-1.5 rounded-md text-sm font-medium transition-colors', w.currency === cc ? 'bg-slate-900 text-white dark:bg-cyan-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:bg-white/[0.08]']">{{ getCurrencySymbol(cc) || cc }}</button>
                 </div>
@@ -358,7 +358,7 @@ onMounted(loadAll);
               </div>
               <div><label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Fecha de
                   pago</label>
-                <div class="flex gap-1.5"><button @click="w.paymentDate = today()"
+                <div class="flex gap-1.5 flex-wrap"><button @click="w.paymentDate = today()"
                     :class="['px-3 py-1.5 rounded-lg text-xs font-medium transition-colors', w.paymentDate === today() ? 'bg-slate-900 text-white dark:bg-cyan-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:bg-white/[0.08]']">Hoy</button><button
                     @click="w.paymentDate = yesterday()"
                     :class="['px-3 py-1.5 rounded-lg text-xs font-medium', w.paymentDate === yesterday() ? 'bg-slate-900 text-white dark:bg-cyan-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:bg-white/[0.08]']">Ayer</button><input
@@ -378,7 +378,7 @@ onMounted(loadAll);
                     class="inline-flex items-center gap-2 h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm text-slate-600 hover:bg-slate-50 dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-slate-300">{{ w.attachment ? ' ✓ '+w.attachment.name:'📎 Subir comprobante'}}</span></label></div>
             </div>
             <!-- Step 3 -->
-            <div v-if="step === 3" class="p-6 space-y-4">
+            <div v-if="step === 3" class="p-4 sm:p-6 space-y-4">
               <p class="text-sm text-slate-500">{{ formatAmount(w.amount, w.currency) }} ·
                 {{ w.category?.name || 'Gasto' }}</p>
               <div class="flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-white/[0.08]">
@@ -386,7 +386,7 @@ onMounted(loadAll);
                     class="rounded border-slate-300 text-cyan-600" /><span
                     class="text-sm text-slate-700 dark:text-slate-300">Gasto recurrente</span></label></div>
               <template v-if="w.isRecurring">
-                <div class="grid grid-cols-2 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div><label
                       class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Ciclo</label><select
                       v-model="w.cycle"
@@ -404,7 +404,7 @@ onMounted(loadAll);
                 </div>
               </template>
             </div>
-            <div class="px-6 py-4 border-t border-slate-200 dark:border-white/[0.06]"><button @click="nextStep"
+            <div class="px-4 sm:px-6 py-4 border-t border-slate-200 dark:border-white/[0.06]"><button @click="nextStep"
                 :disabled="saving"
                 class="w-full h-10 rounded-lg text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 dark:bg-cyan-600 dark:hover:bg-cyan-700 disabled:opacity-50 transition-colors">{{ step === 3 ? 'Guardar Gasto':'Continuar'}}</button></div>
           </div>
@@ -416,7 +416,7 @@ onMounted(loadAll);
         <div v-if="showDetail" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           @click.self="closeDetail">
           <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto dark:bg-[#141824]">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-white/[0.06]">
+            <div class="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-white/[0.06]">
               <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Detalle del Gasto</h2><button
                 @click="closeDetail" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06]">
                 <X class="h-4 w-4" />
@@ -425,7 +425,7 @@ onMounted(loadAll);
             <div v-if="detailLoading" class="text-center py-12">
               <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-cyan-600 mx-auto" />
             </div>
-            <div v-else-if="detail" class="p-6 space-y-4">
+            <div v-else-if="detail" class="p-4 sm:p-6 space-y-4">
               <div class="flex items-center justify-between">
                 <div>
                   <p class="text-sm font-bold text-slate-900 dark:text-white">
@@ -514,7 +514,7 @@ onMounted(loadAll);
                   <span class="text-[10px] text-slate-400 shrink-0 ml-2">{{ p.created_by_name }}</span>
                 </div>
               </div>
-              <div v-if="detail.status === 'pending' && detail.debts?.length" class="flex gap-2 mt-3">
+              <div v-if="detail.status === 'pending' && detail.debts?.length" class="flex gap-2 mt-3 flex-wrap">
                 <button @click="openPayWizard(false)" class="flex-1 h-9 rounded-lg text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-700 transition-colors">Abonar</button>
                 <button @click="openPayWizard(true)" class="flex-1 h-9 rounded-lg text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors">Saldar Deuda</button>
               </div>
@@ -527,15 +527,15 @@ onMounted(loadAll);
       <Teleport to="body">
         <div v-if="payWizard" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="closePayWizard">
           <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto dark:bg-[#141824]">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-white/[0.06]">
+            <div class="flex items-center justify-between px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-white/[0.06]">
               <h2 class="text-lg font-semibold text-slate-900 dark:text-white">{{ payStep === 2 ? 'Seleccionar Gavetero' : paySettle ? 'Saldar Deuda' : 'Abonar' }}</h2>
               <button @click="closePayWizard" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06]"><X class="h-4 w-4" /></button>
             </div>
-            <div class="p-6 space-y-4">
+            <div class="p-4 sm:p-6 space-y-4">
               <div v-if="payStep === 1" class="space-y-4">
                 <div>
                   <p class="text-xs font-medium text-slate-500 mb-2">Moneda</p>
-                  <div class="flex gap-2">
+                  <div class="flex gap-2 flex-wrap">
                     <button v-for="cc in availCurrencies" :key="cc" @click="pw.currency = cc"
                       :class="['px-4 py-1.5 rounded-md text-sm font-medium transition-colors', pw.currency === cc ? 'bg-slate-900 text-white dark:bg-cyan-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-white/[0.04] dark:text-slate-300 dark:hover:bg-white/[0.08]']">{{ getCurrencySymbol(cc) || cc }}</button>
                   </div>
@@ -604,7 +604,7 @@ onMounted(loadAll);
                     <option v-for="v in vaultsList.filter(v => v.currency === pw.currency)" :key="v.code" :value="v.name">{{ v.name }}</option>
                   </select>
                 </div>
-                <div class="flex gap-2">
+                <div class="flex gap-2 flex-wrap">
                   <button @click="payStep = 1" class="flex-1 h-10 rounded-lg text-sm font-medium border border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-white/[0.08] dark:text-slate-300 transition-colors">Atrás</button>
                   <button @click="submitPayment" :disabled="paying"
                     class="flex-1 h-10 rounded-lg text-sm font-semibold text-white bg-cyan-600 hover:bg-cyan-700 disabled:opacity-50 transition-colors">{{ paying ? 'Guardando...' : paySettle ? 'Saldar Deuda' : 'Registrar Abono' }}</button>

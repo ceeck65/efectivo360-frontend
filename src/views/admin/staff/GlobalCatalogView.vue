@@ -1,5 +1,5 @@
 <template>
-  <div class="space-y-6 p-6">
+  <div class="space-y-4 sm:space-y-6 p-4 sm:p-6">
     <div class="flex items-start justify-between gap-4">
       <div>
         <h1 class="flex items-center gap-3 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
@@ -10,7 +10,7 @@
           Moderación del banco global de productos — revisa, aprueba, rechaza o banea propuestas.
         </p>
       </div>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
         <button
           @click="showSlideOver = true"
           class="inline-flex items-center justify-center gap-2 h-9 px-4 text-sm font-medium text-white bg-cyan-600 rounded-lg hover:bg-cyan-700 shadow-sm transition-colors"

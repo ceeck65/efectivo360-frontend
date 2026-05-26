@@ -225,7 +225,7 @@ onMounted(loadAll);
     </div>
 
     <!-- KPI cards -->
-    <div class="grid grid-cols-3 gap-3">
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <div class="rounded-xl border border-slate-200 bg-white p-4 dark:border-white/[0.06] dark:bg-[#141824]">
         <div class="text-xs text-slate-500 mb-1">Cuentas por Pagar</div>
         <div class="text-xl font-bold font-mono text-amber-600">{{ fmtUSD(summary.total_pending_usd) }}</div>
@@ -264,7 +264,7 @@ onMounted(loadAll);
         <h3 class="text-sm font-semibold text-slate-900 dark:text-white">Nueva Compra</h3>
         <button @click="showCreate = false" class="text-slate-400 hover:text-slate-600 text-lg leading-none">&times;</button>
       </div>
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label class="block text-xs font-medium text-slate-600 mb-1">Proveedor *</label>
           <div class="flex gap-2">
@@ -300,7 +300,7 @@ onMounted(loadAll);
       <!-- Treasury fields (only for CONTADO) -->
       <div v-if="createForm.payment_condition === 'CONTADO'" class="border-t border-slate-100 pt-4 space-y-3 dark:border-white/[0.04]">
         <p class="text-xs text-amber-600 font-medium">Pago inmediato requerido — seleccioná el método de pago.</p>
-        <div class="grid grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-medium text-slate-600 mb-1">Método de Pago *</label>
             <select v-model="createForm.payment_instance_id" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white">
@@ -320,7 +320,7 @@ onMounted(loadAll);
         </p>
       </div>
 
-      <div class="flex justify-end gap-2">
+      <div class="flex justify-end gap-2 flex-wrap">
         <button @click="showCreate = false" class="h-9 px-4 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 dark:text-slate-400 dark:border-white/[0.08]">Cancelar</button>
         <button @click="submitCreate" :disabled="submitting" class="h-9 px-4 text-xs font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 disabled:opacity-60">{{ submitting ? '...' : 'Procesar Compra' }}</button>
       </div>
@@ -334,14 +334,14 @@ onMounted(loadAll);
       <table class="w-full text-xs">
         <thead class="bg-slate-50 dark:bg-white/[0.04] text-left">
           <tr>
-            <th class="px-3 py-2 font-medium text-slate-500">Factura</th>
-            <th class="px-3 py-2 font-medium text-slate-500">Proveedor</th>
-            <th class="px-3 py-2 font-medium text-slate-500">RIF</th>
-            <th class="px-3 py-2 font-medium text-slate-500">Condición</th>
-            <th class="px-3 py-2 font-medium text-slate-500 text-right">Total</th>
-            <th class="px-3 py-2 font-medium text-slate-500 text-right">Pendiente</th>
-            <th class="px-3 py-2 font-medium text-slate-500">Estado</th>
-            <th class="px-3 py-2 font-medium text-slate-500 text-right"></th>
+            <th class="px-3 py-2 font-medium text-slate-500 whitespace-nowrap">Factura</th>
+            <th class="px-3 py-2 font-medium text-slate-500 whitespace-nowrap">Proveedor</th>
+            <th class="px-3 py-2 font-medium text-slate-500 whitespace-nowrap">RIF</th>
+            <th class="px-3 py-2 font-medium text-slate-500 whitespace-nowrap">Condición</th>
+            <th class="px-3 py-2 font-medium text-slate-500 text-right whitespace-nowrap">Total</th>
+            <th class="px-3 py-2 font-medium text-slate-500 text-right whitespace-nowrap">Pendiente</th>
+            <th class="px-3 py-2 font-medium text-slate-500 whitespace-nowrap">Estado</th>
+            <th class="px-3 py-2 font-medium text-slate-500 text-right whitespace-nowrap"></th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100 dark:divide-white/[0.04]">
@@ -391,7 +391,7 @@ onMounted(loadAll);
               <label class="block text-xs font-medium text-slate-600 mb-1">N° Referencia</label>
               <input v-model="payForm.reference_number" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white" />
             </div>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label class="block text-xs font-medium text-slate-600 mb-1">Tasa Oficial</label>
                 <input v-model.number="payForm.official_rate" type="number" step="0.0001" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white" />
@@ -402,7 +402,7 @@ onMounted(loadAll);
               </div>
             </div>
           </div>
-          <div class="border-t border-slate-200 px-5 py-3 flex items-center justify-end gap-2 dark:border-white/[0.06]">
+          <div class="border-t border-slate-200 px-5 py-3 flex items-center justify-end gap-2 flex-wrap dark:border-white/[0.06]">
             <button @click="showPayModal = false" class="h-8 px-3 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 dark:text-slate-400 dark:border-white/[0.08]">Cancelar</button>
             <button @click="submitPayment" :disabled="submitting || !validPayAmount" class="h-8 px-3 text-xs font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 disabled:opacity-50">{{ submitting ? '...' : 'Registrar Abono' }}</button>
           </div>
@@ -445,7 +445,7 @@ onMounted(loadAll);
               <input v-model="quickVendor.phone" class="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-xs dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white" placeholder="Opcional" />
             </div>
           </div>
-          <div class="flex justify-end gap-2 pt-2">
+          <div class="flex justify-end gap-2 pt-2 flex-wrap">
             <button @click="showQuickVendor = false" class="h-8 px-3 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 dark:text-slate-400 dark:border-white/[0.08]">Cancelar</button>
             <button @click="saveQuickVendor" :disabled="savingVendor" class="h-8 px-3 text-xs font-medium text-white bg-slate-800 rounded-lg hover:bg-slate-700 disabled:opacity-60">{{ savingVendor ? '...' : 'Guardar' }}</button>
           </div>

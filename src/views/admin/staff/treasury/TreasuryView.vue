@@ -95,9 +95,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-50/50 p-6 dark:bg-[#0D0F14]">
+  <div class="min-h-screen bg-slate-50/50 p-3 sm:p-4 lg:p-6 dark:bg-[#0D0F14]">
 <!-- Access denied for non-authenticated users -->
-<div v-if="!isAuthenticated" class="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl p-6 text-center">
+<div v-if="!isAuthenticated" class="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl p-3 sm:p-4 lg:p-6 text-center">
   <p class="text-red-600 dark:text-red-400">Debes iniciar sesión para acceder a esta sección.</p>
 </div>
 
@@ -128,7 +128,7 @@ onMounted(() => {
   </div>
 
   <!-- Error State -->
-  <div v-if="error && !loading" class="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl p-6 text-center">
+  <div v-if="error && !loading" class="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 rounded-xl p-3 sm:p-4 lg:p-6 text-center">
     <p class="text-red-600 dark:text-red-400">{{ error }}</p>
     <button @click="loadData" class="mt-3 px-4 py-2 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded-lg">
       <RefreshCw class="h-4 w-4 inline-block mr-2" /> Recargar
@@ -140,11 +140,11 @@ onMounted(() => {
 
   <!-- Tabs Container -->
   <div class="border-t border-slate-200 dark:border-white/[0.06] pt-6 mt-6">
-  <div class="flex gap-4 border-b border-slate-200 dark:border-white/[0.06] mb-6">
+  <div class="flex gap-4 overflow-x-auto flex-nowrap whitespace-nowrap border-b border-slate-200 dark:border-white/[0.06] mb-6">
     <button
       @click="activeTab = 'inbox'"
       :class="[
-        'px-6 py-3 text-base font-medium border-b-2 -mb-px transition-colors',
+        'px-2 sm:px-3 py-3 text-base font-medium border-b-2 -mb-px transition-colors',
         activeTab === 'inbox'
           ? 'border-blue-500 text-blue-600 dark:text-blue-400'
           : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'
@@ -158,7 +158,7 @@ onMounted(() => {
     <button
       @click="activeTab = 'incomes'"
       :class="[
-        'px-6 py-3 text-base font-medium border-b-2 -mb-px transition-colors',
+        'px-2 sm:px-3 py-3 text-base font-medium border-b-2 -mb-px transition-colors',
         activeTab === 'incomes'
           ? 'border-blue-500 text-blue-600 dark:text-blue-400'
           : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'
@@ -172,7 +172,7 @@ onMounted(() => {
     <button
       @click="activeTab = 'debts'"
       :class="[
-        'px-6 py-3 text-base font-medium border-b-2 -mb-px transition-colors',
+        'px-2 sm:px-3 py-3 text-base font-medium border-b-2 -mb-px transition-colors',
         activeTab === 'debts'
           ? 'border-blue-500 text-blue-600 dark:text-blue-400'
           : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'
@@ -186,7 +186,7 @@ onMounted(() => {
     <button
       @click="activeTab = 'cxc'"
       :class="[
-        'px-6 py-3 text-base font-medium border-b-2 -mb-px transition-colors',
+        'px-2 sm:px-3 py-3 text-base font-medium border-b-2 -mb-px transition-colors',
         activeTab === 'cxc'
           ? 'border-blue-500 text-blue-600 dark:text-blue-400'
           : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'
@@ -200,7 +200,7 @@ onMounted(() => {
     <button
       @click="activeTab = 'transactions'"
       :class="[
-        'px-6 py-3 text-base font-medium border-b-2 -mb-px transition-colors',
+        'px-2 sm:px-3 py-3 text-base font-medium border-b-2 -mb-px transition-colors',
         activeTab === 'transactions'
           ? 'border-blue-500 text-blue-600 dark:text-blue-400'
           : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'
@@ -214,7 +214,7 @@ onMounted(() => {
     <button
       @click="activeTab = 'reports'"
       :class="[
-        'px-6 py-3 text-base font-medium border-b-2 -mb-px transition-colors',
+        'px-2 sm:px-3 py-3 text-base font-medium border-b-2 -mb-px transition-colors',
         activeTab === 'reports'
           ? 'border-blue-500 text-blue-600 dark:text-blue-400'
           : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'
@@ -228,7 +228,7 @@ onMounted(() => {
     <button
       @click="activeTab = 'configuration'"
       :class="[
-        'px-6 py-3 text-base font-medium border-b-2 -mb-px transition-colors',
+        'px-2 sm:px-3 py-3 text-base font-medium border-b-2 -mb-px transition-colors',
         activeTab === 'configuration'
           ? 'border-blue-500 text-blue-600 dark:text-blue-400'
           : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400'

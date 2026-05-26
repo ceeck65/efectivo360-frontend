@@ -57,7 +57,7 @@ onMounted(loadAll);
 </script>
 
 <template>
-  <div class="max-w-6xl mx-auto px-4 py-8 space-y-8">
+  <div class="max-w-6xl mx-auto px-4 py-4 sm:py-6 space-y-8">
     <div class="flex items-center justify-between">
       <div>
         <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Ingresos Directos Diversos</h2>
@@ -73,11 +73,11 @@ onMounted(loadAll);
       <table class="w-full text-sm">
         <thead class="bg-slate-50 dark:bg-white/[0.04] text-left">
           <tr>
-            <th class="px-4 py-3 font-medium text-slate-500">Aportante</th>
-            <th class="px-4 py-3 font-medium text-slate-500">Categoría</th>
-            <th class="px-4 py-3 font-medium text-slate-500 text-right">Monto</th>
-            <th class="px-4 py-3 font-medium text-slate-500">Estado</th>
-            <th class="px-4 py-3 font-medium text-slate-500">Fecha</th>
+            <th class="px-4 py-3 font-medium text-slate-500 whitespace-nowrap">Aportante</th>
+            <th class="px-4 py-3 font-medium text-slate-500 whitespace-nowrap">Categoría</th>
+            <th class="px-4 py-3 font-medium text-slate-500 text-right whitespace-nowrap">Monto</th>
+            <th class="px-4 py-3 font-medium text-slate-500 whitespace-nowrap">Estado</th>
+            <th class="px-4 py-3 font-medium text-slate-500 whitespace-nowrap">Fecha</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-slate-100 dark:divide-white/[0.04]">
@@ -100,11 +100,11 @@ onMounted(loadAll);
     <Teleport to="body">
       <div v-if="wizard" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" @click.self="closeWizard">
         <div class="bg-white rounded-2xl border border-slate-200 shadow-xl w-full max-w-lg dark:border-white/[0.06] dark:bg-[#141824]">
-          <div class="flex items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-white/[0.06]">
+          <div class="flex items-center justify-between border-b border-slate-200 px-4 sm:px-6 py-4 dark:border-white/[0.06]">
             <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Registrar Ingreso</h3>
             <button @click="closeWizard" class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/[0.06]"><X class="h-5 w-5" /></button>
           </div>
-          <div class="p-6 space-y-4">
+          <div class="p-4 sm:p-6 space-y-4">
             <div>
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Categoría</label>
               <select v-model="w.category_slug" class="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white">
@@ -116,7 +116,7 @@ onMounted(loadAll);
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Aportante <span class="text-red-500">*</span></label>
               <input v-model="w.source_name" type="text" placeholder="Ej: Socio Juan Pérez, Arrendatario Stand A" class="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white" />
             </div>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Monto <span class="text-red-500">*</span></label>
                 <input v-model.number="w.amount" type="number" step="0.01" min="0" class="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white" />
@@ -134,7 +134,7 @@ onMounted(loadAll);
               <textarea v-model="w.description" rows="2" placeholder="Detalle del ingreso..." class="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white text-sm resize-none dark:border-white/[0.08] dark:bg-[#1a1f2e] dark:text-white"></textarea>
             </div>
           </div>
-          <div class="border-t border-slate-200 px-6 py-4 flex items-center justify-end gap-3 dark:border-white/[0.06]">
+          <div class="border-t border-slate-200 px-4 sm:px-6 py-4 flex items-center justify-end gap-3 flex-wrap dark:border-white/[0.06]">
             <button @click="closeWizard" class="h-9 px-4 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 dark:text-slate-300 dark:bg-transparent dark:border-white/[0.08]">Cancelar</button>
             <button @click="submitIncome" :disabled="saving" class="h-9 px-4 text-sm font-medium text-white bg-cyan-600 rounded-lg hover:bg-cyan-700 disabled:opacity-50">Enviar a Tesorería</button>
           </div>

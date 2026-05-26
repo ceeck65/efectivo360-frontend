@@ -70,6 +70,28 @@
     @apply bg-background text-foreground;
     font-family: var(--font-landing);
   }
+
+  /* All form controls inherit foreground color by default.
+     Using !important to override any component-level text-white
+     that lacks a dark: prefix (common bug in light mode forms). */
+  input,
+  textarea,
+  select,
+  [contenteditable] {
+    color: #262626 !important;
+  }
+  .dark input,
+  .dark textarea,
+  .dark select,
+  .dark [contenteditable] {
+    color: #e2e8f0 !important;
+  }
+  /* Disabled inputs can still be dimmed */
+  input:disabled,
+  textarea:disabled,
+  select:disabled {
+    opacity: 0.5;
+  }
 }
 
 @layer utilities {
