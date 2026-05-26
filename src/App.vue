@@ -34,7 +34,7 @@
       
       <!-- Main Content -->
       <main class="flex-1 overflow-y-auto bg-slate-50">
-        <div class="p-6">
+        <div class="p-3 sm:p-4 lg:p-6">
           <!-- Tenant Configuration Banner -->
           <TenantConfigurationBanner />
           <RouterView />

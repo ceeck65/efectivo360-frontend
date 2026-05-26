@@ -119,10 +119,10 @@ const toggleDarkMode = () => {
   <div>
     <!-- Header -->
     <header
-      class="sticky top-0 z-30 flex items-center justify-between gap-4 border-b border-slate-200 px-4 py-3 text-brand-dark bg-white shadow-sm"
+      class="sticky top-0 z-30 flex items-center justify-between gap-2 sm:gap-4 border-b border-slate-200 px-2 sm:px-4 py-2 sm:py-3 text-brand-dark bg-white shadow-sm"
     >
       <!-- Left Section: Title + Search -->
-      <div class="flex min-w-0 flex-1 items-center gap-4">
+      <div class="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-4">
         <!-- Mobile Menu Button -->
         <button
           type="button"
@@ -134,8 +134,8 @@ const toggleDarkMode = () => {
         </button>
 
         <!-- Title Block -->
-        <div class="min-w-0 shrink-0">
-          <p class="text-[10px] font-medium uppercase tracking-wider text-slate-500">
+        <div class="min-w-0 sm:shrink-0">
+          <p class="text-[9px] sm:text-[10px] font-medium uppercase tracking-wider text-slate-500">
             {{ isAuditor ? 'AUDITORÍA' : (isStaff ? 'ERP' : t('header.storeLabel', 'Tienda')) }}
           </p>
           <!-- Audit Context Badge for Auditors with active tenant -->
@@ -181,7 +181,7 @@ const toggleDarkMode = () => {
         <!-- Forex Rate Badge -->
         <span
           :class="[
-            'shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold lg:inline-flex',
+            'shrink-0 hidden sm:inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold',
             !props.forexRate || props.forexRate.status === 'degraded'
               ? 'border-amber-700 bg-amber-50 text-amber-700'
               : 'border-emerald-800 bg-emerald-50 text-emerald-800'
@@ -203,7 +203,7 @@ const toggleDarkMode = () => {
       </div>
 
       <!-- Right Section: User Zone -->
-      <div class="relative flex items-center gap-1 md:gap-2">
+      <div class="relative flex items-center gap-0.5 sm:gap-1 md:gap-2">
         <!-- Mobile Search -->
         <button
           type="button"

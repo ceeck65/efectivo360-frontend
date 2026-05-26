@@ -10,9 +10,17 @@
     <!-- Sidebar -->
     <aside
       :class="[
-        'flex h-screen flex-col px-3 py-5 transition-all duration-300 flex-shrink-0',
+        'flex h-screen flex-col px-3 py-5 transition-all duration-300',
         'border-r border-white/[0.07] bg-brand-dark backdrop-blur-md shadow-[inset_-1px_0_0_0_rgba(255,255,255,0.04)]',
-        isCollapsed ? 'w-14' : 'w-64'
+        // Mobile: off-screen when closed, slides in when open
+        isMobile && !isMobileOpen ? 'fixed inset-y-0 left-0 z-50 -translate-x-full' : '',
+        isMobile && isMobileOpen ? 'fixed inset-y-0 left-0 z-50 translate-x-0' : '',
+        // Desktop: in flow
+        !isMobile ? 'relative translate-x-0 flex-shrink-0' : '',
+        // Width
+        isCollapsed && !isMobile ? 'w-14' : 'w-64',
+        // On mobile open, always full width
+        isMobile && isMobileOpen ? 'w-64' : ''
       ]"
     >
       <!-- Logo Section (Fixed) -->
@@ -21,10 +29,10 @@
           <img
             src="/assets/logo.svg"
             alt="ERP Efectivo 360"
-            :class="['transition-all duration-300', isCollapsed ? 'h-12 w-12' : 'h-10 w-10']"
+            :class="['transition-all duration-300', !showLabels ? 'h-12 w-12' : 'h-10 w-10']"
           />
         </div>
-        <div v-if="!isCollapsed" class="text-center">
+        <div v-if="showLabels" class="text-center">
           <p class="text-sm font-semibold text-white/55">
             ERP Efectivo 360
           </p>
@@ -53,7 +61,7 @@
         </template>
         <template v-else>
           <!-- Ungrouped items (shown first, no toggle) -->
-          <template v-if="!isCollapsed && ungroupedItems.length > 0">
+          <template v-if="showLabels && ungroupedItems.length > 0">
             <div class="space-y-1">
               <template v-for="item in ungroupedItems" :key="item.id">
                 <button
@@ -76,11 +84,11 @@
           </template>
 
           <!-- Grouped items (with toggle) -->
-          <template v-for="group in (isCollapsed ? [{ id: 'flat', label: '', icon: '', items: visibleGroups.flatMap(g => g.items) }] : visibleGroups)" :key="group.id">
+          <template v-for="group in (!showLabels ? [{ id: 'flat', label: '', icon: '', items: visibleGroups.flatMap(g => g.items) }] : visibleGroups)" :key="group.id">
             <div class="space-y-1">
               <!-- Group Header -->
               <button
-                v-if="!isCollapsed && group.label"
+                v-if="showLabels && group.label"
                 type="button"
                 class="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[11px] uppercase tracking-wide text-white/60 hover:bg-white/5"
                 @click="toggleMenu(group.id)"
@@ -98,13 +106,13 @@
               </button>
 
               <!-- Group Items -->
-              <template v-if="isCollapsed || isExpanded(group.id)">
+              <template v-if="showLabels || isExpanded(group.id)">
                 <template v-for="item in group.items" :key="item.id">
                   <button
                     @click="navigateTo(item.path, item.id)"
                     :class="[
                       'flex items-center gap-3 rounded-xl px-2.5 py-2 text-sm transition w-full text-left',
-                      isCollapsed ? 'justify-center' : '',
+                      !showLabels ? 'justify-center' : '',
                       isItemActive(item.path)
                         ? 'border border-brand-primary/50 bg-brand-primary/20 text-brand-primary shadow-[0_0_20px_rgba(0,123,255,0.2)]'
                         : 'border border-transparent text-slate-300 hover:border-white/15 hover:bg-white/10 hover:text-white hover:shadow-[0_0_16px_rgba(0,0,0,0.15)]'
@@ -114,7 +122,7 @@
                       :is="getIcon(item.icon)"
                       class="h-[18px] w-[18px] shrink-0 stroke-[1.5]"
                     />
-                    <span :class="[isCollapsed ? 'hidden' : 'block']">
+                    <span :class="[!showLabels ? 'hidden' : 'block']">
                       {{ item.label }}
                     </span>
                   </button>
@@ -126,7 +134,7 @@
       </nav>
 
       <!-- Footer -->
-      <div class="space-y-2 p-3 text-xs rounded-bento border border-white/[0.08] bg-black/25 text-white/50 backdrop-blur-sm" :class="isCollapsed ? 'hidden' : 'block'">
+      <div class="space-y-2 p-3 text-xs rounded-bento border border-white/[0.08] bg-black/25 text-white/50 backdrop-blur-sm" :class="!showLabels ? 'hidden' : 'block'">
         <div class="flex items-center gap-2">
           <span class="h-2 w-2 rounded-full bg-emerald-500" />
           <span>Online</span>
@@ -134,8 +142,9 @@
         <p class="mt-1">Sistema ERP Efectivo 360</p>
       </div>
 
-      <!-- Collapse Toggle (Desktop) -->
+      <!-- Collapse Toggle (Desktop only) -->
       <button
+        v-if="!isMobile"
         type="button"
         class="mt-4 hidden w-full items-center justify-center p-2 lg:flex rounded-xl border border-white/12 text-white/70 hover:border-sky-400/25 hover:bg-white/[0.06]"
         @click="toggleCollapse"
@@ -143,7 +152,7 @@
       >
         <ChevronRight v-if="isCollapsed" class="h-4 w-4 stroke-[1.5]" />
         <ChevronLeft v-else class="h-4 w-4 stroke-[1.5]" />
-        <span class="ml-2 text-xs" :class="isCollapsed ? 'hidden' : 'block'">
+        <span class="ml-2 text-xs" :class="!showLabels ? 'hidden' : 'block'">
           {{ isCollapsed ? 'Expandir' : 'Colapsar' }}
         </span>
       </button>
@@ -152,7 +161,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import {
   LayoutDashboard,
@@ -228,14 +237,17 @@ const iconMap: Record<string, any> = {
 // Props
 interface Props {
   modelValue?: boolean;
+  isCollapsed?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   modelValue: false,
+  isCollapsed: false,
 });
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean];
+  'update:isCollapsed': [value: boolean];
 }>();
 
 // Route
@@ -244,13 +256,38 @@ const router = useRouter();
 const navigationStore = useNavigationStore();
 
 // State
-const isCollapsed = ref(false);
+const isCollapsed = computed({
+  get: () => props.isCollapsed,
+  set: (val) => emit('update:isCollapsed', val),
+});
+const isMobile = ref(false);
 const isMobileOpen = computed(() => props.modelValue);
 const activeItemId = ref<string | null>('');
 const expandedItems = ref<Set<string>>(new Set());
 
-// Fetch navigation on mount
+// Show labels: always when mobile menu is open; on desktop, follow isCollapsed
+const showLabels = computed(() => (isMobile.value && isMobileOpen.value) ? true : !isCollapsed.value);
+
+// Mobile detection
+const BREAKPOINT = 1024;
+
+function checkMobile() {
+  isMobile.value = window.innerWidth < BREAKPOINT;
+  if (!isMobile.value && props.modelValue) {
+    emit('update:modelValue', false);
+  }
+}
+
 onMounted(async () => {
+  checkMobile();
+  window.addEventListener('resize', checkMobile);
+
+  // Auto-collapse on mobile
+  if (window.innerWidth < BREAKPOINT) {
+    isCollapsed.value = true;
+  }
+
+  // Fetch navigation on mount
   navigationStore.clearCache();
   try {
     await navigationStore.fetchNavigation();
@@ -273,6 +310,10 @@ onMounted(async () => {
       setActiveItem(currentItem.id);
     }
   }
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile);
 });
 
 // Computed
@@ -349,6 +390,9 @@ function closeMobile() {
 function navigateTo(path: string, itemId: string) {
   router.push(path);
   setActiveItem(itemId);
+  if (isMobile.value) {
+    closeMobile();
+  }
 }
 
 function isItemActive(path: string): boolean {

@@ -185,6 +185,12 @@ const router = createRouter({
         component: () => import('@/views/admin/cxc/CustomerDebtsView.vue'),
         meta: { requiresAuth: true },
       },
+      {
+        path: '/admin/staff/global-catalog',
+        name: 'GlobalCatalog',
+        component: () => import('@/views/admin/staff/GlobalCatalogView.vue'),
+        meta: { requiresAuth: true, requiresStaff: true },
+      },
      {
        path: '/admin/billing/saas-payments',
       name: 'TenantSaasPayments',
