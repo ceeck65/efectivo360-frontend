@@ -106,7 +106,7 @@
               </button>
 
               <!-- Group Items -->
-              <template v-if="showLabels || isExpanded(group.id)">
+              <template v-if="!showLabels || isExpanded(group.id)">
                 <template v-for="item in group.items" :key="item.id">
                   <button
                     @click="navigateTo(item.path, item.id)"
