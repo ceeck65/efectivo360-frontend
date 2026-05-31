@@ -147,6 +147,13 @@ const router = createRouter({
        component: () => import('@/views/admin/GlobalPaymentMethodsView.vue'),
        meta: { requiresAuth: true, requiresStaff: true },
      },
+// POS - Punto de Venta - Available to authenticated users (staff and tenants)
+     {
+       path: '/admin/pos',
+       name: 'PosMain',
+       component: () => import('@/views/admin/staff/pos/PosMainView.vue'),
+       meta: { requiresAuth: true },
+     },
 // Treasury - Available to authenticated users (staff and tenants)
      {
        path: '/admin/staff/treasury',
@@ -190,6 +197,30 @@ const router = createRouter({
         name: 'GlobalCatalog',
         component: () => import('@/views/admin/staff/GlobalCatalogView.vue'),
         meta: { requiresAuth: true, requiresStaff: true },
+      },
+      {
+        path: '/admin/purchases/new',
+        name: 'NewPurchase',
+        component: () => import('@/views/admin/staff/purchases/PurchaseForm.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: '/admin/purchases/suppliers',
+        name: 'Suppliers',
+        component: () => import('@/views/admin/staff/purchases/SupplierManageView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: '/admin/business/console',
+        name: 'BusinessConsole',
+        component: () => import('@/views/admin/business-console/BusinessConsoleView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: '/admin/inventory/kardex',
+        name: 'InventoryKardex',
+        component: () => import('@/views/admin/staff/inventory/InventoryKardexView.vue'),
+        meta: { requiresAuth: true },
       },
      {
        path: '/admin/billing/saas-payments',

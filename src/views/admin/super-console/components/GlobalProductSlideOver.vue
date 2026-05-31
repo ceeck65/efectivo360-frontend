@@ -18,22 +18,28 @@
           <!-- Image -->
           <div>
             <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Imagen del producto</label>
-            <div class="relative border-2 border-dashed rounded-lg transition-colors cursor-pointer group"
-              :class="imagePreview ? 'border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.02]' : 'border-slate-300 dark:border-slate-600 hover:border-cyan-400 dark:hover:border-cyan-500/50 hover:bg-cyan-50 dark:hover:bg-cyan-500/[0.03]'"
-              @click="triggerFileInput" @dragover.prevent="dragOver = true" @dragleave.prevent="dragOver = false" @drop.prevent="handleDrop">
-              <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="handleFileSelect" />
-              <div v-if="imagePreview" class="relative">
-                <img :src="imagePreview" class="w-full h-40 object-contain rounded-lg" alt="" />
-                <button @click.stop="clearImage" class="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 dark:bg-black/70 text-white hover:bg-black/80 transition-colors"><X class="w-3.5 h-3.5" /></button>
-              </div>
-              <div v-else class="flex flex-col items-center gap-1.5 py-8">
-                <ImagePlus class="w-8 h-8 text-slate-400 dark:text-slate-500 group-hover:text-cyan-500 dark:group-hover:text-cyan-400 transition-colors" />
-                <p class="text-xs text-slate-500 group-hover:text-cyan-600 dark:group-hover:text-cyan-400/80 transition-colors">Arrastra o haz clic</p>
-                <p class="text-[10px] text-slate-400 dark:text-slate-600">PNG, JPEG, WebP</p>
+
+            <!-- Preview or upload button -->
+            <div v-if="processedImageUrl" class="relative rounded-lg overflow-hidden bg-slate-50 dark:bg-white/[0.02]">
+              <img :src="processedImageUrl" class="w-full h-40 object-contain" alt="" />
+              <div class="absolute inset-0 bg-black/0 hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 hover:opacity-100">
+                <div class="flex gap-2">
+                  <button @click="showStudio = true" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-gray-800 shadow-sm hover:bg-gray-50 transition-colors">Editar</button>
+                  <button @click="clearProcessedImage" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-red-600 shadow-sm hover:bg-red-50 transition-colors">Quitar</button>
+                </div>
               </div>
             </div>
+
+            <div v-else>
+              <button @click="showStudio = true" class="w-full py-8 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 hover:border-cyan-400 dark:hover:border-cyan-500 bg-transparent hover:bg-cyan-50/50 dark:hover:bg-cyan-500/[0.03] transition-colors flex flex-col items-center gap-1.5">
+                <Camera class="w-8 h-8 text-slate-400" />
+                <p class="text-xs text-slate-500">Abrir estudio de imagen</p>
+                <p class="text-[10px] text-slate-400">Recorte 1:1 · Fondo blanco · WebP</p>
+              </button>
+            </div>
+
             <div class="mt-2 relative">
-              <input v-model="form.official_image_url" type="url" placeholder="O pega URL..."
+              <input v-model="form.official_image_url" type="url" placeholder="O pega URL externa…"
                 class="w-full h-8 pl-7 pr-3 text-xs border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-cyan-500/20 focus:border-cyan-400 transition-colors" />
               <Link class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
             </div>
@@ -71,28 +77,31 @@
               <p v-if="errors.name" class="text-[11px] text-red-500 mt-1">{{ errors.name }}</p>
             </div>
 
-            <div>
-              <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Marca</label>
-              <input v-model="form.brand" type="text" placeholder="Marca del producto"
-                class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-cyan-500/20 focus:border-cyan-400 dark:focus:border-cyan-500/50 focus:outline-none transition-colors" />
-            </div>
           </div>
 
           <!-- Category -->
           <div class="pt-1">
             <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Categoría Global</label>
-            <div class="relative">
-              <select v-model="form.global_category_id"
-                class="w-full h-9 px-3 pr-8 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-cyan-500/20 focus:border-cyan-400 dark:focus:border-cyan-500/50 focus:outline-none transition-colors appearance-none cursor-pointer">
-                <option :value="null" class="bg-white dark:bg-slate-800 text-slate-500">Sin categoría</option>
-                <option v-for="cat in categories" :key="cat.id" :value="cat.id" class="bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-200">{{ cat.nombre || cat.name }}</option>
-              </select>
-              <ChevronDown class="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
-            </div>
+            <CategoryTreeSelect
+              v-model="selectedCategoryId"
+              :tree="categoryTree"
+              placeholder="Buscar categoría..."
+            />
+          </div>
+
+          <!-- Brand (filtered by category) -->
+          <div class="pt-1">
+            <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Marca</label>
+            <BrandSelect
+              :modelValue="form.brand"
+              :endpoint="selectedCategoryId ? '/api/v1/catalog/categories/' + selectedCategoryId + '/brands/' : '/api/v1/catalog/brands/all/'"
+              @update:modelValue="form.brand = $event || ''"
+              @createBrand="showBrandModal = true"
+            />
           </div>
 
           <!-- Attributes -->
-          <div v-if="form.global_category_id && attributeFields.length > 0" class="pt-1">
+          <div v-if="selectedCategoryId && attributeFields.length > 0" class="pt-1">
             <div class="flex items-center gap-2 mb-3">
               <div class="h-px flex-1 bg-slate-200 dark:bg-white/[0.06]" />
               <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Atributos</span>
@@ -142,38 +151,101 @@
       </div>
     </div>
   </Teleport>
+
+  <!-- ProductImageStudio Modal -->
+  <Teleport to="body">
+    <div v-if="showStudio" class="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showStudio = false" />
+      <div class="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+        <ProductImageStudio
+          @processed="onStudioProcessed"
+          @cancel="showStudio = false"
+        />
+      </div>
+    </div>
+  </Teleport>
+
+  <!-- Quick-Create Brand Modal -->
+  <Teleport to="body">
+    <div v-if="showBrandModal" class="fixed inset-0 z-[210] flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showBrandModal = false" />
+      <div class="relative bg-white dark:bg-[#141824] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-6 max-w-md w-full shadow-2xl">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-base font-semibold text-slate-900 dark:text-white">Crear Nueva Marca</h3>
+          <button @click="showBrandModal = false" class="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors">
+            <X class="w-4 h-4 text-slate-400" />
+          </button>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Nombre <span class="text-red-400">*</span></label>
+            <input v-model="newBrandName" type="text" placeholder="Ej. Puma"
+              class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.06] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/20" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Logo</label>
+            <div class="flex items-center gap-2">
+              <div class="w-9 h-9 rounded-lg bg-slate-100 dark:bg-white/[0.03] flex items-center justify-center overflow-hidden shrink-0">
+                <img v-if="newBrandLogo" :src="newBrandLogo" class="w-full h-full object-contain" alt="" />
+                <ImagePlus v-else class="w-4 h-4 text-slate-400" />
+              </div>
+              <input v-model="newBrandLogo" type="text" placeholder="URL del logo..."
+                class="flex-1 h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.06] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/20" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Categorías</label>
+            <CategoryMultiTreeSelect
+              v-model="newBrandCategoryIds"
+              :tree="categoryTree"
+              placeholder="Asignar categorías..."
+            />
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end gap-3">
+          <button @click="showBrandModal = false" class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors">Cancelar</button>
+          <button @click="createBrand" :disabled="brandCreating || !newBrandName.trim()" class="px-4 py-2 rounded-lg text-sm font-semibold bg-cyan-600 text-white hover:bg-cyan-500 disabled:opacity-40 transition-colors flex items-center gap-2">
+            <Save v-if="!brandCreating" class="w-4 h-4" />
+            <Loader2 v-else class="w-4 h-4 animate-spin" />
+            {{ brandCreating ? 'Creando...' : 'Crear' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, watch, onUnmounted, nextTick } from 'vue';
-import { X, ChevronDown, Loader2, Save, ImagePlus, Link, ScanBarcode, ScanLine } from 'lucide-vue-next';
+import { reactive, ref, watch, onUnmounted, nextTick } from 'vue';
+import { X, ChevronDown, Loader2, Save, Link, ScanBarcode, ScanLine, Camera, ImagePlus } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
-
-const props = defineProps<{ visible: boolean; editProduct?: any }>();
-const emit = defineEmits<{ close: []; productCreated: [payload: Record<string, any>] }>();
-
-interface AttributeField {
-  key: string; label: string; type: 'text' | 'number' | 'select' | 'boolean';
-  options?: string[]; placeholder?: string; checkbox_label?: string;
-}
-interface CategoryOption { id: number; nombre?: string; name?: string; }
+import ProductImageStudio from './ProductImageStudio.vue';
+import BrandSelect from './BrandSelect.vue';
+import CategoryTreeSelect from './CategoryTreeSelect.vue';
+import CategoryMultiTreeSelect from './CategoryMultiTreeSelect.vue';
 
 const { fetchApi } = useApi();
 const { success: notifySuccess, error: notifyError } = useNotify();
 
-const categories = ref<CategoryOption[]>([]);
-const attributeFields = ref<AttributeField[]>([]);
-const loadingAttributes = ref(false);
-const submitting = ref(false);
-const dragOver = ref(false);
-const imagePreview = ref<string | null>(null);
-const fileInput = ref<HTMLInputElement | null>(null);
-const scanning = ref(false);
-const scannerInstance = ref<Html5Qrcode | null>(null);
-const hasInitialized = ref(false);
-const uploadingImage = ref(false);
+const props = defineProps<{ visible: boolean; editProduct?: any }>();
+const emit = defineEmits<{ close: []; productCreated: [payload: Record<string, any>] }>();
+
+const isEditing = ref(false);
+
+watch(() => props.editProduct, (product) => {
+  isEditing.value = !!product;
+  if (product) {
+    form.barcode = product.barcode || '';
+    form.name = product.name || '';
+    form.brand = product.brand || '';
+    form.official_image_url = product.official_image_url || product.image_url || '';
+    form.description = product.description || '';
+    form.global_category_id = product.global_category || null;
+    processedImageUrl.value = product.official_image_url || product.image_url || null;
+  }
+}, { immediate: true });
 
 const form = reactive({
   barcode: '', name: '', brand: '', official_image_url: '', description: '',
@@ -181,6 +253,23 @@ const form = reactive({
   base_attributes: {} as Record<string, any>,
 });
 const errors = reactive({ barcode: '', name: '' });
+const categories = ref<{ id: number; nombre?: string; name?: string }[]>([]);
+const attributeFields = ref<{ key: string; label: string; type: string; options?: string[]; placeholder?: string; checkbox_label?: string }[]>([]);
+const loadingAttributes = ref(false);
+const submitting = ref(false);
+const scanning = ref(false);
+const scannerInstance = ref<Html5Qrcode | null>(null);
+const hasInitialized = ref(false);
+const categoryTree = ref<any[]>([]);
+const selectedCategoryId = ref<number | null>(null);
+const showStudio = ref(false);
+const processedImageBlob = ref<Blob | null>(null);
+const processedImageUrl = ref<string | null>(null);
+const showBrandModal = ref(false);
+const newBrandName = ref('');
+const newBrandLogo = ref('');
+const newBrandCategoryIds = ref<number[]>([]);
+const brandCreating = ref(false);
 
 function inputClass(error: string) {
   return error
@@ -188,54 +277,16 @@ function inputClass(error: string) {
     : 'w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-cyan-500/20 focus:border-cyan-400 dark:focus:border-cyan-500/50 focus:outline-none transition-colors';
 }
 
-// ── Image upload ──
-function triggerFileInput() { fileInput.value?.click(); }
-function handleFileSelect(e: Event) { const f = (e.target as HTMLInputElement).files?.[0]; if (f) readFile(f); }
-function handleDrop(e: DragEvent) { dragOver.value = false; const f = e.dataTransfer?.files?.[0]; if (f) readFile(f); }
-function readFile(file: File) {
-  if (!file.type.startsWith('image/')) return;
-  uploadingImage.value = true;
-  const formData = new FormData();
-  formData.append('image', file);
-  fetchApi('/api/v1/product-moderation/upload-image/', {
-    method: 'POST',
-    data: formData,
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }).then((res: any) => {
-    if (res?.url) {
-      form.official_image_url = res.url;
-      imagePreview.value = res.url;
-    }
-  }).catch(() => {
-    // fallback: show local preview only
-    const reader = new FileReader();
-    reader.onload = () => { imagePreview.value = reader.result as string; };
-    reader.readAsDataURL(file);
-  }).finally(() => { uploadingImage.value = false; });
-}
-function clearImage() { imagePreview.value = null; if (fileInput.value) fileInput.value.value = ''; }
-
-// ── Barcode Scanner ──
 async function toggleScanner() { if (scanning.value) stopScanner(); else await startScanner(); }
 async function startScanner() {
-  scanning.value = true;
-  await nextTick();
+  scanning.value = true; await nextTick();
   try {
-    const allFormats = [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.CODE_93, Html5QrcodeSupportedFormats.ITF, Html5QrcodeSupportedFormats.CODABAR, Html5QrcodeSupportedFormats.QR_CODE];
-    const scanner = new Html5Qrcode('barcode-scanner', { formatsToSupport: allFormats, verbose: false });
+    const formats = [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.CODE_93, Html5QrcodeSupportedFormats.ITF, Html5QrcodeSupportedFormats.CODABAR, Html5QrcodeSupportedFormats.QR_CODE];
+    const scanner = new Html5Qrcode('barcode-scanner', { formatsToSupport: formats, verbose: false });
     scannerInstance.value = scanner;
-    await scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 280, height: 160 }, aspectRatio: 1.75, disableFlip: false },
-      (decodedText, decodedResult) => {
-        const formatName = decodedResult?.result?.format?.formatName || '';
-        form.barcode = decodedText;
-        notifySuccess(`Código escaneado${formatName ? ' (' + formatName + ')' : ''}: ${decodedText}`);
-        stopScanner();
-      }, () => {});
-  } catch (e: any) {
-    notifyError(e?.message || 'No se pudo acceder a la cámara');
-    scanning.value = false;
-    scannerInstance.value = null;
-  }
+    await scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 280, height: 160 }, aspectRatio: 1.75 },
+      (txt) => { form.barcode = txt; notifySuccess(`Código escaneado: ${txt}`); stopScanner(); }, () => {});
+  } catch (e: any) { notifyError(e?.message || 'No se pudo acceder a la cámara'); scanning.value = false; scannerInstance.value = null; }
 }
 function stopScanner() {
   if (scannerInstance.value && scanning.value) {
@@ -245,7 +296,6 @@ function stopScanner() {
 }
 onUnmounted(() => { if (scannerInstance.value) { if (scannerInstance.value.isScanning) scannerInstance.value.stop().catch(() => {}); scannerInstance.value = null; } });
 
-// ── Categories ──
 async function loadCategories() {
   try {
     const data = await fetchApi<any>('/api/v1/categories/?is_active=true');
@@ -253,70 +303,63 @@ async function loadCategories() {
   } catch { categories.value = []; }
 }
 
-// ── Dynamic attributes ──
-async function fetchCategoryAttributes(categoryId: number) {
-  loadingAttributes.value = true;
-  form.base_attributes = {};
-  attributeFields.value = [];
+async function loadTree() {
   try {
-    const data = await fetchApi<any>(`/api/v1/categories/${categoryId}/dynamic-attributes/`);
-    const suggested: string[] = data?.suggested_attributes || [];
-    const blueprint: any[] = data?.blueprint_attributes || [];
-    if (blueprint.length > 0) {
-      attributeFields.value = blueprint.map((a: any) => ({ key: a.key || a.name || '', label: a.label || a.name || a.key || '', type: a.type || 'text', options: a.options || [], placeholder: a.placeholder || '', checkbox_label: a.checkbox_label || 'Sí' }));
-    } else if (suggested.length > 0) {
-      attributeFields.value = suggested.map((key: string) => ({ key, label: key.charAt(0).toUpperCase() + key.slice(1), type: 'text' as const }));
+    const res = await fetchApi<any>('/api/v1/catalog/categories/?page_size=200');
+    categoryTree.value = Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
+  } catch { categoryTree.value = []; }
+}
+
+async function fetchCategoryAttributes(categoryId: number) {
+  loadingAttributes.value = true; form.base_attributes = {}; attributeFields.value = [];
+  try {
+    const data = await fetchApi<any>(`/api/v1/catalog/categories/${categoryId}/attributes/`);
+    const all = Array.isArray(data) ? data : [];
+    attributeFields.value = all.map((a: any) => ({
+      key: a.key, label: a.name, type: a.type, options: a.options, placeholder: '', checkbox_label: 'Sí',
+    }));
+    for (const attr of attributeFields.value) {
+      form.base_attributes[attr.key] = attr.type === 'boolean' ? false : '';
     }
-    for (const attr of attributeFields.value) { form.base_attributes[attr.key] = attr.type === 'boolean' ? false : ''; }
   } catch { attributeFields.value = []; }
   finally { loadingAttributes.value = false; }
 }
 
-watch(() => form.global_category_id, (newId) => { if (newId) fetchCategoryAttributes(newId); else { form.base_attributes = {}; attributeFields.value = []; } });
+watch(() => selectedCategoryId.value, (id) => { if (id) fetchCategoryAttributes(id); else { form.base_attributes = {}; attributeFields.value = []; } });
 
-// ── Validation ──
 function validate(): boolean {
-  let valid = true;
-  errors.barcode = ''; errors.name = '';
-  if (!form.barcode.trim()) { errors.barcode = 'El barcode es obligatorio'; valid = false; }
-  if (!form.name.trim()) { errors.name = 'El nombre es obligatorio'; valid = false; }
-  return valid;
+  let ok = true; errors.barcode = ''; errors.name = '';
+  if (!form.barcode.trim()) { errors.barcode = 'El barcode es obligatorio'; ok = false; }
+  if (!form.name.trim()) { errors.name = 'El nombre es obligatorio'; ok = false; }
+  return ok;
 }
-
-// ── Submit ──
-const isEditing = computed(() => !!props.editProduct);
-
-watch(() => props.editProduct, (product) => {
-  if (product) {
-    form.barcode = product.barcode || '';
-    form.name = product.name || '';
-    form.brand = product.brand || '';
-    form.official_image_url = product.official_image_url || product.image_url || '';
-    form.description = product.description || '';
-    form.global_category_id = product.global_category || null;
-    imagePreview.value = product.official_image_url || product.image_url || null;
-  }
-}, { immediate: true });
 
 async function handleSubmit() {
   if (!validate()) return;
   submitting.value = true;
   try {
+    // Upload processed image if available
+    let imageUrl = form.official_image_url.trim();
+    if (processedImageBlob.value) {
+      const formData = new FormData();
+      formData.append('image', processedImageBlob.value, 'product.webp');
+      const uploadRes = await fetchApi<any>('/api/v1/product-moderation/upload-image/', {
+        method: 'POST', data: formData, headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      imageUrl = uploadRes?.url || imageUrl;
+      processedImageBlob.value = null;
+    }
+
     if (isEditing.value) {
       await fetchApi(`/api/global-products/${props.editProduct.id}/`, {
         method: 'PATCH',
-        data: {
-          name: form.name.trim(),
-          brand: form.brand.trim(),
-          description: form.description.trim(),
-          official_image_url: form.official_image_url.trim(),
-        },
+        data: { name: form.name.trim(), brand: form.brand.trim(), description: form.description.trim(), official_image_url: imageUrl },
       });
       notifySuccess('Producto actualizado exitosamente');
     } else {
       await fetchApi('/api/v1/product-moderation/staff-create/', {
         method: 'POST',
-        data: { barcode: form.barcode.trim(), name: form.name.trim(), brand: form.brand.trim(), image_url: form.official_image_url.trim(), description: form.description.trim(), category_code: '', base_attributes: { ...form.base_attributes } },
+        data: { barcode: form.barcode.trim(), name: form.name.trim(), brand: form.brand.trim(), image_url: imageUrl, description: form.description.trim(), category_code: '', base_attributes: { ...form.base_attributes } },
       });
       notifySuccess('Producto global creado exitosamente');
     }
@@ -331,11 +374,49 @@ async function handleSubmit() {
 function resetForm() {
   form.barcode = ''; form.name = ''; form.brand = ''; form.official_image_url = '';
   form.description = ''; form.global_category_id = null; form.base_attributes = {};
+  selectedCategoryId.value = null;
   errors.barcode = ''; errors.name = '';
   attributeFields.value = [];
-  imagePreview.value = null;
-  if (fileInput.value) fileInput.value.value = '';
   if (scanning.value) stopScanner();
+  isEditing.value = false;
+  processedImageBlob.value = null;
+  processedImageUrl.value = null;
+}
+
+async function createBrand() {
+  if (brandCreating.value || !newBrandName.value.trim()) return;
+  brandCreating.value = true;
+  try {
+    await fetchApi('/api/v1/catalog/brands/', {
+      method: 'POST',
+      data: {
+        name: newBrandName.value.trim(),
+        logo_url: newBrandLogo.value.trim(),
+        category_ids: newBrandCategoryIds.value,
+      },
+    });
+    form.brand = newBrandName.value.trim();
+    newBrandName.value = '';
+    newBrandLogo.value = '';
+    newBrandCategoryIds.value = [];
+    showBrandModal.value = false;
+    notifySuccess('Marca creada correctamente');
+  } catch (e: any) {
+    notifyError(e?.response?.data?.detail || e?.message || 'Error al crear marca');
+  } finally { brandCreating.value = false; }
+}
+
+function clearProcessedImage() {
+  processedImageBlob.value = null;
+  processedImageUrl.value = null;
+  form.official_image_url = '';
+}
+
+function onStudioProcessed(blob: Blob, previewUrl: string) {
+  processedImageBlob.value = blob;
+  processedImageUrl.value = previewUrl;
+  form.official_image_url = '';
+  showStudio.value = false;
 }
 
 // ── Init on first open ──
@@ -343,6 +424,7 @@ watch(() => props.visible, (v) => {
   if (v) {
     if (!hasInitialized.value) {
       loadCategories();
+      loadTree();
       hasInitialized.value = true;
     }
   }

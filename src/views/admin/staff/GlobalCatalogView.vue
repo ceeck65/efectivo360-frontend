@@ -87,7 +87,7 @@
           class="bg-white dark:bg-[#141824] border border-slate-200 dark:border-white/[0.06] rounded-xl p-4 hover:border-slate-300 dark:hover:border-white/[0.12] transition-colors shadow-sm"
         >
           <div class="w-full h-32 rounded-lg bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center overflow-hidden mb-3">
-            <img v-if="p.image_url || p.official_image_url" :src="p.image_url || p.official_image_url" class="w-full h-full object-contain" alt="" />
+            <img v-if="p.image_url || p.official_image_url" :src="absUrl(p.image_url || p.official_image_url)" class="w-full h-full object-contain" alt="" />
             <Package v-else class="w-8 h-8 text-slate-300" />
           </div>
           <p class="text-sm font-medium text-slate-900 dark:text-slate-200 truncate">{{ p.name }}</p>
@@ -131,7 +131,7 @@
           class="bg-white dark:bg-[#141824] border border-slate-200 dark:border-white/[0.06] rounded-xl p-4 flex items-start gap-4 hover:border-slate-300 dark:hover:border-white/[0.12] transition-colors shadow-sm"
         >
           <div class="shrink-0 w-12 h-12 rounded-lg bg-slate-50 dark:bg-white/[0.03] flex items-center justify-center overflow-hidden">
-            <img v-if="p.image_url || p.official_image_url" :src="p.image_url || p.official_image_url" class="w-full h-full object-cover" alt="" />
+            <img v-if="p.image_url || p.official_image_url" :src="absUrl(p.image_url || p.official_image_url)" class="w-full h-full object-cover" alt="" />
             <Package v-else class="w-5 h-5 text-slate-300" />
           </div>
           <div class="flex-1 min-w-0">
@@ -260,6 +260,13 @@ async function loadPendingCount() {
   } catch {
     pendingCount.value = 0;
   }
+}
+
+function absUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/')) return window.location.origin + url;
+  return url;
 }
 
 function onProductCreated() {

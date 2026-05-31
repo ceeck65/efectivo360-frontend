@@ -29,6 +29,10 @@ export default defineConfig(({ mode }) => {
           target: apiUrl,
           changeOrigin: true,
         },
+        '/storage': {
+          target: apiUrl,
+          changeOrigin: true,
+        },
       },
     },
     build: {

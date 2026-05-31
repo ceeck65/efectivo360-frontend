@@ -1,0 +1,2 @@
+import{n as e}from"./dist-D6sp4MBK.js";var t=()=>({success:t=>{e.success(t,{autoClose:1e4,position:`top-right`})},error:t=>{e.error(t,{autoClose:1e4,position:`top-right`})},info:t=>{e.info(t,{autoClose:1e4,position:`top-right`})}});export{t};
+//# sourceMappingURL=useNotify-DV6rg3XO.js.map

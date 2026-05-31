@@ -42,9 +42,9 @@
       </main>
     </div>
     
-    <!-- Efi Chat Components -->
-    <EfiChatBubble />
-    <EfiChatWindow />
+    <!-- Efi Chat Components (hidden on POS route) -->
+    <EfiChatBubble v-if="!isPosView" />
+    <EfiChatWindow v-if="!isPosView" />
   </div>
   
   <!-- Landing pages - with header/footer -->
@@ -101,6 +101,9 @@ const isSimpleRoute = computed(() => {
   const path = route.path;
   return path.startsWith('/admin/setup') || path.startsWith('/admin/onboarding') || path.startsWith('/admin/welcome-to-360');
 });
+
+// Hide Efi assistant on POS fullscreen route
+const isPosView = computed(() => route.path === '/admin/pos');
 
 // Check if user needs to be redirected to shop wizard
 const needsShopWizard = computed(() => {

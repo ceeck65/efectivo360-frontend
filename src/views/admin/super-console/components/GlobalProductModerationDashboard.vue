@@ -237,7 +237,7 @@ function removeFromList(id: number) {
 async function loadProducts() {
   loading.value = true;
   try {
-    const data = await fetchApi<any>('/api/v1/global-products/?status=PENDING');
+    const data = await fetchApi<any>('/api/global-products/?status=PENDING');
     const results = data?.results || data || [];
     products.value = Array.isArray(results) ? results : [];
   } catch (e) {
@@ -249,7 +249,7 @@ async function loadProducts() {
 
 async function loadCategories() {
   try {
-    const data = await fetchApi<any>('/api/v1/global-products/categories/');
+    const data = await fetchApi<any>('/api/global-products/categories/');
     const cats = data?.results || data || [];
     categories.value = Array.isArray(cats) ? cats : [];
   } catch {
