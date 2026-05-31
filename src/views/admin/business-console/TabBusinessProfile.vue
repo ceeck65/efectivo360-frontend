@@ -150,7 +150,7 @@ const loadingExtensions = ref(true);
 const primaryBlueprint = ref<Blueprint | null>(null);
 const categoryTree = ref<CategoryNode[]>([]);
 const categoryExtensions = ref<CategoryExtension[]>([]);
-const toggling = ref(new Set<string>());
+const toggling = ref(new Set<number>());
 const activeExtIds = ref(new Set<number>());
 
 onMounted(async () => {

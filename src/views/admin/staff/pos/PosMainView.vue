@@ -109,58 +109,42 @@
           </div>
         </div>
 
-        <!-- ─── Ticket section (dark grey, isolated from catalog, hidden on mobile) ─── -->
-        <div v-if="cart.length > 0" class="shrink-0 hidden md:block">
-          <section class="bg-slate-200/90 border-t-4 border-slate-300 p-4 sm:p-5 flex flex-col shadow-inner"
-            :style="{ height: '320px' }">
-            <div class="flex items-center justify-between mb-2.5 shrink-0">
-              <h3 class="text-xs font-black uppercase tracking-wider text-slate-600">
-                Ítems en Ticket Actual (<span class="text-blue-600 font-black">{{ itemCount }}</span>)
-              </h3>
-              <button @click="cart = []"
-                class="text-xs font-bold text-rose-600 hover:text-rose-700 transition-colors">Eliminar todo</button>
-            </div>
-            <div class="flex-1 overflow-y-auto space-y-2 pr-1">
-              <div v-for="(item, i) in cart" :key="item.id + (item.attrs ? JSON.stringify(item.attrs) : '')"
-                class="bg-white border border-slate-300/60 rounded-xl p-3 shadow-sm flex items-center justify-between hover:border-slate-400 transition-all">
-                <div class="flex-1 min-w-0 pr-2">
-                  <h4 class="text-sm font-bold text-slate-800 truncate">{{ item.name }}</h4>
-                  <p v-if="item.attrs" class="text-[11px] text-slate-400 font-medium mt-0.5">
-                    {{ Object.values(item.attrs).join(' · ') }}
-                  </p>
-                </div>
-                <div class="flex items-center gap-3 sm:gap-5">
-                  <div class="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-slate-50">
-                    <button @click="qtyDown(i)"
-                      class="px-2.5 py-1 text-slate-500 hover:bg-slate-100 transition-colors text-sm leading-none font-bold">−</button>
-                    <span class="px-3 text-sm font-bold text-slate-700 bg-white min-w-[24px] text-center">{{ item.qty }}</span>
-                    <button @click="qtyUp(i)"
-                      class="px-2.5 py-1 text-slate-500 hover:bg-slate-100 transition-colors text-sm leading-none font-bold">+</button>
-                  </div>
-                  <div class="text-right min-w-[76px]">
-                    <p class="text-sm font-bold text-slate-800">${{ formatUSD(item.price_usd * item.qty) }}</p>
-                    <p class="text-[10px] text-slate-400 font-medium font-mono">Bs.{{ formatVES(item.price_usd * item.qty * tasaBCV) }}</p>
-                  </div>
-                  <button @click="removeItem(i)"
-                    class="shrink-0 text-slate-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-50 transition-colors">
-                    <Trash2 class="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </section>
-        </div>
+        <!-- ─── Quick actions bar (replaces old ticket section) ─── -->
+        <section class="shrink-0 h-24 border-t border-slate-200 bg-slate-50 p-3 flex items-center justify-between gap-3 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.05)]"
+          :class="{'hidden md:flex': true}">
+          <div class="flex items-center gap-3 flex-1 h-full">
+            <button class="flex-1 h-full bg-slate-100 hover:bg-slate-200/90 border-2 border-slate-300 text-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-md group">
+              <span class="text-xl group-hover:scale-110 transition-transform">👤</span>
+              <span class="text-[10px] font-black tracking-wider text-slate-600 uppercase">Clientes</span>
+            </button>
+            <button class="flex-1 h-full bg-slate-100 hover:bg-slate-200/90 border-2 border-slate-300 text-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-md group">
+              <span class="text-xl group-hover:scale-110 transition-transform">📦</span>
+              <span class="text-[10px] font-black tracking-wider text-slate-600 uppercase">Inventario</span>
+            </button>
+            <button class="flex-1 h-full bg-slate-100 hover:bg-slate-200/90 border-2 border-slate-300 text-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-md group">
+              <span class="text-xl group-hover:scale-110 transition-transform">⚙️</span>
+              <span class="text-[10px] font-black tracking-wider text-slate-600 uppercase">Ajustes</span>
+            </button>
+            <button class="flex-1 h-full bg-slate-100 hover:bg-slate-200/90 border-2 border-slate-300 text-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-md group">
+              <span class="text-xl group-hover:scale-110 transition-transform">📊</span>
+              <span class="text-[10px] font-black tracking-wider text-slate-600 uppercase">Cierre Caja</span>
+            </button>
+          </div>
+          <div class="hidden lg:flex flex-col text-right pl-4 border-l border-slate-200 justify-center h-full">
+            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Items Filtro</span>
+            <span class="text-lg font-black text-slate-700">{{ filteredProducts.length }} Prods</span>
+          </div>
+        </section>
       </main>
 
-      <!-- ─── RIGHT: Blue Column (Totals + Customer + Numpad + Charge) ─── -->
-      <aside class="w-96 bg-gradient-to-t from-blue-700 via-blue-600 to-sky-400 text-white flex flex-col justify-between p-5 sm:p-6 shadow-2xl border-l border-blue-800/30"
+      <!-- ─── RIGHT: Blue Column (Totals + Cart Items + Customer + Charge) ─── -->
+      <aside class="w-96 bg-gradient-to-t from-blue-700 via-blue-600 to-sky-400 text-white flex flex-col justify-between p-4 shadow-2xl border-l border-blue-800/30"
         :class="mobileTab !== 'cart' && mobileTab !== 'payment' ? 'hidden sm:flex' : 'flex'">
 
         <!-- Totals -->
-        <div class="space-y-1.5 border-b border-white/20 pb-4">
-          <span class="text-[10px] font-bold tracking-wider uppercase text-blue-100 block">Resumen Transaccional</span>
+        <div class="space-y-1.5 pb-3 border-b border-white/20">
           <div class="flex justify-between items-baseline">
-            <span class="text-sm font-bold text-blue-50">TOTAL A COBRAR:</span>
+            <span class="text-xs font-bold text-blue-100 uppercase tracking-wider">Total Cuenta:</span>
             <div class="text-right">
               <p class="text-3xl font-black text-white tracking-tight">${{ formatUSD(totalUSD) }}</p>
               <p class="text-xs text-blue-100 font-medium font-mono mt-0.5">Bs.{{ formatVES(totalVES) }}</p>
@@ -168,62 +152,51 @@
           </div>
         </div>
 
-        <!-- Customer search (glassmorphism) -->
-        <div class="my-3 space-y-1">
-          <label class="text-[10px] font-bold tracking-wider uppercase text-blue-100 block">Cliente Factura</label>
-          <div v-if="!selectedCustomer" class="flex items-center gap-2">
-            <div class="relative flex-1">
-              <Search class="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-blue-200" />
-              <input v-model="customerQuery" type="text" placeholder="Buscar o registrar cliente..."
-                class="w-full h-9 pl-9 pr-3 text-xs rounded-xl bg-white/10 border border-white/20 text-white placeholder-blue-200 outline-none focus:ring-2 focus:ring-white/30 focus:border-white/40 backdrop-blur-sm" />
-            </div>
-            <button @click="showCustomerModal = true"
-              class="shrink-0 text-xs font-semibold text-white bg-white/10 hover:bg-white/20 border border-white/20 px-3 py-1.5 rounded-xl transition-all backdrop-blur-sm">
-              + Nuevo
-            </button>
+        <!-- Cart items (slate "foso" container) -->
+        <div class="flex-1 my-3 bg-slate-100/90 rounded-2xl p-3 border border-blue-400/20 shadow-inner flex flex-col overflow-hidden">
+          <div class="flex justify-between items-center mb-2 shrink-0">
+            <span class="text-[10px] font-black uppercase tracking-wider text-slate-500">Productos en Ticket ({{ cart.length }})</span>
+            <button @click="cart = []"
+              class="text-[10px] font-bold text-rose-500 hover:text-rose-600 uppercase tracking-wide">Vaciar</button>
           </div>
-          <div v-else class="flex items-center justify-between bg-white/10 backdrop-blur-sm rounded-xl px-3 py-2 border border-white/20">
-            <div class="flex items-center gap-2.5">
-              <div class="w-7 h-7 rounded-lg bg-white/15 flex items-center justify-center">
-                <User class="w-3.5 h-3.5 text-blue-100" />
+          <div v-if="cart.length === 0" class="flex-1 flex items-center justify-center text-[11px] text-slate-400 font-medium">
+            Agregue productos desde el catálogo
+          </div>
+          <div v-else class="flex-1 overflow-y-auto space-y-2 pr-0.5">
+            <div v-for="(item, i) in cart" :key="item.id + (item.attrs ? JSON.stringify(item.attrs) : '')"
+              class="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex items-center justify-between hover:border-slate-300 transition-all text-slate-800">
+              <div class="flex items-center gap-2 min-w-0 flex-1">
+                <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center font-black text-slate-400 text-xs border border-slate-200">
+                  {{ item.name.charAt(0).toUpperCase() }}
+                </div>
+                <div class="min-w-0 flex-1">
+                  <h4 class="text-xs font-bold text-slate-800 truncate leading-tight">{{ item.name }}</h4>
+                  <span class="text-[10px] text-slate-400 font-bold block mt-0.5">${{ formatUSD(item.price_usd) }}</span>
+                </div>
               </div>
-              <div>
-                <p class="text-xs font-semibold text-white">{{ selectedCustomer.name }}</p>
-                <p class="text-[10px] text-blue-200 font-mono">{{ selectedCustomer.rif }}</p>
+              <div class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200/80 mx-2">
+                <button @click="qtyDown(i)"
+                  class="w-5 h-5 flex items-center justify-center text-xs font-black bg-white hover:bg-slate-200 text-slate-600 rounded-md border border-slate-300 shadow-sm transition-all active:scale-90">−</button>
+                <span class="w-6 text-center text-xs font-black text-slate-800">{{ item.qty }}</span>
+                <button @click="qtyUp(i)"
+                  class="w-5 h-5 flex items-center justify-center text-xs font-black bg-white hover:bg-slate-200 text-slate-600 rounded-md border border-slate-300 shadow-sm transition-all active:scale-90">+</button>
+              </div>
+              <div class="flex items-center gap-2 pl-1">
+                <span class="text-xs font-black text-slate-800">${{ formatUSD(item.price_usd * item.qty) }}</span>
+                <button @click="removeItem(i)"
+                  class="text-slate-300 hover:text-rose-500 transition-colors text-xs p-1">
+                  <Trash2 class="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
-            <button @click="selectedCustomer = null" class="text-[10px] text-blue-200 hover:text-white transition-colors font-semibold">Cambiar</button>
-          </div>
-        </div>
-
-        <!-- Numpad (white keys on gradient) -->
-        <div class="my-2 space-y-2.5">
-          <div class="flex items-center gap-2">
-            <div class="flex-1 relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-blue-200">$</span>
-              <input v-model="numpadDisplay" type="text" inputmode="decimal" placeholder="0.00"
-                class="w-full h-10 pl-8 pr-3 text-lg font-black font-mono text-right bg-white rounded-xl text-slate-900 outline-none focus:ring-2 focus:ring-emerald-400/60 shadow-md" readonly />
-            </div>
-            <button @click="numpadQuick(20)" class="text-xs font-bold text-white bg-white/10 hover:bg-white/20 border border-white/20 px-3 h-10 rounded-xl transition-all backdrop-blur-sm shadow-sm">$20</button>
-            <button @click="numpadQuick(50)" class="text-xs font-bold text-white bg-white/10 hover:bg-white/20 border border-white/20 px-3 h-10 rounded-xl transition-all backdrop-blur-sm shadow-sm">$50</button>
-            <button @click="numpadQuick(100)" class="text-xs font-bold text-white bg-white/10 hover:bg-white/20 border border-white/20 px-3 h-10 rounded-xl transition-all backdrop-blur-sm shadow-sm">$100</button>
-          </div>
-          <div class="grid grid-cols-3 gap-2">
-            <button v-for="k in numpadKeys" :key="k" @click="numpadPress(k)"
-              class="h-12 rounded-xl text-base font-bold bg-white text-slate-800 border border-slate-100 shadow-sm transition-all active:scale-95 hover:bg-slate-50"
-              :class="numpadKeyClass(k)">
-              <span v-if="k === '⌫'"><Trash2 class="w-4 h-4 mx-auto text-rose-500" /></span>
-              <span v-else>{{ k }}</span>
-            </button>
           </div>
         </div>
 
         <!-- Hold / Resume buttons -->
-        <div v-if="heldSales.length > 0" class="mb-2">
-          <span class="text-[10px] font-bold uppercase tracking-wider text-blue-200/70 block mb-1.5">Ventas en pausa ({{ heldSales.length }})</span>
+        <div v-if="heldSales.length > 0" class="mb-1.5">
           <div class="flex flex-wrap gap-1.5">
             <button v-for="(sale, i) in heldSales" :key="sale.id" @click="resumeSale(i)"
-              class="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold text-white transition-all backdrop-blur-sm">
+              class="flex items-center gap-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-2 py-1 text-[10px] font-semibold text-white transition-all backdrop-blur-sm">
               <PlayCircle class="w-3 h-3 text-emerald-300" />
               <span>{{ sale.timestamp }}</span>
               <span class="text-blue-200 font-mono">${{ formatUSD(sale.total) }}</span>
@@ -231,22 +204,28 @@
           </div>
         </div>
 
-        <!-- Pause / Charge row -->
-        <div class="flex gap-2 mt-2">
-          <button @click="pauseCurrentSale" :disabled="cart.length === 0"
-            class="flex items-center justify-center gap-1.5 h-14 rounded-xl text-sm font-bold text-white/80 bg-white/10 hover:bg-white/20 border border-white/20 transition-all active:scale-[0.98] px-3 backdrop-blur-sm"
-            :class="cart.length === 0 ? 'opacity-30 cursor-not-allowed' : ''">
-            <PauseCircle class="w-4 h-4" />
-            <span class="text-[11px]">Pausar</span>
-          </button>
-          <button @click="openCheckout" :disabled="cart.length === 0"
-            class="flex-1 h-14 rounded-xl text-sm font-black text-white transition-all active:scale-[0.98] shadow-xl flex items-center justify-center gap-2"
-            :class="cart.length === 0
-              ? 'bg-slate-400/50 cursor-not-allowed'
-              : 'bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-500 hover:to-emerald-600 shadow-emerald-500/30'">
-            <CreditCard class="w-4 h-5" />
-            COBRAR
-          </button>
+        <!-- Customer + Charge row -->
+        <div class="space-y-2.5 pt-2 border-t border-white/10">
+          <div class="flex items-center justify-between bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 text-xs">
+            <span class="text-blue-100 font-medium">Cliente:</span>
+            <span v-if="!selectedCustomer" class="font-bold text-white">Consumidor Final 👤</span>
+            <span v-else class="font-bold text-white">{{ selectedCustomer.name }}</span>
+          </div>
+          <div class="flex gap-2">
+            <button @click="pauseCurrentSale" :disabled="cart.length === 0"
+              class="flex items-center justify-center gap-1 h-12 rounded-xl text-xs font-bold text-white/80 bg-white/10 hover:bg-white/20 border border-white/20 transition-all active:scale-[0.98] px-3 backdrop-blur-sm"
+              :class="cart.length === 0 ? 'opacity-30 cursor-not-allowed' : ''">
+              <PauseCircle class="w-3.5 h-3.5" />
+              Pausar
+            </button>
+            <button @click="openCheckout" :disabled="cart.length === 0"
+              class="flex-1 h-12 rounded-xl text-sm font-black text-white transition-all active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 uppercase tracking-wider"
+              :class="cart.length === 0
+                ? 'bg-slate-400/50 cursor-not-allowed'
+                : 'bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-500 hover:to-emerald-600 shadow-emerald-500/30'">
+              ⚡ Cobrar
+            </button>
+          </div>
         </div>
       </aside>
     </div>
@@ -361,7 +340,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import {
-  Search, X, User, ShoppingBag, Trash2, Minus, Plus,
+  Search, X, User, ShoppingBag, Trash2,
   CreditCard, PackageSearch, PauseCircle, PlayCircle, Wifi, WifiOff,
 } from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
@@ -412,7 +391,6 @@ const operatorName = ref('Mario');
 const searchQuery = ref('');
 const searchInputRef = ref<HTMLInputElement | null>(null);
 const selectedCategoryId = ref<number | null>(null);
-const customerQuery = ref('');
 const selectedCustomer = ref<Customer | null>(null);
 const showCustomerModal = ref(false);
 const newCustomerRif = ref('');
@@ -449,16 +427,12 @@ const resumeSale = (index: number) => {
 const isOnline = ref(navigator.onLine);
 const updateOnlineStatus = () => { isOnline.value = navigator.onLine; };
 
-// Currency selector for checkout
-const selectedCurrency = ref<'USD' | 'VES'>('USD');
-
 const mobileTab = ref<'products' | 'cart' | 'payment'>('products');
 const showCheckout = ref(false);
 const showMobileCart = ref(false);
 const cart = ref<CartItem[]>([]);
 const categories = ref<Category[]>([]);
 const products = ref<Product[]>([]);
-const numpadDisplay = ref('');
 
 const filteredProducts = computed(() => {
   let list = products.value;
@@ -474,8 +448,6 @@ const subtotalUSD = computed(() => cart.value.reduce((sum, i) => sum + i.price_u
 const totalUSD = computed(() => subtotalUSD.value);
 const totalVES = computed(() => totalUSD.value * tasaBCV.value);
 
-const numpadKeys = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '00', '0', '.', '⌫'];
-
 function addItem(p: Product) {
   const existing = cart.value.find(
     (i) => i.id === p.id && JSON.stringify(i.attrs || {}) === JSON.stringify(p.attrs || {})
@@ -490,18 +462,6 @@ function qtyDown(index: number) {
   const item = cart.value[index];
   if (item.qty <= 1) removeItem(index);
   else item.qty--;
-}
-
-function numpadPress(k: string) {
-  if (k === '⌫') { numpadDisplay.value = numpadDisplay.value.slice(0, -1); return; }
-  if (k === '.' && numpadDisplay.value.includes('.')) return;
-  numpadDisplay.value += k;
-}
-
-function numpadQuick(amount: number) { numpadDisplay.value = amount.toFixed(2); }
-
-function numpadKeyClass(k: string): string {
-  return k === '⌫' ? '!bg-rose-50 !text-rose-600 !border-rose-200' : '';
 }
 
 function categoryPillClass(cat: Category): string {
@@ -537,7 +497,6 @@ function openCheckout() { if (cart.value.length > 0) showCheckout.value = true; 
 function onCheckoutConfirm() {
   showCheckout.value = false;
   cart.value = [];
-  numpadDisplay.value = '';
 }
 
 function formatUSD(n: number): string {
@@ -576,8 +535,8 @@ onUnmounted(() => {
 });
 
 const mobileTabs = [
-  { key: 'products', label: 'Productos', icon: ShoppingBag },
-  { key: 'cart', label: 'Carrito', icon: ShoppingBag },
-  { key: 'payment', label: 'Pago', icon: CreditCard },
+  { key: 'products' as const, label: 'Productos', icon: ShoppingBag },
+  { key: 'cart' as const, label: 'Carrito', icon: ShoppingBag },
+  { key: 'payment' as const, label: 'Pago', icon: CreditCard },
 ];
 </script>
