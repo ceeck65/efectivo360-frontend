@@ -39,6 +39,9 @@ export default defineConfig(({ mode }) => {
       target: 'esnext',
       outDir: 'dist',
       sourcemap: true,
+      rolldownOptions: {
+        external: [/^onnxruntime-web/],
+      },
     },
   };
 });

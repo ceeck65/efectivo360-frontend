@@ -7,11 +7,15 @@
         <button @click="handleClose" class="w-9 h-9 rounded-xl flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all">
           <X class="w-5 h-5" />
         </button>
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shadow-sm backdrop-blur-sm">
-            <span class="text-white font-black text-sm">E</span>
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-lg overflow-hidden bg-white border-2 border-white/40 shadow-md flex items-center justify-center flex-shrink-0">
+            <img v-if="tenantLogo" :src="tenantLogo" :alt="tenantCommercialName || 'Logo'" class="w-full h-full object-contain" />
+            <img v-else src="/assets/efectivo360/logo-mark.svg" alt="Efectivo 360" class="w-7 h-7" />
           </div>
-          <span class="text-white font-bold text-sm hidden sm:inline">Efectivo 360 · POS</span>
+          <div class="hidden sm:flex flex-col leading-none">
+            <span class="text-white font-bold text-sm truncate max-w-[140px]">{{ tenantCommercialName || 'Efectivo 360' }}</span>
+            <span class="text-blue-200/70 text-[10px] font-semibold tracking-wide">PUNTO DE VENTA</span>
+          </div>
         </div>
       </div>
       <div class="flex items-center gap-3">
@@ -57,52 +61,103 @@
         :class="mobileTab !== 'products' && mobileTab !== 'cart' ? 'hidden sm:flex' : 'flex'">
 
         <!-- Search -->
-        <div class="shrink-0 px-4 sm:px-6 pt-4 pb-2">
+        <div class="shrink-0 px-4 sm:px-6 pt-4 pb-3 border-b border-slate-200/80">
           <div class="relative max-w-lg">
             <Search class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input ref="searchInputRef" v-model="searchQuery" type="text" placeholder="Buscar producto o escanear código de barras..."
-              class="w-full h-10 pl-10 pr-4 text-sm border border-slate-200 rounded-xl bg-white text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 shadow-sm transition-shadow" />
-            <button v-if="searchQuery" @click="searchQuery = ''; searchInputRef?.focus()"
-              class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 bg-slate-100 hover:bg-slate-200 w-5 h-5 rounded-full flex items-center justify-center transition-colors">
+              class="w-full h-10 pl-10 pr-20 text-sm border border-slate-200 rounded-xl bg-white text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 shadow-sm transition-shadow" />
+            <div class="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              <button @click="toggleScanner"
+                class="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+                :class="scanning ? 'bg-blue-100 text-blue-600' : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'"
+                :title="scanning ? 'Detener escáner' : 'Escanear con cámara'">
+                <ScanLine v-if="scanning" class="w-3.5 h-3.5 animate-pulse" />
+                <ScanBarcode v-else class="w-3.5 h-3.5" />
+              </button>
+              <button v-if="searchQuery" @click="searchQuery = ''; searchInputRef?.focus()"
+                class="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+                <X class="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scanner preview -->
+        <div v-if="scanning" class="shrink-0 px-4 sm:px-6 pb-2">
+          <div class="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-900 shadow-md max-w-lg">
+            <div id="pos-scanner" class="w-full h-36" />
+            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div class="w-52 h-16 border-2 border-blue-400/50 rounded-lg">
+                <div class="w-full h-0.5 bg-blue-400/70 animate-scan-line" />
+              </div>
+            </div>
+            <button @click="stopScanner"
+              class="absolute top-2 right-2 p-1 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors">
               <X class="w-3 h-3" />
             </button>
+            <p class="absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] text-slate-300 bg-black/50 px-2 py-0.5 rounded-full">Apunta al código de barras</p>
           </div>
         </div>
 
         <!-- Category pills -->
-        <div v-if="categories.length" class="shrink-0 flex gap-2 overflow-x-auto px-4 sm:px-6 pb-3 pt-1 scrollbar-thin">
+        <div v-if="categories.length" class="shrink-0 flex gap-2 overflow-x-auto px-4 sm:px-6 pb-3 pt-2 bg-white border-b border-slate-200/80">
+          <button @click="showCategorySidebar = true"
+            class="shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:border-slate-300 transition-all duration-150 flex items-center gap-1.5">
+            <ListTree class="w-3 h-3" />
+            Todas
+          </button>
           <button v-for="cat in categories" :key="cat.id" @click="selectedCategoryId = selectedCategoryId === cat.id ? null : cat.id"
             class="shrink-0 text-xs font-semibold px-3.5 py-1.5 rounded-full border transition-all duration-150 whitespace-nowrap"
             :class="categoryPillClass(cat)">
-            {{ cat.name }}
+            {{ cat.icon }} {{ cat.name }}
           </button>
         </div>
 
+        <!-- Info bar -->
+        <div class="shrink-0 px-4 sm:px-6 py-2 flex items-center justify-between text-[11px] bg-white border-b border-slate-200/80">
+          <div class="flex items-center gap-2 text-slate-500 font-medium">
+            <span class="w-1.5 h-1.5 rounded-full bg-blue-400" />
+            <span>{{ filteredProducts.length }} producto{{ filteredProducts.length !== 1 ? 's' : '' }}</span>
+            <span v-if="selectedCategoryId" class="text-blue-600 font-bold">
+              en {{ categories.find(c => c.id === selectedCategoryId)?.icon || '' }} {{ categories.find(c => c.id === selectedCategoryId)?.name }}
+            </span>
+          </div>
+          <div v-if="selectedCategoryId || searchQuery" class="flex items-center gap-2">
+            <button v-if="selectedCategoryId" @click="selectedCategoryId = null"
+              class="text-[10px] font-bold text-slate-400 hover:text-rose-500 transition-colors uppercase tracking-wide">Limpiar filtro</button>
+            <button v-if="searchQuery" @click="searchQuery = ''"
+              class="text-[10px] font-bold text-slate-400 hover:text-rose-500 transition-colors uppercase tracking-wide">Borrar búsqueda</button>
+          </div>
+          <span v-if="lastScanned" class="text-slate-400 font-mono text-[10px]">
+            Último: {{ lastScanned }}
+          </span>
+        </div>
+
         <!-- Product grid -->
-        <div class="flex-1 overflow-y-auto px-4 sm:px-6 pb-4">
+        <div class="flex-1 overflow-y-auto px-4 sm:px-6 py-4 bg-[#f6f8fa]">
           <div v-if="filteredProducts.length === 0" class="flex flex-col items-center justify-center h-full text-sm text-slate-400 gap-1">
             <PackageSearch class="w-10 h-10 text-slate-200" />
             <span v-if="searchQuery">Sin resultados para "<span class="font-medium text-slate-500">{{ searchQuery }}</span>"</span>
             <span v-else>No hay productos disponibles</span>
           </div>
-          <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             <button v-for="p in filteredProducts" :key="p.id" @click="addItem(p)"
-              class="bg-white border border-slate-100/80 rounded-xl p-3 flex gap-3 shadow-sm hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group relative overflow-hidden text-left">
-              <div class="w-16 h-16 rounded-lg bg-slate-50 border border-slate-100 flex-shrink-0 flex items-center justify-center overflow-hidden relative">
+              class="bg-white border border-slate-300 rounded-xl p-2.5 flex gap-2.5 shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer group relative overflow-hidden text-left">
+              <div class="w-12 h-12 rounded-lg bg-slate-50 border border-slate-200 flex-shrink-0 flex items-center justify-center overflow-hidden relative">
                 <div class="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-400">
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                 </div>
-                <span class="absolute top-0 left-0 bg-slate-900/80 text-white text-[9px] font-bold px-1 rounded-br-md">{{ p.stock ?? '—' }}</span>
+                <span class="absolute top-0 left-0 bg-slate-900/80 text-white text-[8px] font-bold px-1 rounded-br-md leading-tight">{{ p.stock ?? '—' }}</span>
               </div>
               <div class="flex flex-col justify-between flex-1 min-w-0">
                 <div>
-                  <h4 class="text-xs font-bold text-slate-800 truncate group-hover:text-blue-600 transition-colors">{{ p.name }}</h4>
-                  <p v-if="p.attrs" class="text-[10px] text-slate-400 truncate">{{ Object.values(p.attrs).join(' · ') }}</p>
-                  <p v-else class="text-[10px] text-slate-400 truncate">General</p>
+                  <h4 class="text-[11px] font-bold text-slate-800 truncate leading-tight group-hover:text-blue-600 transition-colors">{{ p.name }}</h4>
+                  <p v-if="p.attrs" class="text-[9px] text-slate-400 truncate mt-0.5">{{ Object.values(p.attrs).join(' · ') }}</p>
+                  <p v-else class="text-[9px] text-slate-400 truncate mt-0.5">General</p>
                 </div>
-                <div class="flex justify-between items-baseline mt-1">
-                  <span class="text-sm font-black text-slate-900">${{ formatUSD(p.price_usd) }}</span>
-                  <span class="text-[10px] font-medium text-slate-400 font-mono">Bs.{{ formatVES(p.price_usd * tasaBCV) }}</span>
+                <div class="flex justify-between items-baseline mt-0.5">
+                  <span class="text-xs font-black text-slate-900">${{ formatUSD(p.price_usd) }}</span>
+                  <span class="text-[9px] font-medium text-slate-400 font-mono">Bs.{{ formatVES(p.price_usd * tasaBCV) }}</span>
                 </div>
               </div>
             </button>
@@ -110,31 +165,97 @@
         </div>
 
         <!-- ─── Quick actions bar (replaces old ticket section) ─── -->
-        <section class="shrink-0 h-24 border-t border-slate-200 bg-slate-50 p-3 flex items-center justify-between gap-3 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.05)]"
+        <section class="shrink-0 h-24 border-t border-slate-300/50 bg-[#9ca3af] p-3 flex items-center justify-between gap-3 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.08)]"
           :class="{'hidden md:flex': true}">
           <div class="flex items-center gap-3 flex-1 h-full">
-            <button class="flex-1 h-full bg-slate-100 hover:bg-slate-200/90 border-2 border-slate-300 text-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-md group">
+            <button class="flex-1 h-full bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-md group">
               <span class="text-xl group-hover:scale-110 transition-transform">👤</span>
               <span class="text-[10px] font-black tracking-wider text-slate-600 uppercase">Clientes</span>
             </button>
-            <button class="flex-1 h-full bg-slate-100 hover:bg-slate-200/90 border-2 border-slate-300 text-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-md group">
+            <button class="flex-1 h-full bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-md group">
               <span class="text-xl group-hover:scale-110 transition-transform">📦</span>
               <span class="text-[10px] font-black tracking-wider text-slate-600 uppercase">Inventario</span>
             </button>
-            <button class="flex-1 h-full bg-slate-100 hover:bg-slate-200/90 border-2 border-slate-300 text-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-md group">
+            <button class="flex-1 h-full bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-md group">
               <span class="text-xl group-hover:scale-110 transition-transform">⚙️</span>
               <span class="text-[10px] font-black tracking-wider text-slate-600 uppercase">Ajustes</span>
             </button>
-            <button class="flex-1 h-full bg-slate-100 hover:bg-slate-200/90 border-2 border-slate-300 text-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-md group">
+            <button class="flex-1 h-full bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-md group">
               <span class="text-xl group-hover:scale-110 transition-transform">📊</span>
               <span class="text-[10px] font-black tracking-wider text-slate-600 uppercase">Cierre Caja</span>
             </button>
           </div>
-          <div class="hidden lg:flex flex-col text-right pl-4 border-l border-slate-200 justify-center h-full">
-            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Items Filtro</span>
-            <span class="text-lg font-black text-slate-700">{{ filteredProducts.length }} Prods</span>
+          <div class="hidden lg:flex flex-col text-right pl-4 border-l-2 border-white/30 justify-center h-full">
+            <span class="text-[10px] font-bold text-white/70 uppercase tracking-wider">Items Filtro</span>
+            <span class="text-lg font-black text-white">{{ filteredProducts.length }} Prods</span>
           </div>
         </section>
+
+        <!-- ═══════ CATEGORY SIDEBAR ═══════ -->
+        <Teleport to="body">
+          <div v-if="showCategorySidebar" class="fixed inset-0 z-[60]">
+            <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="showCategorySidebar = false" />
+            <div class="absolute top-0 left-0 bottom-0 w-72 bg-white shadow-2xl flex flex-col animate-slide-in-left">
+              <div class="shrink-0 flex items-center justify-between px-4 py-3 border-b border-slate-200">
+                <div class="flex items-center gap-2">
+                  <ListTree class="w-4 h-4 text-blue-600" />
+                  <h3 class="text-sm font-bold text-slate-800">Categorías</h3>
+                </div>
+                <button @click="showCategorySidebar = false" class="p-1 rounded-lg hover:bg-slate-100 transition-colors">
+                  <X class="w-4 h-4 text-slate-400" />
+                </button>
+              </div>
+
+              <div class="flex-1 overflow-y-auto py-2">
+                <!-- "Todas" option -->
+                <button @click="filterByCategory(null)"
+                  class="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
+                  :class="selectedCategoryId === null ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'">
+                  <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                    <PackageSearch class="w-4 h-4 text-slate-500" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <span class="text-sm font-semibold">Todos los productos</span>
+                  </div>
+                  <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">{{ products.length }}</span>
+                </button>
+
+                <div class="h-px bg-slate-100 mx-4 my-1" />
+
+                <!-- Category tree -->
+                <div v-for="cat in categories" :key="cat.id">
+                  <button @click="toggleExpandCategory(cat.id)"
+                    class="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
+                    :class="selectedCategoryId === cat.id ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center text-lg"
+                      :class="selectedCategoryId === cat.id ? 'bg-blue-100' : 'bg-slate-100'">
+                      {{ cat.icon || '📁' }}
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <span class="text-sm font-semibold">{{ cat.name }}</span>
+                      <span v-if="cat.children?.length" class="text-[10px] text-slate-400 ml-1.5">{{ cat.children.length }} sub</span>
+                    </div>
+                    <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full mr-1">{{ productCountForCategory(cat) }}</span>
+                    <ChevronDown v-if="cat.children?.length"
+                      class="w-4 h-4 text-slate-400 transition-transform duration-200"
+                      :class="expandedCategories.has(cat.id) ? 'rotate-0' : '-rotate-90'" />
+                  </button>
+
+                  <!-- Subcategories -->
+                  <div v-if="cat.children?.length && expandedCategories.has(cat.id)"
+                    class="ml-4 border-l-2 border-slate-100">
+                    <button v-for="sub in cat.children" :key="sub.id" @click="filterByCategory(sub.id)"
+                      class="w-full flex items-center gap-2.5 pl-5 pr-4 py-2 text-left transition-colors text-sm"
+                      :class="selectedCategoryId === sub.id ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-50'">
+                      <div class="w-1.5 h-1.5 rounded-full" :class="selectedCategoryId === sub.id ? 'bg-blue-500' : 'bg-slate-300'" />
+                      <span>{{ sub.name }}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Teleport>
       </main>
 
       <!-- ─── RIGHT: Blue Column (Totals + Cart Items + Customer + Charge) ─── -->
@@ -231,7 +352,7 @@
     </div>
 
     <!-- ═══════ MOBILE FAB (cart summary) ═══════ -->
-    <button v-if="cart.length > 0" @click="showMobileCart = true"
+    <button v-if="cart.length > 0 && mobileTab !== 'cart'" @click="showMobileCart = true"
       class="md:hidden fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold px-5 py-3.5 rounded-2xl shadow-2xl shadow-blue-600/30 transition-all active:scale-95">
       <span class="relative flex items-center justify-center w-6 h-6 rounded-full bg-white/20 text-xs font-black">
         {{ cartTotal }}
@@ -286,11 +407,19 @@
                 <p class="text-[11px] text-slate-400 font-mono">Bs.{{ formatVES(totalVES) }}</p>
               </div>
             </div>
-            <button @click="showMobileCart = false; openCheckout()"
-              class="w-full h-12 rounded-xl text-sm font-black text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 shadow-lg shadow-emerald-500/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-              <CreditCard class="w-4 h-4" />
-              COBRAR — ${{ formatUSD(totalUSD) }}
-            </button>
+            <div class="flex gap-2">
+              <button @click="pauseCurrentSale(); showMobileCart = false" :disabled="cart.length === 0"
+                class="flex items-center justify-center gap-1 h-12 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all active:scale-[0.98] px-3"
+                :class="cart.length === 0 ? 'opacity-30 cursor-not-allowed' : ''">
+                <PauseCircle class="w-4 h-4" />
+                Pausar
+              </button>
+              <button @click="showMobileCart = false; openCheckout()"
+                class="flex-1 h-12 rounded-xl text-sm font-black text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 shadow-lg shadow-emerald-500/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                <CreditCard class="w-4 h-4" />
+                COBRAR — ${{ formatUSD(totalUSD) }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -342,11 +471,19 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import {
   Search, X, User, ShoppingBag, Trash2,
   CreditCard, PackageSearch, PauseCircle, PlayCircle, Wifi, WifiOff,
+  ScanBarcode, ScanLine,
+  ChevronDown, ListTree,
 } from 'lucide-vue-next';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { useRouter } from 'vue-router';
+import { useAuthStore } from '@/stores/auth';
 import RifInput from '@/components/shared/RifInput.vue';
 import PhoneInput from '@/components/shared/PhoneInput.vue';
 import CheckoutModal from './CheckoutModal.vue';
+
+const authStore = useAuthStore();
+const tenantLogo = computed(() => authStore.user?.tenant_logo || null);
+const tenantCommercialName = computed(() => authStore.user?.tenant_commercial_name || authStore.user?.tenant_name || '');
 
 const emit = defineEmits<{ close: [] }>();
 const router = useRouter();
@@ -384,6 +521,8 @@ interface Customer {
 interface Category {
   id: number;
   name: string;
+  icon?: string;
+  children?: Category[];
 }
 
 const tasaBCV = ref(549.37);
@@ -391,12 +530,54 @@ const operatorName = ref('Mario');
 const searchQuery = ref('');
 const searchInputRef = ref<HTMLInputElement | null>(null);
 const selectedCategoryId = ref<number | null>(null);
+const showCategorySidebar = ref(false);
+const expandedCategories = ref<Set<number>>(new Set());
 const selectedCustomer = ref<Customer | null>(null);
 const showCustomerModal = ref(false);
 const newCustomerRif = ref('');
 const newCustomerName = ref('');
 const newCustomerPhone = ref('');
 const newCustomerEmail = ref('');
+
+// Barcode scanner
+const scanning = ref(false);
+const scannerInstance = ref<Html5Qrcode | null>(null);
+const lastScanned = ref<string | null>(null);
+
+async function toggleScanner() {
+  if (scanning.value) { stopScanner(); return; }
+  scanning.value = true;
+  await new Promise((r) => setTimeout(r, 100));
+  try {
+    const formats = [
+      Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8,
+      Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E,
+      Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39,
+      Html5QrcodeSupportedFormats.QR_CODE,
+    ];
+    const scanner = new Html5Qrcode('pos-scanner', { formatsToSupport: formats, verbose: false });
+    scannerInstance.value = scanner;
+    await scanner.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 280, height: 120 }, aspectRatio: 1.6 },
+      (txt) => { searchQuery.value = txt; lastScanned.value = txt; stopScanner(); },
+      () => {},
+    );
+  } catch {
+    scanning.value = false;
+    scannerInstance.value = null;
+  }
+}
+
+function stopScanner() {
+  if (scannerInstance.value && scanning.value) {
+    scannerInstance.value.stop().then(() => { scannerInstance.value?.clear(); scannerInstance.value = null; }).catch(() => {});
+  }
+  scanning.value = false;
+}
+
+onUnmounted(() => { if (scannerInstance.value && scannerInstance.value.isScanning) scannerInstance.value.stop().catch(() => {}); });
+
 // Hold / Resume
 const heldSales = ref<{ id: number; items: CartItem[]; timestamp: string; total: number }[]>([]);
 
@@ -476,6 +657,24 @@ function categoryPillClass(cat: Category): string {
   return hues[cat.id] || 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300';
 }
 
+function toggleExpandCategory(id: number) {
+  const s = new Set(expandedCategories.value);
+  s.has(id) ? s.delete(id) : s.add(id);
+  expandedCategories.value = s;
+}
+
+function filterByCategory(id: number | null) {
+  selectedCategoryId.value = selectedCategoryId.value === id ? null : id;
+  showCategorySidebar.value = false;
+}
+
+function productCountForCategory(cat: Category): number {
+  const ids = cat.children?.length
+    ? [cat.id, ...cat.children.map((c) => c.id)]
+    : [cat.id];
+  return products.value.filter((p) => ids.includes(p.category_id ?? -1)).length;
+}
+
 function saveNewCustomer() {
   if (!newCustomerName.value || !newCustomerRif.value) return;
   selectedCustomer.value = {
@@ -510,10 +709,18 @@ onMounted(() => {
   window.addEventListener('online', updateOnlineStatus);
   window.addEventListener('offline', updateOnlineStatus);
   categories.value = [
-    { id: 1, name: 'Calzado' },
-    { id: 2, name: 'Víveres' },
-    { id: 3, name: 'Bebidas' },
-    { id: 4, name: 'Lácteos' },
+    { id: 1, name: 'Calzado', icon: '👟', children: [
+      { id: 11, name: 'Deportivo' }, { id: 12, name: 'Casual' }, { id: 13, name: 'Formal' },
+    ]},
+    { id: 2, name: 'Víveres', icon: '🛒', children: [
+      { id: 21, name: 'Granos' }, { id: 22, name: 'Carnes' }, { id: 23, name: 'Snacks' },
+    ]},
+    { id: 3, name: 'Bebidas', icon: '🥤', children: [
+      { id: 31, name: 'Agua' }, { id: 32, name: 'Gaseosas' }, { id: 33, name: 'Jugos' },
+    ]},
+    { id: 4, name: 'Lácteos', icon: '🧀', children: [
+      { id: 41, name: 'Leche' }, { id: 42, name: 'Quesos' }, { id: 43, name: 'Yogurt' },
+    ]},
   ];
   products.value = [
     { id: 1, name: 'Zapato Deportivo Air Max', price_usd: 45.00, stock: 12, category_id: 1, attrs: { Talla: '40', Color: 'Negro' } },
@@ -537,6 +744,18 @@ onUnmounted(() => {
 const mobileTabs = [
   { key: 'products' as const, label: 'Productos', icon: ShoppingBag },
   { key: 'cart' as const, label: 'Carrito', icon: ShoppingBag },
-  { key: 'payment' as const, label: 'Pago', icon: CreditCard },
 ];
 </script>
+
+<style scoped>
+@keyframes scan-line {
+  0%, 100% { transform: translateY(-10px); }
+  50% { transform: translateY(10px); }
+}
+.animate-scan-line { animation: scan-line 1.5s ease-in-out infinite; }
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.animate-slide-in-left { animation: slide-in-left 0.2s ease-out; }
+</style>

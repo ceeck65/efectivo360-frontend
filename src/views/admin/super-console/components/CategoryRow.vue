@@ -21,6 +21,7 @@
       <!-- Name + code -->
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-1.5">
+          <span v-if="category.icon" class="text-base leading-none shrink-0">{{ category.icon }}</span>
           <span class="text-sm font-medium text-slate-800 truncate">{{ category.name }}</span>
           <span v-if="category.parent_name" class="text-[10px] text-slate-400 font-mono truncate max-w-[140px]" :title="category.parent_name">
             ← {{ category.parent_name }}
@@ -93,6 +94,7 @@ interface CategoryNode {
   id: number;
   name: string;
   code: string;
+  icon?: string;
   parent_id: number | null;
   parent_name: string | null;
   is_active: boolean;

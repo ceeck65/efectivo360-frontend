@@ -79,14 +79,14 @@ import CategoryRow from './CategoryRow.vue';
 import CategoryFormModal from './CategoryFormModal.vue';
 
 interface CategoryNode {
-  id: number; name: string; code: string;
+  id: number; name: string; code: string; icon?: string;
   parent_id: number | null; parent_name: string | null;
   is_active: boolean; description?: string;
   attributes?: any[]; children?: CategoryNode[];
 }
 interface FormData {
   name: string; code: string; parent_id: number | null;
-  description: string; is_active: boolean;
+  description: string; is_active: boolean; icon: string;
 }
 
 const { fetchApi } = useApi();
@@ -166,6 +166,7 @@ async function handleSave(data: FormData) {
       name: data.name.trim(), code: data.code.trim(),
       parent: data.parent_id || null,
       description: data.description.trim(), is_active: data.is_active,
+      icon: data.icon || '📦',
     };
     if (editingCategory.value) {
       await fetchApi(`/api/v1/catalog/categories/${editingCategory.value.id}/`, { method: 'PATCH', data: payload });

@@ -48,7 +48,12 @@
             </tr>
             <tr v-else v-for="bp in filteredData" :key="bp.id" class="hover:bg-slate-50/50 dark:hover:bg-[#1a1f2e]/50">
               <td class="px-6 py-4 font-mono text-xs text-slate-600 dark:text-slate-400">{{ bp.code }}</td>
-              <td class="px-6 py-4 font-medium text-slate-900 dark:text-white">{{ bp.name }}</td>
+              <td class="px-6 py-4 font-medium text-slate-900 dark:text-white">
+                <span class="inline-flex items-center gap-2">
+                  <span v-if="bp.icon" class="text-lg leading-none">{{ bp.icon }}</span>
+                  {{ bp.name }}
+                </span>
+              </td>
               <td class="px-6 py-4">
                 <div class="flex flex-wrap gap-1">
                   <span v-for="feature in (bp.required_features || [])" :key="feature" class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
@@ -107,23 +112,22 @@
             </div>
           </div>
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Ícono (Lucide)</label>
-            <div class="flex gap-2">
-              <div class="relative flex-1">
-                <input
-                  v-model="form.icon"
-                  type="text"
-                  placeholder="Seleccionar icono..."
-                  readonly
-                  @click="showIconPicker = true"
-                  class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300"
-                />
-                <button type="button" @click="showIconPicker = true" class="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                  <Search class="h-4 w-4" />
+            <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Ícono</label>
+            <div class="flex items-center gap-3">
+              <div class="relative">
+                <button type="button" @click="showEmojiPicker = !showEmojiPicker"
+                  class="w-14 h-14 rounded-xl bg-slate-50 border-2 border-dashed border-slate-300 hover:border-cyan-400 hover:bg-cyan-50 transition-all flex items-center justify-center cursor-pointer text-3xl"
+                  :class="form.icon ? 'border-cyan-300 bg-cyan-50' : ''">
+                  <span v-if="form.icon">{{ form.icon }}</span>
+                  <Smile v-else class="w-6 h-6 text-slate-400" />
                 </button>
+                <div v-if="showEmojiPicker" class="absolute top-full left-0 mt-2 z-50">
+                  <VuemojiPicker @emojiClick="onEmojiSelect" />
+                </div>
               </div>
-              <div v-if="form.icon" class="flex items-center justify-center w-11 h-11 rounded-md border border-slate-200 bg-slate-50 dark:border-white/[0.06] dark:bg-[#1a1f2e]">
-                <LucideIcon :name="form.icon" :size="20" class="text-slate-600 dark:text-slate-300" />
+              <div v-if="form.icon" class="text-xs text-slate-500">
+                <p class="font-medium">Seleccionado: {{ form.icon }}</p>
+                <button type="button" @click="form.icon = ''" class="text-red-500 hover:text-red-600 font-medium mt-0.5">Quitar</button>
               </div>
             </div>
           </div>
@@ -148,18 +152,14 @@
         </div>
       </div>
     </div>
-
-    <!-- Icon Picker -->
-    <IconPicker :is-open="showIconPicker" v-model="form.icon" @update:is-open="showIconPicker = $event" @close="showIconPicker = false" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { Search, Plus, Edit3, Power, RefreshCw } from 'lucide-vue-next';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { Search, Plus, Edit3, Power, RefreshCw, Smile } from 'lucide-vue-next';
 import { SimplePagination } from '@/shared/index.js';
-import IconPicker from '@/components/shared/IconPicker.vue';
-import LucideIcon from '@/components/lucide/LucideIcon.vue';
+import { VuemojiPicker } from 'vuemoji-picker';
 import { useApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
 import Swal from 'sweetalert2';
@@ -186,9 +186,24 @@ const pageSize = ref(100);
 const total = ref(0);
 
 const showModal = ref(false);
-const showIconPicker = ref(false);
+const showEmojiPicker = ref(false);
 const editingItem = ref<Blueprint | null>(null);
 const form = ref({ code: '', name: '', icon: '', features: '', is_active: true });
+
+function onEmojiSelect(detail: any) {
+  form.value.icon = detail.unicode;
+  showEmojiPicker.value = false;
+}
+
+function handleClickOutside(e: MouseEvent) {
+  const target = e.target as HTMLElement;
+  if (!target.closest('.relative') && showEmojiPicker.value) {
+    showEmojiPicker.value = false;
+  }
+}
+
+onMounted(() => document.addEventListener('click', handleClickOutside));
+onUnmounted(() => document.removeEventListener('click', handleClickOutside));
 
 const filteredData = computed(() => {
   if (!search.value.trim()) return data.value;

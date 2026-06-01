@@ -53,6 +53,7 @@
             <span v-if="node._depth > 0" class="text-slate-300 text-[10px] shrink-0">
               {{ '·'.repeat(Math.min(node._depth, 3)) }}
             </span>
+            <span v-if="(node as any).icon" class="shrink-0">{{ (node as any).icon }}</span>
             <span class="truncate">{{ node.name }}</span>
             <span class="text-[10px] text-slate-400 font-mono ml-auto shrink-0">{{ node.code }}</span>
           </button>
@@ -67,7 +68,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { ChevronDown, Search } from 'lucide-vue-next';
 
 interface TreeNode {
-  id: number; name: string; code: string;
+  id: number; name: string; code: string; icon?: string;
   parent_id: number | null; parent_name?: string | null;
   is_active?: boolean;
   children?: TreeNode[];

@@ -103,7 +103,9 @@
                 class="w-full text-left px-4 py-3.5 transition-colors duration-150"
                 :class="selectedBusinessType?.id === bt.id ? 'bg-emerald-50 dark:bg-emerald-500/10 border-l-2 border-emerald-500' : 'hover:bg-slate-50 dark:hover:bg-white/[0.03] border-l-2 border-transparent'"
               >
-                <p class="text-sm font-medium" :class="selectedBusinessType?.id === bt.id ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-slate-200'">{{ bt.name }}</p>
+                <p class="text-sm font-medium" :class="selectedBusinessType?.id === bt.id ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-slate-200'">
+                  <span v-if="bt.icon" class="mr-1.5">{{ bt.icon }}</span>{{ bt.name }}
+                </p>
                 <p class="text-[11px] text-slate-400 mt-0.5 font-mono">{{ bt.code }}</p>
               </button>
             </div>
@@ -114,7 +116,9 @@
           <template v-if="selectedBusinessType">
             <div class="flex items-center justify-between mb-4">
               <div>
-                <h2 class="text-lg font-semibold text-slate-900 dark:text-white">{{ selectedBusinessType.name }}</h2>
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-white">
+                  <span v-if="selectedBusinessType.icon" class="mr-1.5">{{ selectedBusinessType.icon }}</span>{{ selectedBusinessType.name }}
+                </h2>
                 <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Activa categorías para este negocio · Los hijos heredan automáticamente
                 </p>
@@ -184,7 +188,7 @@
         >
           <RefreshCw v-if="savingStep2" class="w-4 h-4 animate-spin" />
           <Save v-else class="w-4 h-4" />
-          {{ savingStep2 ? 'Guardando...' : 'Guardar Matriz de ' + selectedBusinessType.name }}
+          {{ savingStep2 ? 'Guardando...' : 'Guardar Matriz de ' + (selectedBusinessType.icon || '') + ' ' + selectedBusinessType.name }}
         </button>
       </div>
     </div>

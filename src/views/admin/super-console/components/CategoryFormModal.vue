@@ -13,10 +13,23 @@
         </div>
 
         <div class="space-y-4">
-          <!-- Name -->
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">Nombre <span class="text-red-400">*</span></label>
-            <input v-model="form.name" type="text" placeholder="Ej. Harinas" class="w-full h-9 px-3 text-sm border border-slate-300 rounded-lg bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
+          <!-- Emoji + Name row -->
+          <div class="flex items-end gap-3">
+            <div class="relative shrink-0">
+              <button type="button" @click.stop="showEmojiPicker = !showEmojiPicker"
+                class="w-12 h-12 rounded-xl bg-slate-50 border-2 border-dashed border-slate-300 hover:border-blue-400 hover:bg-blue-50 transition-all flex items-center justify-center cursor-pointer text-2xl"
+                :class="form.icon ? 'border-blue-300 bg-blue-50' : ''">
+                <span v-if="form.icon">{{ form.icon }}</span>
+                <Smile v-else class="w-5 h-5 text-slate-400" />
+              </button>
+              <div v-if="showEmojiPicker" class="absolute top-full left-0 mt-2 z-50" @click.stop>
+                <VuemojiPicker @emojiClick="onEmojiSelect" />
+              </div>
+            </div>
+            <div class="flex-1">
+              <label class="block text-xs font-medium text-slate-600 mb-1">Nombre <span class="text-red-400">*</span></label>
+              <input v-model="form.name" type="text" placeholder="Ej. Harinas" class="w-full h-9 px-3 text-sm border border-slate-300 rounded-lg bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 transition-colors" />
+            </div>
           </div>
 
           <!-- Code -->
@@ -68,17 +81,19 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
-import { X, Save, Loader2 } from 'lucide-vue-next';
+import { X, Save, Loader2, Smile } from 'lucide-vue-next';
+import { VuemojiPicker } from 'vuemoji-picker';
 
 interface CategoryOption {
   id: number;
   name: string;
   code: string;
+  icon?: string;
 }
 
 interface FormData {
   name: string; code: string; parent_id: number | null;
-  description: string; is_active: boolean;
+  description: string; is_active: boolean; icon: string;
 }
 
 const props = defineProps<{
@@ -96,8 +111,15 @@ defineEmits<{
 
 const form = ref<FormData>({
   name: '', code: '', parent_id: null,
-  description: '', is_active: true,
+  description: '', is_active: true, icon: '',
 });
+
+const showEmojiPicker = ref(false);
+
+function onEmojiSelect(detail: any) {
+  form.value.icon = detail.unicode;
+  showEmojiPicker.value = false;
+}
 
 watch(() => props.editing, (cat) => {
   if (cat) {
@@ -105,6 +127,7 @@ watch(() => props.editing, (cat) => {
       name: cat.name || '', code: cat.code || '',
       parent_id: (cat as any).parent_id ?? null,
       description: (cat as any).description || '', is_active: (cat as any).is_active ?? true,
+      icon: (cat as any).icon || '',
     };
   }
 }, { immediate: true });

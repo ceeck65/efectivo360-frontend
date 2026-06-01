@@ -17,7 +17,9 @@
 
       <!-- Name + code -->
       <div class="flex-1 min-w-0">
-        <p class="text-sm font-medium text-slate-800 truncate">{{ node.name }}</p>
+        <p class="text-sm font-medium text-slate-800 truncate">
+          <span v-if="(node as any).icon" class="mr-1.5">{{ (node as any).icon }}</span>{{ node.name }}
+        </p>
         <p class="text-[10px] text-slate-400 font-mono truncate">{{ node.code }}</p>
       </div>
 
@@ -77,7 +79,7 @@ import { ref, computed, watch } from 'vue';
 import { ChevronRight, Lock } from 'lucide-vue-next';
 
 interface TreeNode {
-  id: number; name: string; code: string;
+  id: number; name: string; code: string; icon?: string;
   is_active?: boolean; children?: TreeNode[];
 }
 
