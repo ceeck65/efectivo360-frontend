@@ -32,12 +32,13 @@
       <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-lg flex items-center justify-center"
-              :class="iconBg(primaryBlueprint.icon)">
-              <component :is="iconComponent(primaryBlueprint.icon)" class="w-5 h-5 text-slate-600" />
+            <div class="w-10 h-10 rounded-lg flex items-center justify-center text-xl bg-slate-100">
+              <span v-if="primaryBlueprint.icon">{{ primaryBlueprint.icon }}</span>
+              <Store v-else class="w-5 h-5 text-slate-400" />
             </div>
             <div>
               <p class="text-sm font-medium text-slate-800">{{ primaryBlueprint.name }}</p>
+              <p v-if="primaryBlueprint.description" class="text-[11px] text-slate-400 mt-0.5 leading-relaxed">{{ primaryBlueprint.description }}</p>
               <p class="text-[11px] text-slate-400 font-mono">{{ primaryBlueprint.code }}</p>
             </div>
           </div>
@@ -58,13 +59,15 @@
         <div v-else class="bg-white border border-slate-200 rounded-xl p-4 max-h-72 overflow-y-auto shadow-sm space-y-1">
           <div v-for="cat in categoryTree" :key="cat.id">
             <div class="flex items-center gap-2 py-1">
-              <FolderOpen class="w-4 h-4 text-blue-400 shrink-0" />
+              <span v-if="(cat as any).icon" class="text-base leading-none shrink-0">{{ (cat as any).icon }}</span>
+              <FolderOpen v-else class="w-4 h-4 text-blue-400 shrink-0" />
               <span class="text-sm font-medium text-slate-700">{{ cat.name }}</span>
               <span v-if="cat.code" class="text-[10px] text-slate-400 font-mono">{{ cat.code }}</span>
             </div>
             <div v-if="cat.children?.length" class="ml-6 border-l-2 border-slate-100 pl-3 space-y-0.5 py-0.5">
               <div v-for="ch in cat.children" :key="ch.id" class="flex items-center gap-1.5 py-0.5">
-                <span class="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0" />
+                <span v-if="(ch as any).icon" class="text-sm leading-none shrink-0">{{ (ch as any).icon }}</span>
+                <span v-else class="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0" />
                 <span class="text-xs text-slate-600">{{ ch.name }}</span>
                 <span v-if="ch.code" class="text-[10px] text-slate-400 font-mono">{{ ch.code }}</span>
               </div>
@@ -97,7 +100,8 @@
               <input v-else type="checkbox" :checked="activeExtIds.has(ext.id)"
                 class="w-4 h-4 rounded border-slate-300 text-blue-500 focus:ring-blue-500/30 pointer-events-none" />
             </div>
-            <component :is="iconComponent(ext.icon)" class="w-4 h-4 shrink-0 text-slate-500" />
+            <span v-if="ext.icon" class="text-base leading-none shrink-0">{{ ext.icon }}</span>
+            <component v-else :is="iconComponent(ext.icon)" class="w-4 h-4 shrink-0 text-slate-500" />
             <span class="text-sm text-slate-700">{{ ext.name }}</span>
           </button>
         </div>
@@ -138,6 +142,7 @@ interface CategoryNode {
   id: number;
   name: string;
   code: string;
+  icon?: string;
   children?: CategoryNode[];
 }
 
@@ -234,14 +239,6 @@ async function loadExtensions() {
 function iconComponent(name?: string): any {
   if (!name) return Store;
   return (AllIcons as Record<string, any>)[name] || Store;
-}
-
-function iconBg(icon?: string): string {
-  const palette = ['bg-blue-100', 'bg-emerald-100', 'bg-amber-100', 'bg-violet-100', 'bg-rose-100', 'bg-cyan-100', 'bg-orange-100', 'bg-teal-100'];
-  if (!icon) return palette[0];
-  let hash = 0;
-  for (let i = 0; i < icon.length; i++) hash = ((hash << 5) - hash) + icon.charCodeAt(i);
-  return palette[Math.abs(hash) % palette.length];
 }
 
 async function onBlueprintSelected(bp: Blueprint) {

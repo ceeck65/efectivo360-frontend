@@ -37,9 +37,9 @@
                 :class="selectedId === bp.id ? 'border-blue-500 bg-blue-500' : 'border-slate-300'">
                 <Check v-if="selectedId === bp.id" class="w-3 h-3 text-white" />
               </div>
-              <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-2"
-                :class="iconBg(bp.icon)">
-                <component :is="iconComponent(bp.icon)" class="w-5 h-5 text-slate-600" />
+              <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-2 text-xl bg-slate-100">
+                <span v-if="bp.icon">{{ bp.icon }}</span>
+                <component v-else :is="iconComponent(bp.icon)" class="w-5 h-5 text-slate-400" />
               </div>
               <p class="text-sm font-medium text-slate-800 pr-5">{{ bp.name }}</p>
               <p v-if="bp.description" class="text-[11px] text-slate-500 mt-1 leading-relaxed line-clamp-2">{{ bp.description }}</p>
@@ -111,14 +111,6 @@ onMounted(async () => {
 function iconComponent(name?: string): any {
   if (!name) return AllIcons.Store;
   return (AllIcons as Record<string, any>)[name] || AllIcons.Store;
-}
-
-function iconBg(icon?: string): string {
-  const palette = ['bg-blue-100', 'bg-emerald-100', 'bg-amber-100', 'bg-violet-100', 'bg-rose-100', 'bg-cyan-100', 'bg-orange-100', 'bg-teal-100'];
-  if (!icon) return palette[0];
-  let hash = 0;
-  for (let i = 0; i < icon.length; i++) hash = ((hash << 5) - hash) + icon.charCodeAt(i);
-  return palette[Math.abs(hash) % palette.length];
 }
 
 async function confirm() {

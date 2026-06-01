@@ -55,11 +55,22 @@
     </main>
     <LandingFooter v-model:lang="currentLang" :copy="messages" />
   </div>
+
+  <!-- PWA Update Toast -->
+  <Teleport to="body">
+    <div v-if="needRefresh" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[200] bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-up">
+      <span class="text-sm font-medium">Nueva versión disponible</span>
+      <button @click="updateSW" class="px-3 py-1.5 text-xs font-bold bg-blue-500 hover:bg-blue-400 rounded-lg transition-colors">
+        Actualizar
+      </button>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, RouterView, useRouter } from 'vue-router';
+import { useRegisterSW } from 'virtual:pwa-register/vue';
 import LandingNav from '@/components/landing/LandingNav.vue';
 import LandingFooter from '@/components/landing/LandingFooter.vue';
 import SplashScreen from '@/components/splash/SplashScreen.vue';
@@ -72,6 +83,17 @@ import { useAuthStore } from '@/stores/auth';
 import { useConfigStore } from '@/stores/config';
 import { useForexRate } from '@/composables/useForexRate';
 
+const { needRefresh, updateSW } = useRegisterSW({
+  immediate: true,
+  onRegisteredSW(_swUrl: string, registration: ServiceWorkerRegistration) {
+    if (registration) {
+      setInterval(() => {
+        registration.update();
+      }, 60 * 60 * 1000);
+    }
+  },
+});
+
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
@@ -80,65 +102,54 @@ const showSplash = ref(true);
 const isMobileMenuOpen = ref(false);
 const isSidebarCollapsed = ref(false);
 
-// Use the forex rate composable - it will auto-refresh
 const { forexRate } = useForexRate();
 
-// Check if current route is auth page (login/register)
 const isAuthRoute = computed(() => {
   const path = route.path;
   return path.startsWith('/es/login') || path.startsWith('/es/register') ||
          path === '/login' || path === '/register';
 });
 
-// Check if current route is admin/backoffice route
 const isAdminRoute = computed(() => {
   const path = route.path;
   return (path.startsWith('/admin') || path.startsWith('/auditor')) && !isSimpleRoute.value;
 });
 
-// Check if current route is a simple route (no sidebar/header)
 const isSimpleRoute = computed(() => {
   const path = route.path;
   return path.startsWith('/admin/setup') || path.startsWith('/admin/onboarding') || path.startsWith('/admin/welcome-to-360');
 });
 
-// Hide Efi assistant on POS fullscreen route
 const isPosView = computed(() => route.path === '/admin/pos');
 
-// Check if user needs to be redirected to shop wizard
 const needsShopWizard = computed(() => {
   return (
     isAdminRoute.value &&
     authStore.isAuthenticated &&
     !authStore.isStaff &&
     !authStore.hasConfiguredTenant &&
-    !route.path.startsWith('/admin/setup') && // Don't redirect if already on setup
-    !route.path.startsWith('/admin/welcome-to-360') && // Don't redirect if on welcome
-    !route.path.startsWith('/admin/chat') // Don't redirect if on chat
+    !route.path.startsWith('/admin/setup') &&
+    !route.path.startsWith('/admin/welcome-to-360') &&
+    !route.path.startsWith('/admin/chat')
   );
 });
 
-// Silence unused variable warning (computed is used in watch)
 void needsShopWizard;
 
-// Watch for authentication changes and redirect if needed
 watch(() => [authStore.isAuthenticated, authStore.hasConfiguredTenant], ([isAuthenticated, hasConfigured]) => {
   if (isAuthenticated && !hasConfigured && isAdminRoute.value) {
     router.push('/admin/setup');
   }
 }, { immediate: true });
 
-// Language detection from route - only update when actually changed
 const currentLang = ref<'es' | 'en'>('es');
 
-// Watch for route changes to update language (without immediate to prevent loops)
 watch(() => route.params.lang as string | undefined, (lang) => {
   if (lang === 'en' || lang === 'es') {
     currentLang.value = lang;
   }
 });
 
-// i18n messages
 const messages = computed(() => {
   const isSpanish = currentLang.value === 'es';
   return {
@@ -179,5 +190,12 @@ const messages = computed(() => {
 onMounted(() => {
   configStore.initialize();
 });
-
 </script>
+
+<style>
+@keyframes slide-up {
+  from { transform: translate(-50%, 20px); opacity: 0; }
+  to { transform: translate(-50%, 0); opacity: 1; }
+}
+.animate-slide-up { animation: slide-up 0.3s ease-out; }
+</style>
