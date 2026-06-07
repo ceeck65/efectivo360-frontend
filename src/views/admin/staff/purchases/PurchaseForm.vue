@@ -14,7 +14,10 @@
         <div>
           <label class="block text-xs font-medium text-slate-600 mb-1">Proveedor <span class="text-red-400">*</span></label>
           <div class="flex gap-1.5">
-            <select v-model="form.supplier_id" :disabled="loadingData" class="flex-1 min-w-0 h-9 px-3 text-sm border border-slate-300 rounded-lg bg-white text-slate-800 truncate focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" style="text-overflow:ellipsis; max-width:calc(100% - 2.5rem);">
+            <select v-model="form.supplier_id" :disabled="loadingData"
+              class="flex-1 min-w-0 h-9 px-3 text-sm border rounded-lg bg-white text-slate-800 truncate focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              :class="fieldErrors.supplier ? 'border-red-400' : 'border-slate-300'"
+              style="text-overflow:ellipsis; max-width:calc(100% - 2.5rem);">
               <option :value="null" class="text-slate-400">{{ loadingData ? 'Cargando...' : 'Seleccionar...' }}</option>
               <option v-for="s in suppliers" :key="s.id" :value="s.id" class="truncate">{{ s.name }} ({{ s.rif }})</option>
             </select>
@@ -22,17 +25,30 @@
               <Plus class="w-4 h-4" />
             </button>
           </div>
+          <p v-if="fieldErrors.supplier" class="mt-1 text-[11px] text-red-500">{{ fieldErrors.supplier }}</p>
         </div>
         <div>
           <label class="block text-xs font-medium text-slate-600 mb-1">Almacén <span class="text-red-400">*</span></label>
-          <select v-model="form.warehouse_id" :disabled="loadingData" class="w-full h-9 px-3 text-sm border border-slate-300 rounded-lg bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-            <option :value="null" class="text-slate-400">{{ loadingData ? 'Cargando...' : 'Seleccionar...' }}</option>
-            <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
-          </select>
+          <div class="flex gap-1.5">
+            <select v-model="form.warehouse_id" :disabled="loadingData"
+              class="flex-1 min-w-0 h-9 px-3 text-sm border rounded-lg bg-white text-slate-800 truncate focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+              :class="fieldErrors.warehouse ? 'border-red-400' : 'border-slate-300'"
+              style="text-overflow:ellipsis; max-width:calc(100% - 2.5rem);">
+              <option :value="null" class="text-slate-400">{{ loadingData ? 'Cargando...' : 'Seleccionar...' }}</option>
+              <option v-for="w in warehouses" :key="w.id" :value="w.id" class="truncate">{{ w.name }}</option>
+            </select>
+            <button @click="showQuickWarehouse = true" class="shrink-0 w-9 h-9 rounded-lg border border-slate-300 text-slate-400 hover:text-blue-600 hover:border-blue-400 hover:bg-blue-50 transition-colors flex items-center justify-center" title="Agregar almacén rápido">
+              <Plus class="w-4 h-4" />
+            </button>
+          </div>
+          <p v-if="fieldErrors.warehouse" class="mt-1 text-[11px] text-red-500">{{ fieldErrors.warehouse }}</p>
         </div>
         <div>
           <label class="block text-xs font-medium text-slate-600 mb-1">Nº Factura <span class="text-red-400">*</span></label>
-          <input v-model="form.invoice_number" type="text" placeholder="Ej. FAC-001" class="w-full h-9 px-3 text-sm border border-slate-300 rounded-lg bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" />
+          <input v-model="form.invoice_number" type="text" placeholder="Ej. FAC-001"
+            class="w-full h-9 px-3 text-sm border rounded-lg bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            :class="fieldErrors.invoice_number ? 'border-red-400' : 'border-slate-300'" />
+          <p v-if="fieldErrors.invoice_number" class="mt-1 text-[11px] text-red-500">{{ fieldErrors.invoice_number }}</p>
         </div>
         <div>
           <label class="block text-xs font-medium text-slate-600 mb-1">Nº Control Fiscal</label>
@@ -82,6 +98,24 @@
                 </div>
                 <div v-if="activeSearchIndex === i && searchDone[i] && !(searchResults[i]?.length) && item.product_name.trim().length >= 2" class="absolute z-30 left-3 right-3 mt-0.5 bg-white border border-slate-200 rounded-lg shadow-lg p-3 text-sm text-slate-500">
                   No encontrado. <button @click="showScanner = true" class="text-blue-600 hover:underline">Crear producto</button>
+                </div>
+                <div v-if="activeSearchIndex === i && blockedInlineProduct.visible && blockedInlineProduct.rowIndex === i"
+                  class="absolute z-30 left-3 right-3 mt-0.5 bg-amber-50 border border-amber-200 rounded-lg shadow-lg p-3">
+                  <div class="flex items-start gap-2.5">
+                    <AlertTriangle class="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <div class="min-w-0 flex-1">
+                      <p class="text-[11px] text-slate-700 leading-relaxed">
+                        <span class="font-semibold text-slate-800">&quot;{{ blockedInlineProduct.productName }}&quot;</span>
+                        pertenece a
+                        <span class="inline-flex items-center gap-1 bg-white border border-slate-200 rounded-full px-1.5 py-0.5 mx-0.5">
+                          <span class="text-xs leading-none">{{ blockedInlineProduct.categoryEmoji }}</span>
+                          <span class="text-[10px] font-medium text-slate-700">{{ blockedInlineProduct.categoryName }}</span>
+                        </span>
+                        categoría no activa.
+                      </p>
+                      <button @click="dismissBlockedInline" class="mt-1 text-[10px] font-medium text-slate-500 hover:text-slate-700 underline underline-offset-2">Entendido</button>
+                    </div>
+                  </div>
                 </div>
               </td>
               <td class="px-2 py-2">
@@ -186,6 +220,40 @@
       </div>
     </Teleport>
 
+    <!-- Quick-Add Warehouse Modal -->
+    <Teleport to="body">
+      <div v-if="showQuickWarehouse" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="showQuickWarehouse = false" />
+        <div class="relative bg-white border border-slate-200 rounded-2xl p-6 max-w-sm w-full shadow-xl">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-semibold text-slate-800">Agregar Almacén</h3>
+            <button @click="showQuickWarehouse = false" class="p-1 rounded-lg hover:bg-slate-100"><X class="w-4 h-4 text-slate-400" /></button>
+          </div>
+          <div class="space-y-3">
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Nombre <span class="text-red-400">*</span></label>
+              <input v-model="whForm.name" type="text" placeholder="Ej. Almacén Principal" class="w-full h-9 px-3 text-sm border border-slate-300 rounded-lg bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Código <span class="text-red-400">*</span></label>
+              <input v-model="whForm.code" type="text" placeholder="Ej. MAIN" class="w-full h-9 px-3 text-sm border border-slate-300 rounded-lg bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-600 mb-1">Dirección</label>
+              <textarea v-model="whForm.address" placeholder="Opcional" rows="2" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"></textarea>
+            </div>
+          </div>
+          <div class="mt-6 flex justify-end gap-3">
+            <button @click="showQuickWarehouse = false" class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 border border-slate-300 hover:bg-slate-50">Cancelar</button>
+            <button @click="createQuickWarehouse" :disabled="whSaving || !whForm.name.trim() || !whForm.code.trim()" class="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-40 flex items-center gap-2">
+              <Save v-if="!whSaving" class="w-4 h-4" /> <Loader2 v-else class="w-4 h-4 animate-spin" />
+              {{ whSaving ? 'Agregando...' : 'Agregar' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <ProductScannerModal
       :visible="showScanner"
       :categoryTree="categoryTree"
@@ -196,8 +264,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
-import { Plus, X, Save, Check, ScanBarcode } from 'lucide-vue-next';
+import { ref, reactive, computed, watch, onMounted } from 'vue';
+import { Plus, X, Save, Check, ScanBarcode, AlertTriangle } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
 import RifInput from '@/components/shared/RifInput.vue';
@@ -211,9 +279,12 @@ const { success, error: notifyError } = useNotify();
 const saving = ref(false);
 const loadingData = ref(true);
 const showQuickSupplier = ref(false);
+const showQuickWarehouse = ref(false);
 const showScanner = ref(false);
 const quickSaving = ref(false);
+const whSaving = ref(false);
 const quickForm = reactive({ rif: '', name: '', contact_person: '', phone: '', email: '' });
+const whForm = reactive({ name: '', code: '', address: '' });
 const suppliers = ref<any[]>([]);
 const warehouses = ref<any[]>([]);
 const categoryTree = ref<any[]>([]);
@@ -226,6 +297,9 @@ const form = reactive({
   items: [] as PurchaseItem[],
 });
 
+const fieldErrors = reactive<Record<string, string>>({});
+function clearFieldErrors() { Object.keys(fieldErrors).forEach(k => delete fieldErrors[k]); }
+
 async function loadData() {
   loadingData.value = true;
   try {
@@ -237,14 +311,33 @@ async function loadData() {
     suppliers.value = Array.isArray(supRes?.results) ? supRes.results : (Array.isArray(supRes) ? supRes : []);
     warehouses.value = Array.isArray(whRes?.results) ? whRes.results : (Array.isArray(whRes) ? whRes : []);
     categoryTree.value = Array.isArray(catTreeRes?.results) ? catTreeRes.results : (Array.isArray(catTreeRes) ? catTreeRes : []);
-    // Pre-select MAIN warehouse
+    // Pre-select MAIN warehouse, or first available
     const main = warehouses.value.find((w: any) => w.code === 'MAIN');
     if (main) form.warehouse_id = main.id;
+    else if (warehouses.value.length > 0) form.warehouse_id = warehouses.value[0].id;
   } catch { suppliers.value = []; warehouses.value = []; }
   finally { loadingData.value = false; }
 }
 
 function addItem() { form.items.push({ product_name: '', purchase_unit: 'UNIT', package_quantity: 1, units_per_package: 1, package_cost: 0, tax_rate: 16 }); }
+
+const blockedInlineProduct = reactive<{ visible: boolean; productName: string; categoryName: string; categoryEmoji: string; rowIndex: number }>({
+  visible: false, productName: '', categoryName: '', categoryEmoji: '', rowIndex: -1,
+});
+
+function dismissBlockedInline() { blockedInlineProduct.visible = false; blockedInlineProduct.rowIndex = -1; }
+
+const categoryCodeMap = computed(() => {
+  const map = new Map<string, { name: string; icon: string }>();
+  function walk(nodes: any[]) {
+    for (const n of nodes) {
+      if (n.code) map.set(n.code, { name: n.name, icon: n.icon || '' });
+      if (n.children?.length) walk(n.children);
+    }
+  }
+  walk(categoryTree.value);
+  return map;
+});
 
 function itemLineTotal(i: number): number {
   const item = form.items[i];
@@ -257,6 +350,21 @@ function itemLineTotal(i: number): number {
 }
 
 function selectSearchResult(i: number, p: any) {
+  dismissBlockedInline();
+  if (p.category) {
+    const entry = categoryCodeMap.value.get(p.category);
+    if (!entry) {
+      blockedInlineProduct.productName = p.name;
+      blockedInlineProduct.categoryName = p.category;
+      blockedInlineProduct.categoryEmoji = '📦';
+      blockedInlineProduct.rowIndex = i;
+      blockedInlineProduct.visible = true;
+      searchResults[i] = [];
+      activeSearchIndex.value = -1;
+      searchDone[i] = false;
+      return;
+    }
+  }
   form.items[i].product_name = p.name;
   form.items[i].units_per_package = p.default_units_per_package || 1;
   form.items[i].purchase_unit = p.default_purchase_unit || 'UNIT';
@@ -333,6 +441,7 @@ async function processAndReceive() { await submitPurchase('RECEIVED'); }
 
 async function submitPurchase(status: string) {
   saving.value = true;
+  clearFieldErrors();
   try {
     const payload = {
       supplier_id: form.supplier_id,
@@ -350,9 +459,38 @@ async function submitPurchase(status: string) {
     };
     await fetchApi('/api/v1/purchases/', { method: 'POST', data: payload });
     success(status === 'DRAFT' ? 'Borrador guardado' : 'Compra procesada y recibida exitosamente');
+    clearFieldErrors();
     form.items = []; form.invoice_number = ''; form.control_number = '';
   } catch (e: any) {
-    notifyError(e?.response?.data?.error || e?.message || 'Error al guardar');
+    const data = e?.data || e?.response?.data || {};
+    if (typeof data === 'object' && !Array.isArray(data)) {
+      clearFieldErrors();
+      let hasFieldErrors = false;
+      // Map backend field names to frontend form fields to skip stale errors
+      const fieldValueMap: Record<string, () => any> = {
+        supplier: () => form.supplier_id,
+        warehouse: () => form.warehouse_id,
+        invoice_number: () => form.invoice_number,
+      };
+      for (const [key, msgs] of Object.entries(data)) {
+        if (Array.isArray(msgs) && msgs.length > 0) {
+          const getValue = fieldValueMap[key];
+          if (getValue) {
+            const val = getValue();
+            if (val !== null && val !== undefined && val !== '') {
+              continue;
+            }
+          }
+          fieldErrors[key] = msgs[0];
+          hasFieldErrors = true;
+        }
+      }
+      if (!hasFieldErrors) {
+        notifyError(data?.error || data?.detail || e?.message || 'Error al guardar');
+      }
+    } else {
+      notifyError(e?.message || 'Error al guardar');
+    }
   } finally { saving.value = false; }
 }
 
@@ -378,5 +516,30 @@ async function createQuickSupplier() {
   finally { quickSaving.value = false; }
 }
 
+async function createQuickWarehouse() {
+  whSaving.value = true;
+  try {
+    const res = await fetchApi<any>('/api/v1/inventory/warehouses/', {
+      method: 'POST',
+      data: {
+        name: whForm.name.trim(),
+        code: whForm.code.trim().toUpperCase(),
+        address: whForm.address.trim(),
+      },
+    });
+    warehouses.value.push(res);
+    form.warehouse_id = res.id;
+    whForm.name = ''; whForm.code = ''; whForm.address = '';
+    showQuickWarehouse.value = false;
+    success('Almacén agregado');
+  } catch (e: any) { notifyError(e?.response?.data?.detail || 'Error'); }
+  finally { whSaving.value = false; }
+}
+
 onMounted(loadData);
+
+// Clear individual field errors on change (supplier_id → supplier mapping)
+watch(() => form.supplier_id, () => { delete fieldErrors['supplier']; delete fieldErrors['supplier_id']; }, { immediate: true });
+watch(() => form.warehouse_id, () => { delete fieldErrors['warehouse']; delete fieldErrors['warehouse_id']; }, { immediate: true });
+watch(() => form.invoice_number, () => { delete fieldErrors['invoice_number']; }, { immediate: true });
 </script>

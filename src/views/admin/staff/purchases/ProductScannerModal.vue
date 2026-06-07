@@ -58,22 +58,37 @@
 
           <!-- Results -->
           <div v-else-if="results.length > 0" class="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
-            <button
-              v-for="p in results"
-              :key="p.id"
-              @click="selectProduct(p)"
-              class="w-full text-left px-4 py-3 hover:bg-blue-50/50 transition-colors flex items-center gap-3"
-            >
-              <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden shrink-0">
-                <img v-if="p.image_url" :src="p.image_url" class="w-full h-full object-contain" alt="" />
-                <Package v-else class="w-5 h-5 text-slate-300" />
+            <template v-for="p in results" :key="p.id">
+              <button v-if="!p.blocked"
+                @click="selectProduct(p)"
+                class="w-full text-left px-4 py-3 hover:bg-blue-50/50 transition-colors flex items-center gap-3"
+              >
+                <div class="w-10 h-10 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden shrink-0">
+                  <img v-if="p.image_url" :src="p.image_url" class="w-full h-full object-contain" alt="" />
+                  <Package v-else class="w-5 h-5 text-slate-300" />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-medium text-slate-800 truncate">{{ p.name }}</p>
+                  <p class="text-[11px] text-slate-400 font-mono">{{ p.barcode || p.sku }}</p>
+                </div>
+                <span class="text-[10px] text-blue-600 font-medium shrink-0">Seleccionar</span>
+              </button>
+              <div v-else class="flex items-start gap-3 p-4 bg-amber-50 border-t border-amber-200">
+                <AlertTriangle class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-semibold text-slate-700">⚠️ Producto no disponible</p>
+                  <p class="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                    <span class="font-semibold text-slate-800">&quot;{{ p.name }}&quot;</span>
+                    pertenece a
+                    <span class="inline-flex items-center gap-1 bg-white border border-slate-200 rounded-full px-2 py-0.5 mx-0.5 whitespace-nowrap">
+                      <span class="text-sm leading-none">{{ p.category_emoji || '📦' }}</span>
+                      <span class="text-[11px] font-medium text-slate-700">{{ p.category_name || p.category }}</span>
+                    </span>
+                    categoría que no está activa para tu tipo de negocio.
+                  </p>
+                </div>
               </div>
-              <div class="min-w-0 flex-1">
-                <p class="text-sm font-medium text-slate-800 truncate">{{ p.name }}</p>
-                <p class="text-[11px] text-slate-400 font-mono">{{ p.barcode || p.sku }}</p>
-              </div>
-              <span class="text-[10px] text-blue-600 font-medium shrink-0">Seleccionar</span>
-            </button>
+            </template>
           </div>
 
           <!-- Empty + Create option -->
@@ -184,9 +199,10 @@
 
 <script setup lang="ts">
 import { ref, reactive, nextTick, watch, onUnmounted } from 'vue';
-import { X, Search, ArrowRight, Loader2, Plus, Package, Camera, Save, Info, ScanBarcode, ScanLine, ImagePlus } from 'lucide-vue-next';
+import { X, Search, ArrowRight, Loader2, Plus, Package, Camera, Save, Info, ScanBarcode, ScanLine, ImagePlus, AlertTriangle } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
+import { usePosStore } from '@/stores/pos';
 import CategoryTreeSelect from '@/views/admin/super-console/components/CategoryTreeSelect.vue';
 import ProductImageStudio from '@/views/admin/super-console/components/ProductImageStudio.vue';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
@@ -196,6 +212,7 @@ const emit = defineEmits<{ close: []; addItem: [item: any] }>();
 
 const { fetchApi } = useApi();
 const { success, error: notifyError } = useNotify();
+const posStore = usePosStore();
 
 const query = ref('');
 const results = ref<any[]>([]);
@@ -211,25 +228,53 @@ const showImageStudio = ref(false);
 const showBlueprintPopover = ref(false);
 const blueprints = ref<any[]>([]);
 const loadingBlueprints = ref(false);
+const blockedProduct = reactive<{ visible: boolean; productName: string; categoryName: string; categoryEmoji: string }>({
+  visible: false, productName: '', categoryName: '', categoryEmoji: '',
+});
 
 const newProduct = reactive({ barcode: '', name: '', category_id: null as number | null, image_url: '', processedBlob: null as Blob | null });
 
 watch(() => query.value, async (q) => {
-  if (q.trim().length < 2) { results.value = []; searching.value = false; return; }
+  if (q.trim().length < 2) { results.value = []; searching.value = false; blockedProduct.visible = false; return; }
   searching.value = true;
+  blockedProduct.visible = false;
   try {
     const res = await fetchApi<any>(`/api/global-products/?search=${encodeURIComponent(q.trim())}`);
-    results.value = Array.isArray(res?.results) ? res.results : [];
+    const items = Array.isArray(res?.results) ? res.results : [];
+    const blocked = items.find((p: any) => p.blocked === true);
+    if (blocked) {
+      blockedProduct.productName = blocked.name;
+      blockedProduct.categoryName = blocked.category_name || blocked.category || '';
+      blockedProduct.categoryEmoji = blocked.category_emoji || '📦';
+      blockedProduct.visible = true;
+      results.value = items;
+    } else {
+      results.value = items;
+    }
   } catch { results.value = []; }
   finally { searching.value = false; }
 });
 
 function selectOrCreate() {
-  if (results.value.length === 1) selectProduct(results.value[0]);
+  if (results.value.length === 1 && !results.value[0].blocked) selectProduct(results.value[0]);
   else if (results.value.length === 0 && query.value.trim().length >= 2) startCreate();
 }
 
-function selectProduct(p: any) {
+async function selectProduct(p: any) {
+  if (p.blocked) return;
+  blockedProduct.visible = false;
+  const barcode = p.barcode || p.sku || '';
+  if (barcode) {
+    const result = await posStore.lookupProduct(barcode);
+    if (result && 'blocked' in result && result.blocked) {
+      blockedProduct.productName = result.product_name;
+      blockedProduct.categoryName = result.category_name;
+      blockedProduct.categoryEmoji = result.category_emoji;
+      blockedProduct.visible = true;
+      query.value = ''; results.value = [];
+      return;
+    }
+  }
   emit('addItem', { id: p.id, name: p.name, barcode: p.barcode || p.sku, cost_price: 0 });
   query.value = ''; results.value = [];
   emit('close');
@@ -346,7 +391,7 @@ async function toggleBlueprint(bp: any) {
 watch(showBlueprintPopover, (v) => { if (v) loadBlueprints(); });
 
 watch(() => props.visible, (v) => {
-  if (v) { query.value = ''; results.value = []; creatingProduct.value = false; nextTick(() => searchInput.value?.focus()); }
+  if (v) { query.value = ''; results.value = []; creatingProduct.value = false; nextTick(() => searchInput.value?.focus()); posStore.bootstrapPOS(); }
   else { stopScanner(); stopCreateScanner(); }
 });
 </script>

@@ -83,15 +83,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { Loader2 } from 'lucide-vue-next';
+import { useApi } from '@/composables/useApi';
 
 interface Movement {
   id: string; product: string; product_name?: string;
   warehouse_to?: string; warehouse_name?: string;
-  quantity: number; type: 'IN' | 'OUT'; reason: string;
+  quantity: number; type: 'IN' | 'OUT' | 'TRANSFER' | 'ADJUSTMENT'; reason: string;
   reference_id?: string; created_at: string;
 }
+
+const { fetchApi } = useApi();
 
 const loading = ref(false);
 const movements = ref<Movement[]>([]);
@@ -99,9 +102,27 @@ const warehouses = ref<any[]>([]);
 
 const filter = reactive({ warehouse: '', type: '', dateFrom: '', dateTo: '' });
 
+async function loadData() {
+  loading.value = true;
+  try {
+    const [movRes, whRes] = await Promise.all([
+      fetchApi<any>('/api/v1/inventory/movements/?page_size=500'),
+      fetchApi<any>('/api/v1/inventory/warehouses/?page_size=200'),
+    ]);
+    movements.value = Array.isArray(movRes?.results) ? movRes.results : (Array.isArray(movRes) ? movRes : []);
+    warehouses.value = Array.isArray(whRes?.results) ? whRes.results : (Array.isArray(whRes) ? whRes : []);
+  } catch {
+    movements.value = [];
+    warehouses.value = [];
+  } finally {
+    loading.value = false;
+  }
+}
+
 const filteredMovements = computed(() => {
   return movements.value.filter(m => {
     if (filter.type && m.type !== filter.type) return false;
+    if (filter.warehouse && m.warehouse_to !== filter.warehouse) return false;
     return true;
   });
 });
@@ -112,6 +133,11 @@ function formatDate(d: string): string {
 }
 
 function formatQty(v: number): string {
-  return (v || 0).toLocaleString('es-VE', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+  return parseFloat(String(v)).toLocaleString('es-VE', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
 }
+
+onMounted(loadData);
 </script>

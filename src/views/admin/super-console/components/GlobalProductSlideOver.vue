@@ -216,7 +216,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch, onUnmounted, nextTick } from 'vue';
+import { reactive, ref, computed, watch, onUnmounted, nextTick } from 'vue';
 import { X, ChevronDown, Loader2, Save, Link, ScanBarcode, ScanLine, Camera, ImagePlus } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
@@ -262,6 +262,21 @@ const scannerInstance = ref<Html5Qrcode | null>(null);
 const hasInitialized = ref(false);
 const categoryTree = ref<any[]>([]);
 const selectedCategoryId = ref<number | null>(null);
+
+const selectedCategoryCode = computed(() => {
+  if (!selectedCategoryId.value) return '';
+  function find(nodes: any[]): string {
+    for (const n of nodes) {
+      if (n.id === selectedCategoryId.value) return n.code || '';
+      if (n.children) {
+        const found = find(n.children);
+        if (found) return found;
+      }
+    }
+    return '';
+  }
+  return find(categoryTree.value);
+});
 const showStudio = ref(false);
 const processedImageBlob = ref<Blob | null>(null);
 const processedImageUrl = ref<string | null>(null);
@@ -353,13 +368,13 @@ async function handleSubmit() {
     if (isEditing.value) {
       await fetchApi(`/api/global-products/${props.editProduct.id}/`, {
         method: 'PATCH',
-        data: { name: form.name.trim(), brand: form.brand.trim(), description: form.description.trim(), official_image_url: imageUrl },
+        data: { name: form.name.trim(), brand: form.brand.trim(), description: form.description.trim(), official_image_url: imageUrl, category: selectedCategoryCode.value, base_attributes: { ...form.base_attributes } },
       });
       notifySuccess('Producto actualizado exitosamente');
     } else {
       await fetchApi('/api/v1/product-moderation/staff-create/', {
         method: 'POST',
-        data: { barcode: form.barcode.trim(), name: form.name.trim(), brand: form.brand.trim(), image_url: imageUrl, description: form.description.trim(), category_code: '', base_attributes: { ...form.base_attributes } },
+        data: { barcode: form.barcode.trim(), name: form.name.trim(), brand: form.brand.trim(), image_url: imageUrl, description: form.description.trim(), category_code: selectedCategoryCode.value, base_attributes: { ...form.base_attributes } },
       });
       notifySuccess('Producto global creado exitosamente');
     }
