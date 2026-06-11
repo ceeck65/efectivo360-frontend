@@ -223,7 +223,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, watch, nextTick } from 'vue';
+import { reactive, ref, computed, watch } from 'vue';
 import { X, ChevronDown, Loader2, Save, Link, ScanBarcode, ScanLine, Camera, ImagePlus } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
@@ -381,7 +381,7 @@ function resetForm() {
   selectedCategoryId.value = null;
   errors.barcode = ''; errors.name = '';
   attributeFields.value = [];
-  if (scanning.value) stopScanner();
+  scanning.value = false;
   isEditing.value = false;
   processedImageBlob.value = null;
   processedImageUrl.value = null;

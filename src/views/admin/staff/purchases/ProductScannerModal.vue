@@ -48,7 +48,7 @@
             :aspect-ratio="1.5"
             overlay-class="w-44 h-16"
             height-class="h-40"
-            @scan="(txt: string) => { query.value = txt; }"
+            @scan="(txt: string) => { query = txt; }"
             @close="scanning = false"
           />
 

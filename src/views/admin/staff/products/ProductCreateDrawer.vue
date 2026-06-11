@@ -579,7 +579,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, watch, onUnmounted, nextTick } from 'vue';
+import { reactive, ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import {
   X, ChevronDown, Search, ScanBarcode, ScanLine, Save, Loader2,
   Percent, DollarSign, Package, PackagePlus, BadgeDollarSign, AlertTriangle, Info, Plus,
@@ -731,7 +731,7 @@ const creatingBrand = ref(false);
 const showBrandImageStudio = ref(false);
 const brandFormErrors = reactive({ name: '', category: '' });
 
-function onBrandStudioProcessed(blob: Blob, previewUrl: string) {
+function onBrandStudioProcessed(_blob: Blob, previewUrl: string) {
   newBrandLogo.value = previewUrl;
   showBrandImageStudio.value = false;
 }
@@ -809,7 +809,7 @@ watch(showBrandModal, (v) => {
 
 const showImageStudio = ref(false);
 
-function onStudioProcessed(blob: Blob, previewUrl: string) {
+function onStudioProcessed(_blob: Blob, previewUrl: string) {
   form.image = previewUrl;
   showImageStudio.value = false;
 }
@@ -867,6 +867,59 @@ const errors = reactive({
   name: '',
   sku: '',
 });
+
+// ── Form persistence (localStorage) ──
+
+const STORAGE_KEY = 'product_create_draft';
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearDraft() {
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+function saveDraft() {
+  const data = {
+    form: { ...form },
+    selectedCategoryId: selectedCategoryId.value,
+    activeTab: activeTab.value,
+    logisticsEnabled: logisticsEnabled.value,
+    logistics: { ...logistics },
+    fiscalModuleEnabled: fiscalModuleEnabled.value,
+  };
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch {
+    // localStorage full — silently ignore
+  }
+}
+
+function restoreDraft() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (data.form) Object.assign(form, data.form);
+    if (data.selectedCategoryId) selectedCategoryId.value = data.selectedCategoryId;
+    if (data.activeTab) activeTab.value = data.activeTab;
+    if (data.logistics) Object.assign(logistics, data.logistics);
+    if (data.logisticsEnabled !== undefined) logisticsEnabled.value = data.logisticsEnabled;
+    if (data.fiscalModuleEnabled !== undefined) fiscalModuleEnabled.value = data.fiscalModuleEnabled;
+  } catch {
+    clearDraft();
+  }
+}
+
+watch(form, () => {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveDraft, 500);
+}, { deep: true });
+
+watch([activeTab, logisticsEnabled, logistics, fiscalModuleEnabled], () => {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveDraft, 500);
+}, { deep: true });
+
+onMounted(restoreDraft);
 
 // ── Computed: fiscal warning ──
 
@@ -1046,6 +1099,7 @@ async function handleSubmit() {
       data: JSON.stringify(payload),
     });
     notifySuccess('Producto creado exitosamente');
+    clearDraft();
     resetForm();
     emit('productCreated', payload);
     emit('close');
@@ -1107,6 +1161,7 @@ function resetForm() {
 
 function handleClose() {
   resetForm();
+  clearDraft();
   emit('close');
 }
 
@@ -1138,7 +1193,7 @@ async function lookupBarcode(code: string) {
   searchingBarcode.value = true;
   try {
     const res = await fetchApi<any>(`/api/v1/inventory/lookup/?code=${encodeURIComponent(code.trim())}`);
-    if (res?.can_import && res?.data) {
+    if (res?.data) {
       const { name, sku, category, brand, image_url } = res.data;
       form.name = name || '';
       form.sku = sku || '';
@@ -1163,21 +1218,7 @@ async function lookupBarcode(code: string) {
         }
       }
     }
-  } catch (e: any) {
-    if (e?.status === 422 && e?.data?.code === 'CATEGORY_NOT_ACTIVE') {
-      const meta = e.data.meta || {};
-      form.name = meta.product_name || '';
-      form.sku = code;
-      if (meta.image_url) form.image = meta.image_url;
-      if (meta.category_name) {
-        const catNode = flatTree.value.find(
-          n => n.name.toLowerCase() === meta.category_name.toLowerCase()
-        );
-        if (catNode) selectedCategoryId.value = catNode.id;
-      }
-      notifySuccess(`Producto encontrado: ${meta.product_name || code}`);
-    }
-  }
+  } catch { /* ignore */ }
   finally { searchingBarcode.value = false; }
 }
 

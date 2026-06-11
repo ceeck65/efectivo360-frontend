@@ -95,7 +95,7 @@
             scan-line-class="bg-blue-400/70"
             height-class="h-36"
             container-class="rounded-xl border-slate-200 bg-slate-900 shadow-md"
-            @scan="(txt: string) => { searchQuery.value = txt; lastScanned.value = txt; }"
+            @scan="(txt: string) => { searchQuery = txt; lastScanned = txt; }"
             @close="scanning = false"
           />
         </div>
