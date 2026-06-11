@@ -82,21 +82,22 @@
           </div>
         </div>
 
-        <!-- Scanner preview -->
-        <div v-if="scanning" class="shrink-0 px-4 sm:px-6 pb-2">
-          <div class="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-900 shadow-md max-w-lg">
-            <div id="pos-scanner" class="w-full h-36" />
-            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div class="w-52 h-16 border-2 border-blue-400/50 rounded-lg">
-                <div class="w-full h-0.5 bg-blue-400/70 animate-scan-line" />
-              </div>
-            </div>
-            <button @click="stopScanner"
-              class="absolute top-2 right-2 p-1 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors">
-              <X class="w-3 h-3" />
-            </button>
-            <p class="absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] text-slate-300 bg-black/50 px-2 py-0.5 rounded-full">Apunta al código de barras</p>
-          </div>
+        <div class="shrink-0 px-4 sm:px-6 pb-2 max-w-lg">
+          <BarcodeScanner
+            id="pos-scanner"
+            :scanning="scanning"
+            include-qr
+            :qrbox-width="280"
+            :qrbox-height="120"
+            :aspect-ratio="1.6"
+            overlay-class="w-52 h-16"
+            overlay-border="border-blue-400/50"
+            scan-line-class="bg-blue-400/70"
+            height-class="h-36"
+            container-class="rounded-xl border-slate-200 bg-slate-900 shadow-md"
+            @scan="(txt: string) => { searchQuery.value = txt; lastScanned.value = txt; }"
+            @close="scanning = false"
+          />
         </div>
 
         <!-- Category pills -->
@@ -474,7 +475,7 @@ import {
   ScanBarcode, ScanLine,
   ChevronDown, ListTree,
 } from 'lucide-vue-next';
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import BarcodeScanner from '@/components/shared/BarcodeScanner.vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import RifInput from '@/components/shared/RifInput.vue';
@@ -541,42 +542,9 @@ const newCustomerEmail = ref('');
 
 // Barcode scanner
 const scanning = ref(false);
-const scannerInstance = ref<Html5Qrcode | null>(null);
 const lastScanned = ref<string | null>(null);
 
-async function toggleScanner() {
-  if (scanning.value) { stopScanner(); return; }
-  scanning.value = true;
-  await new Promise((r) => setTimeout(r, 100));
-  try {
-    const formats = [
-      Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8,
-      Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E,
-      Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39,
-      Html5QrcodeSupportedFormats.QR_CODE,
-    ];
-    const scanner = new Html5Qrcode('pos-scanner', { formatsToSupport: formats, verbose: false });
-    scannerInstance.value = scanner;
-    await scanner.start(
-      { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 280, height: 120 }, aspectRatio: 1.6 },
-      (txt) => { searchQuery.value = txt; lastScanned.value = txt; stopScanner(); },
-      () => {},
-    );
-  } catch {
-    scanning.value = false;
-    scannerInstance.value = null;
-  }
-}
-
-function stopScanner() {
-  if (scannerInstance.value && scanning.value) {
-    scannerInstance.value.stop().then(() => { scannerInstance.value?.clear(); scannerInstance.value = null; }).catch(() => {});
-  }
-  scanning.value = false;
-}
-
-onUnmounted(() => { if (scannerInstance.value && scannerInstance.value.isScanning) scannerInstance.value.stop().catch(() => {}); });
+function toggleScanner() { scanning.value = !scanning.value; }
 
 // Hold / Resume
 const heldSales = ref<{ id: number; items: CartItem[]; timestamp: string; total: number }[]>([]);
@@ -748,14 +716,4 @@ const mobileTabs = [
 </script>
 
 <style scoped>
-@keyframes scan-line {
-  0%, 100% { transform: translateY(-10px); }
-  50% { transform: translateY(10px); }
-}
-.animate-scan-line { animation: scan-line 1.5s ease-in-out infinite; }
-@keyframes slide-in-left {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
-}
-.animate-slide-in-left { animation: slide-in-left 0.2s ease-out; }
 </style>

@@ -19,20 +19,69 @@
 
       <!-- ─── Left: Preview ─── -->
       <div class="flex-1 min-w-0 p-4 lg:p-5 flex items-center justify-center bg-gray-50/50">
-        <template v-if="!sourceFile && !displaySrc">
-          <div
-            class="flex flex-col items-center gap-2 py-12 text-gray-300 cursor-pointer hover:text-gray-400 transition-colors"
-            @click="triggerInput"
-            @dragover.prevent="dragOver = true"
-            @dragleave.prevent="dragOver = false"
-            @drop.prevent="handleDrop"
-          >
-            <ImagePlus class="w-10 h-10" />
-            <p class="text-sm font-light">Arrastra o haz clic para subir</p>
-            <p class="text-xs text-gray-200">PNG, JPEG, WebP</p>
+        <template v-if="!sourceFile && !displaySrc && !showCamera">
+          <div class="flex flex-col items-center gap-4 py-10">
+            <ImagePlus class="w-10 h-10 text-gray-300" />
+            <p class="text-sm font-light text-gray-400">Selecciona una imagen</p>
+            <div class="flex gap-3">
+              <button
+                type="button"
+                @click="triggerInput"
+                @dragover.prevent="dragOver = true"
+                @dragleave.prevent="dragOver = false"
+                @drop.prevent="handleDrop"
+                class="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-normal text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                <Upload class="w-3.5 h-3.5" />
+                Subir imagen
+              </button>
+              <button
+                type="button"
+                @click="triggerCamera"
+                class="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-normal text-gray-500 bg-gray-100 hover:bg-gray-200 transition-colors"
+              >
+                <Camera class="w-3.5 h-3.5" />
+                Tomar foto
+              </button>
+            </div>
+            <p class="text-xs text-gray-300">PNG, JPEG, WebP</p>
             <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="handleFile" />
           </div>
         </template>
+
+        <!-- Camera viewfinder -->
+        <div v-else-if="showCamera" class="w-full max-w-md">
+          <div class="relative rounded-lg overflow-hidden bg-black">
+            <div v-if="cameraConnecting" class="flex flex-col items-center justify-center py-20 text-white gap-3">
+              <Loader2 class="w-8 h-8 animate-spin text-gray-400" />
+              <p class="text-sm font-light text-gray-400">Conectando cámara…</p>
+            </div>
+            <video v-show="!cameraConnecting && !cameraError" ref="videoRef" autoplay playsinline class="w-full aspect-square object-cover" />
+            <div v-if="cameraError" class="flex flex-col items-center justify-center py-20 bg-black text-white p-6 text-center">
+              <CameraOff class="w-10 h-10 mb-3 text-gray-400" />
+              <p class="text-sm font-light mb-1">No se detectó cámara</p>
+              <p class="text-xs text-gray-400">Conecta una cámara web e inténtalo de nuevo.</p>
+            </div>
+          </div>
+          <div class="mt-3 flex items-center justify-center gap-3">
+            <button
+              v-if="!cameraError && !cameraConnecting"
+              type="button"
+              @click="capturePhoto"
+              class="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-normal text-white bg-gray-900 hover:bg-gray-800 transition-colors"
+            >
+              <Camera class="w-4 h-4" />
+              Capturar
+            </button>
+            <button
+              type="button"
+              @click="closeCamera"
+              class="px-4 py-2 rounded-lg text-sm font-normal text-gray-500 border border-gray-200 hover:bg-gray-50 transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
 
         <!-- Removing background spinner -->
         <div v-else-if="removingBg" class="flex flex-col items-center gap-3 py-12 text-gray-400">
@@ -42,15 +91,13 @@
 
         <template v-else-if="displaySrc">
           <div class="relative w-full max-w-md">
-            <div class="relative rounded-lg overflow-hidden" :class="{ 'cursor-crosshair': eraserMode }" :style="filterStyle">
+            <div class="relative rounded-lg overflow-hidden bg-white" :class="{ 'cursor-crosshair': eraserMode }" :style="[filterStyle, zoomStyle]">
               <Cropper
                 ref="cropperRef"
                 :src="displaySrc"
-                :st-props="{ handles: false }"
-                :default-size="{ width: 400, height: 400 }"
+                v-model:coordinates="cropCoordinates"
                 :stencil-size="stencilSize"
-                :resize-image="{ adjustStencil: false }"
-                image-restriction="fill"
+                image-restriction="none"
                 class="cropper-light"
               />
               <!-- Eraser canvas overlay -->
@@ -73,8 +120,11 @@
             </div>
             <div class="mt-3 flex items-center gap-3">
               <span class="text-[11px] text-gray-400 font-normal w-8 text-right">–</span>
-              <input type="range" min="0.1" max="3" step="0.05" :value="zoom" @input="onZoom" class="range-slider flex-1" />
+              <input type="range" min="0.1" max="2" step="0.05" v-model.number="zoom" class="range-slider flex-1" />
               <span class="text-[11px] text-gray-400 font-normal w-8">+</span>
+              <button @click="fitToCanvas" type="button" class="text-[11px] font-normal text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap shrink-0">
+                🔲 Ajustar al Lienzo
+              </button>
             </div>
           </div>
         </template>
@@ -172,7 +222,7 @@
 import { ref, reactive, computed, watch, nextTick } from 'vue';
 import { Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
-import { Camera, ImagePlus, Check, Loader2, Eraser, Brush } from 'lucide-vue-next';
+import { Camera, CameraOff, ImagePlus, Check, Loader2, Eraser, Brush, Upload } from 'lucide-vue-next';
 import Swal from 'sweetalert2';
 
 const emit = defineEmits<{
@@ -184,6 +234,11 @@ const cropperRef = ref<InstanceType<typeof Cropper> | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const sourceFile = ref<File | null>(null);
+const showCamera = ref(false);
+const videoRef = ref<HTMLVideoElement | null>(null);
+const cameraStream = ref<MediaStream | null>(null);
+const cameraError = ref(false);
+const cameraConnecting = ref(false);
 const displaySrc = ref<string | null>(null);
 const removingBg = ref(false);
 const bgRemoved = ref(false);
@@ -196,6 +251,8 @@ const eraserCanvas = ref<HTMLCanvasElement | null>(null);
 const isErasing = ref(false);
 
 const stencilSize = { width: 400, height: 400 };
+const cropCoordinates = reactive({ left: 0, top: 0, width: 400, height: 400 });
+const naturalSize = reactive({ width: 0, height: 0 });
 
 const adjustments = [
   { key: 'brightness', label: 'Brillo', min: 0, max: 200, step: 1, unit: '%', default: 100 },
@@ -210,9 +267,68 @@ const filterStyle = computed(() => ({
   filter: `brightness(${values.brightness}%) saturate(${values.saturation}%) contrast(${values.contrast}%)`,
 }));
 
+const zoomStyle = computed(() => ({
+  transform: `scale(${zoom.value})`,
+  transformOrigin: 'center center',
+}));
+
 // ── File handling ──
 
 function triggerInput() { fileInput.value?.click(); }
+
+async function triggerCamera() {
+  if (!navigator.mediaDevices?.getUserMedia) {
+    cameraError.value = true;
+    showCamera.value = true;
+    return;
+  }
+  cameraError.value = false;
+  cameraConnecting.value = true;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false,
+    });
+    cameraStream.value = stream;
+    cameraConnecting.value = false;
+    showCamera.value = true;
+    await nextTick();
+    if (videoRef.value) {
+      videoRef.value.srcObject = stream;
+    }
+  } catch {
+    cameraConnecting.value = false;
+    cameraError.value = true;
+    showCamera.value = true;
+  }
+}
+
+function capturePhoto() {
+  const video = videoRef.value;
+  if (!video || !cameraStream.value) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth || 1280;
+  canvas.height = video.videoHeight || 720;
+  const ctx = canvas.getContext('2d')!;
+  ctx.drawImage(video, 0, 0);
+  canvas.toBlob((blob) => {
+    if (blob) {
+      const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+      closeCamera();
+      loadFile(file);
+    }
+  }, 'image/jpeg', 0.92);
+}
+
+function closeCamera() {
+  if (cameraStream.value) {
+    cameraStream.value.getTracks().forEach(t => t.stop());
+    cameraStream.value = null;
+  }
+  showCamera.value = false;
+  cameraError.value = false;
+  cameraConnecting.value = false;
+}
 
 function handleFile(e: Event) {
   const file = (e.target as HTMLInputElement).files?.[0];
@@ -227,14 +343,31 @@ function handleDrop(e: DragEvent) {
 
 async function loadFile(file: File) {
   sourceFile.value = file;
-  displaySrc.value = URL.createObjectURL(file);
+  const url = URL.createObjectURL(file);
+  displaySrc.value = url;
   bgRemoved.value = false;
+  zoom.value = 1;
+  const img = new Image();
+  img.onload = () => {
+    naturalSize.width = img.naturalWidth;
+    naturalSize.height = img.naturalHeight;
+    centerCrop();
+  };
+  img.src = url;
 }
 
-function onZoom(e: Event) {
-  const val = parseFloat((e.target as HTMLInputElement).value);
-  zoom.value = val;
-  cropperRef.value?.setCoordinates({ width: val * 200, height: val * 200 });
+function centerCrop() {
+  const base = Math.max(naturalSize.width, naturalSize.height);
+  if (base <= 0) return;
+  cropCoordinates.left = (naturalSize.width - base) / 2;
+  cropCoordinates.top = (naturalSize.height - base) / 2;
+  cropCoordinates.width = base;
+  cropCoordinates.height = base;
+}
+
+function fitToCanvas() {
+  zoom.value = 1;
+  centerCrop();
 }
 
 function resetAll() {
@@ -244,6 +377,13 @@ function resetAll() {
   sourceFile.value = null;
   bgRemoved.value = false;
   eraserMode.value = false;
+  naturalSize.width = 0;
+  naturalSize.height = 0;
+  cropCoordinates.left = 0;
+  cropCoordinates.top = 0;
+  cropCoordinates.width = 400;
+  cropCoordinates.height = 400;
+  closeCamera();
   clearEraserCanvas();
 }
 
@@ -314,7 +454,10 @@ function clearEraserCanvas() {
 function getEraserPos(e: MouseEvent | Touch): { x: number; y: number } {
   if (!eraserCanvas.value) return { x: 0, y: 0 };
   const rect = eraserCanvas.value.getBoundingClientRect();
-  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  return {
+    x: (e.clientX - rect.left) / zoom.value,
+    y: (e.clientY - rect.top) / zoom.value,
+  };
 }
 
 function drawEraserDot(x: number, y: number) {

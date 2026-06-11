@@ -39,25 +39,52 @@
             </div>
           </div>
 
-          <!-- Scanner Preview -->
-          <div v-if="scanning" class="relative rounded-lg overflow-hidden border border-slate-300 bg-black mb-3">
-            <div id="purchase-scanner" class="w-full h-40" />
-            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div class="w-40 h-20 border-2 border-blue-400/60 rounded-lg">
-                <div class="w-full h-0.5 bg-blue-400/80 animate-scan-line" />
+          <BarcodeScanner
+            id="purchase-scanner"
+            :scanning="scanning"
+            include-qr
+            :qrbox-width="200"
+            :qrbox-height="80"
+            :aspect-ratio="1.5"
+            overlay-class="w-44 h-16"
+            height-class="h-40"
+            @scan="(txt: string) => { query.value = txt; }"
+            @close="scanning = false"
+          />
+
+          <!-- Import Banner (can_import from /api/v1/inventory/lookup/) -->
+          <div v-if="importableProduct"
+            class="mb-3 rounded-xl border-2 border-emerald-300 bg-emerald-50 p-4">
+            <div class="flex items-start gap-3">
+              <span class="text-xl shrink-0">🛒</span>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-emerald-800">Encontrado en Catálogo Global</p>
+                <p class="text-xs text-emerald-700 mt-0.5">
+                  <strong>{{ importableProduct.name }}</strong>
+                  — Creado y curado por el Staff de Efectivo 360.
+                  Impórtalo a tu tienda para usarlo de inmediato.
+                </p>
+                <div class="mt-3 flex gap-2">
+                  <button @click="confirmImport"
+                    :disabled="importing"
+                    class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition-colors shadow-sm">
+                    <Loader2 v-if="importing" class="w-4 h-4 animate-spin" />
+                    <span v-else>Importar a mi Tienda</span>
+                  </button>
+                  <button @click="importableProduct = null"
+                    class="px-3 py-2 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-700 transition-colors">
+                    Ignorar
+                  </button>
+                </div>
               </div>
             </div>
-            <button @click="stopScanner" class="absolute top-2 right-2 p-1 rounded-full bg-black/60 text-white hover:bg-black/80">
-              <X class="w-3.5 h-3.5" />
-            </button>
-            <p class="absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] text-slate-400 bg-black/60 px-2 py-0.5 rounded-full">Apunta al código de barras</p>
           </div>
 
           <!-- Loading -->
           <div v-if="searching" class="text-center py-8 text-slate-400"><Loader2 class="w-5 h-5 animate-spin mx-auto mb-1" /> Buscando...</div>
 
           <!-- Results -->
-          <div v-else-if="results.length > 0" class="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
+          <div v-else-if="results.length > 0 && !importableProduct" class="divide-y divide-slate-100 border border-slate-200 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
             <template v-for="p in results" :key="p.id">
               <button v-if="!p.blocked"
                 @click="selectProduct(p)"
@@ -92,7 +119,7 @@
           </div>
 
           <!-- Empty + Create option -->
-          <div v-else-if="query.trim().length >= 2" class="text-center py-8">
+          <div v-else-if="query.trim().length >= 2 && !importableProduct" class="text-center py-8">
             <p class="text-sm text-slate-500 mb-3">Producto no encontrado: <strong>{{ query }}</strong></p>
             <button @click="startCreate" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-500 transition-colors">
               <Plus class="w-4 h-4" /> Crear producto rápido
@@ -122,16 +149,18 @@
                   <ScanBarcode v-else class="w-4 h-4" />
                 </button>
               </div>
-              <!-- Create scanner preview -->
-              <div v-if="scanningCreate" class="relative rounded-lg overflow-hidden border border-slate-300 bg-black mt-2">
-                <div id="purchase-create-scanner" class="w-full h-36" />
-                <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div class="w-36 h-16 border-2 border-blue-400/60 rounded-lg">
-                    <div class="w-full h-0.5 bg-blue-400/80 animate-scan-line" />
-                  </div>
-                </div>
-                <button @click="stopCreateScanner" class="absolute top-2 right-2 p-1 rounded-full bg-black/60 text-white hover:bg-black/80"><X class="w-3 h-3" /></button>
-              </div>
+              <BarcodeScanner
+                id="purchase-create-scanner"
+                :scanning="scanningCreate"
+                include-qr
+                :qrbox-width="160"
+                :qrbox-height="64"
+                :aspect-ratio="1.5"
+                overlay-class="w-36 h-14"
+                height-class="h-36"
+                @scan="(txt: string) => { newProduct.barcode = txt; scanningCreate = false; }"
+                @close="scanningCreate = false"
+              />
             </div>
             <div>
               <label class="block text-xs font-medium text-slate-600 mb-1">Nombre <span class="text-red-400">*</span></label>
@@ -144,8 +173,6 @@
               <button @click="showBlueprintPopover = !showBlueprintPopover" class="mt-2 text-[11px] text-blue-600 hover:text-blue-700 flex items-center gap-1 transition-colors">
                 <Plus class="w-3 h-3" /> Activar otros rubros
               </button>
-
-              <!-- Blueprint popover -->
               <div v-if="showBlueprintPopover" class="mt-2 bg-white border border-slate-200 rounded-xl shadow-lg p-4 space-y-2 max-h-48 overflow-y-auto">
                 <div v-if="loadingBlueprints" class="text-xs text-slate-400 py-2">Cargando rubros...</div>
                 <label v-for="bp in blueprints" :key="bp.id" class="flex items-center gap-2 cursor-pointer py-1">
@@ -185,7 +212,6 @@
       </div>
     </div>
 
-    <!-- Image Studio Modal -->
     <Teleport to="body">
       <div v-if="showImageStudio" class="fixed inset-0 z-[200] flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="showImageStudio = false" />
@@ -198,14 +224,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, nextTick, watch, onUnmounted } from 'vue';
+import { ref, reactive, nextTick, watch } from 'vue';
 import { X, Search, ArrowRight, Loader2, Plus, Package, Camera, Save, Info, ScanBarcode, ScanLine, ImagePlus, AlertTriangle } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
 import { usePosStore } from '@/stores/pos';
 import CategoryTreeSelect from '@/views/admin/super-console/components/CategoryTreeSelect.vue';
 import ProductImageStudio from '@/views/admin/super-console/components/ProductImageStudio.vue';
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import BarcodeScanner from '@/components/shared/BarcodeScanner.vue';
 
 const props = defineProps<{ visible: boolean; categoryTree?: any[] }>();
 const emit = defineEmits<{ close: []; addItem: [item: any] }>();
@@ -221,9 +247,7 @@ const creatingProduct = ref(false);
 const creating = ref(false);
 const searchInput = ref<HTMLInputElement | null>(null);
 const scanning = ref(false);
-const scannerInstance = ref<Html5Qrcode | null>(null);
 const scanningCreate = ref(false);
-const scannerCreateInstance = ref<Html5Qrcode | null>(null);
 const showImageStudio = ref(false);
 const showBlueprintPopover = ref(false);
 const blueprints = ref<any[]>([]);
@@ -232,10 +256,42 @@ const blockedProduct = reactive<{ visible: boolean; productName: string; categor
   visible: false, productName: '', categoryName: '', categoryEmoji: '',
 });
 
+// ── Import from Global Catalog ──
+const importableProduct = ref<any | null>(null);
+const importing = ref(false);
+
 const newProduct = reactive({ barcode: '', name: '', category_id: null as number | null, image_url: '', processedBlob: null as Blob | null });
 
+// ── Barcode search → lookup ──
+
 watch(() => query.value, async (q) => {
+  importableProduct.value = null;
   if (q.trim().length < 2) { results.value = []; searching.value = false; blockedProduct.visible = false; return; }
+
+  // If value looks like a barcode (digits/minimal), try the inventory lookup first
+  if (/^[0-9\s\-]{4,}$/.test(q.trim())) {
+    searching.value = true;
+    try {
+      const lookup = await fetchApi<any>(`/api/v1/inventory/lookup/?code=${encodeURIComponent(q.trim())}`);
+      if (lookup?.can_import && lookup?.data?.id) {
+        importableProduct.value = lookup.data;
+        results.value = [];
+        searching.value = false;
+        blockedProduct.visible = false;
+        return;
+      }
+      // If registered locally, add directly
+      if (lookup?.registered && lookup?.data) {
+        const item = lookup.data;
+        emit('addItem', { id: item.id, name: item.name, barcode: item.sku || q.trim(), cost_price: 0 });
+        emit('close');
+        return;
+      }
+    } catch { /* fall through to text search */ }
+    searching.value = false;
+  }
+
+  // Text search fallback
   searching.value = true;
   blockedProduct.visible = false;
   try {
@@ -255,7 +311,34 @@ watch(() => query.value, async (q) => {
   finally { searching.value = false; }
 });
 
+// ── Import from Global Catalog ──
+
+async function confirmImport() {
+  if (!importableProduct.value?.id) return;
+  importing.value = true;
+  try {
+    const created = await fetchApi<any>('/api/v1/products/import-from-global/', {
+      method: 'POST',
+      data: { global_product_id: importableProduct.value.id },
+    });
+    if (created?.id) {
+      success('Producto importado del catálogo global');
+      emit('addItem', { id: created.id, name: created.name || importableProduct.value.name, barcode: created.sku || importableProduct.value.sku || query.value, cost_price: 0 });
+      importableProduct.value = null;
+      query.value = '';
+      emit('close');
+    }
+  } catch (e: any) {
+    notifyError(e?.response?.data?.error || 'Error al importar producto');
+  } finally {
+    importing.value = false;
+  }
+}
+
+// ── Select / Create ──
+
 function selectOrCreate() {
+  if (importableProduct.value) { confirmImport(); return; }
   if (results.value.length === 1 && !results.value[0].blocked) selectProduct(results.value[0]);
   else if (results.value.length === 0 && query.value.trim().length >= 2) startCreate();
 }
@@ -311,48 +394,8 @@ async function createAndAdd() {
 }
 
 // ── Barcode Scanner ──
-async function toggleScanner() { if (scanning.value) stopScanner(); else await startScanner(); }
-
-async function startScanner() {
-  scanning.value = true; await nextTick();
-  try {
-    const formats = [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.QR_CODE];
-    const scanner = new Html5Qrcode('purchase-scanner', { formatsToSupport: formats, verbose: false });
-    scannerInstance.value = scanner;
-    await scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 250, height: 120 }, aspectRatio: 1.5 },
-      (txt) => { query.value = txt; stopScanner(); }, () => {});
-  } catch (e: any) { scanning.value = false; scannerInstance.value = null; }
-}
-
-function stopScanner() {
-  if (scannerInstance.value && scanning.value) {
-    scannerInstance.value.stop().then(() => { scannerInstance.value?.clear(); scannerInstance.value = null; }).catch(() => {});
-  }
-  scanning.value = false;
-}
-
-onUnmounted(() => { if (scannerInstance.value) { if (scannerInstance.value.isScanning) scannerInstance.value.stop().catch(() => {}); scannerInstance.value = null; } });
-
-// ── Create-product scanner ──
-async function toggleCreateScanner() { if (scanningCreate.value) stopCreateScanner(); else await startCreateScanner(); }
-
-async function startCreateScanner() {
-  scanningCreate.value = true; await nextTick();
-  try {
-    const formats = [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.QR_CODE];
-    const scanner = new Html5Qrcode('purchase-create-scanner', { formatsToSupport: formats, verbose: false });
-    scannerCreateInstance.value = scanner;
-    await scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 200, height: 80 }, aspectRatio: 1.5 },
-      (txt) => { newProduct.barcode = txt; stopCreateScanner(); }, () => {});
-  } catch { scanningCreate.value = false; scannerCreateInstance.value = null; }
-}
-
-function stopCreateScanner() {
-  if (scannerCreateInstance.value && scanningCreate.value) {
-    scannerCreateInstance.value.stop().then(() => { scannerCreateInstance.value?.clear(); scannerCreateInstance.value = null; }).catch(() => {});
-  }
-  scanningCreate.value = false;
-}
+function toggleScanner() { scanning.value = !scanning.value; }
+function toggleCreateScanner() { scanningCreate.value = !scanningCreate.value; }
 
 function onStudioProcessed(blob: Blob, previewUrl: string) {
   newProduct.processedBlob = blob;
@@ -378,10 +421,8 @@ async function toggleBlueprint(bp: any) {
       data: { business_type_id: bp.id, subscribe: !bp.subscribed },
     });
     bp.subscribed = !bp.subscribed;
-    // Reload tree
     const res = await fetchApi<any>('/api/v1/catalog/categories/?page_size=200');
     const tree = Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []) as any;
-    // Update the passed tree reference (trigger reactivity in parent)
     if (props.categoryTree) {
       props.categoryTree.splice(0, props.categoryTree.length, ...tree);
     }
@@ -391,15 +432,9 @@ async function toggleBlueprint(bp: any) {
 watch(showBlueprintPopover, (v) => { if (v) loadBlueprints(); });
 
 watch(() => props.visible, (v) => {
-  if (v) { query.value = ''; results.value = []; creatingProduct.value = false; nextTick(() => searchInput.value?.focus()); posStore.bootstrapPOS(); }
-  else { stopScanner(); stopCreateScanner(); }
+  if (v) { query.value = ''; results.value = []; creatingProduct.value = false; importableProduct.value = null; nextTick(() => searchInput.value?.focus()); posStore.bootstrapPOS(); }
+  else { scanning.value = false; scanningCreate.value = false; }
 });
 </script>
 
-<style scoped>
-@keyframes scan-line {
-  0%, 100% { transform: translateY(-10px); }
-  50% { transform: translateY(10px); }
-}
-.animate-scan-line { animation: scan-line 1.5s ease-in-out infinite; }
-</style>
+<style scoped></style>

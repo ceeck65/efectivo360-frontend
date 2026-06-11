@@ -222,6 +222,24 @@ const router = createRouter({
         component: () => import('@/views/admin/staff/inventory/InventoryKardexView.vue'),
         meta: { requiresAuth: true },
       },
+      {
+        path: '/admin/staff/products',
+        name: 'ProductCatalog',
+        component: () => import('@/views/admin/staff/products/ProductCatalogView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: '/admin/staff/products/new',
+        name: 'NewProduct',
+        component: () => import('@/views/admin/staff/products/ProductForm.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: '/admin/staff/products/:id/edit',
+        name: 'EditProduct',
+        component: () => import('@/views/admin/staff/products/ProductForm.vue'),
+        meta: { requiresAuth: true },
+      },
      {
        path: '/admin/billing/saas-payments',
       name: 'TenantSaasPayments',

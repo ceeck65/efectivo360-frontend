@@ -62,14 +62,21 @@
               <p v-if="errors.barcode" class="text-[11px] text-red-500 mt-1">{{ errors.barcode }}</p>
             </div>
 
-            <div v-if="scanning" class="relative rounded-lg overflow-hidden border border-slate-300 dark:border-white/[0.08] bg-black">
-              <div id="barcode-scanner" class="w-full h-56 sm:h-72" />
-              <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div class="w-56 h-28 sm:w-64 sm:h-32 border-2 border-cyan-400/60 rounded-lg"><div class="w-full h-0.5 bg-cyan-400/80 animate-scan-line" /></div>
-              </div>
-              <button @click="stopScanner" class="absolute top-2 right-2 p-1.5 rounded-full bg-black/70 text-white hover:bg-black/90"><X class="w-4 h-4" /></button>
-              <p class="absolute bottom-2 left-1/2 -translate-x-1/2 text-[11px] text-slate-400 bg-black/60 px-3 py-1 rounded-full">Apunta al código de barras</p>
-            </div>
+            <BarcodeScanner
+              id="barcode-scanner"
+              :scanning="scanning"
+              include-qr
+              include-extended
+              :qrbox-width="280"
+              :qrbox-height="160"
+              :aspect-ratio="1.75"
+              overlay-class="w-56 h-28 sm:w-64 sm:h-32"
+              overlay-border="border-cyan-400/60"
+              scan-line-class="bg-cyan-400/80"
+              @scan="(txt: string) => { form.barcode = txt; }"
+              @close="scanning = false"
+              @error="(msg: string) => notifyError(msg)"
+            />
 
             <div>
               <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Nombre <span class="text-red-400">*</span></label>
@@ -216,11 +223,11 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, watch, onUnmounted, nextTick } from 'vue';
+import { reactive, ref, computed, watch, nextTick } from 'vue';
 import { X, ChevronDown, Loader2, Save, Link, ScanBarcode, ScanLine, Camera, ImagePlus } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import BarcodeScanner from '@/components/shared/BarcodeScanner.vue';
 import ProductImageStudio from './ProductImageStudio.vue';
 import BrandSelect from './BrandSelect.vue';
 import CategoryTreeSelect from './CategoryTreeSelect.vue';
@@ -258,7 +265,6 @@ const attributeFields = ref<{ key: string; label: string; type: string; options?
 const loadingAttributes = ref(false);
 const submitting = ref(false);
 const scanning = ref(false);
-const scannerInstance = ref<Html5Qrcode | null>(null);
 const hasInitialized = ref(false);
 const categoryTree = ref<any[]>([]);
 const selectedCategoryId = ref<number | null>(null);
@@ -292,24 +298,7 @@ function inputClass(error: string) {
     : 'w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-cyan-500/20 focus:border-cyan-400 dark:focus:border-cyan-500/50 focus:outline-none transition-colors';
 }
 
-async function toggleScanner() { if (scanning.value) stopScanner(); else await startScanner(); }
-async function startScanner() {
-  scanning.value = true; await nextTick();
-  try {
-    const formats = [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.CODE_93, Html5QrcodeSupportedFormats.ITF, Html5QrcodeSupportedFormats.CODABAR, Html5QrcodeSupportedFormats.QR_CODE];
-    const scanner = new Html5Qrcode('barcode-scanner', { formatsToSupport: formats, verbose: false });
-    scannerInstance.value = scanner;
-    await scanner.start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 280, height: 160 }, aspectRatio: 1.75 },
-      (txt) => { form.barcode = txt; notifySuccess(`Código escaneado: ${txt}`); stopScanner(); }, () => {});
-  } catch (e: any) { notifyError(e?.message || 'No se pudo acceder a la cámara'); scanning.value = false; scannerInstance.value = null; }
-}
-function stopScanner() {
-  if (scannerInstance.value && scanning.value) {
-    scannerInstance.value.stop().then(() => { scannerInstance.value?.clear(); scannerInstance.value = null; }).catch(() => {});
-  }
-  scanning.value = false;
-}
-onUnmounted(() => { if (scannerInstance.value) { if (scannerInstance.value.isScanning) scannerInstance.value.stop().catch(() => {}); scannerInstance.value = null; } });
+function toggleScanner() { scanning.value = !scanning.value; }
 
 async function loadCategories() {
   try {
@@ -451,10 +440,4 @@ watch(() => props.visible, (v) => {
   from { transform: translateX(100%); opacity: 0; }
   to { transform: translateX(0); opacity: 1; }
 }
-@keyframes scan-line {
-  0%, 100% { transform: translateY(-14px); }
-  50% { transform: translateY(14px); }
-}
-.animate-slide-in { animation: slide-in 0.2s ease-out; }
-.animate-scan-line { animation: scan-line 1.5s ease-in-out infinite; }
 </style>
