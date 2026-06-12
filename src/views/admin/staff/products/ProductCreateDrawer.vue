@@ -236,10 +236,15 @@
                   <label class="block text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-1">Stock Físico Inicial</label>
                   <input v-model.number="form.initial_physical_stock" type="number" min="0" step="0.001" placeholder="0"
                     class="w-full h-9 px-3 text-sm border border-amber-300 dark:border-amber-500/30 bg-white dark:bg-white/[0.04] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-amber-500/20 focus:border-amber-400 focus:outline-none transition-colors" />
+                  <span class="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 block">{{ isContinuousUnit ? 'Kg / Litros' : 'Unidades' }}</span>
                 </div>
                 <div>
                   <label class="block text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-1">Costo Unit. Inicial USD</label>
-                  <input v-model.number="form.initial_cost_price" type="number" min="0" step="0.0001" placeholder="0.00"
+                  <input type="text" inputmode="decimal" placeholder="0,00"
+                    :value="miInitCost.display.value"
+                    @focus="miInitCost.onFocus"
+                    @input="miInitCost.onInput"
+                    @blur="miInitCost.onBlur"
                     class="w-full h-9 px-3 text-sm border border-amber-300 dark:border-amber-500/30 bg-white dark:bg-white/[0.04] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-amber-500/20 focus:border-amber-400 focus:outline-none transition-colors" />
                 </div>
               </div>
@@ -260,59 +265,109 @@
               </label>
 
               <div v-if="logisticsEnabled" class="space-y-3 pt-2 border-t border-slate-200 dark:border-white/[0.06]">
-                <div class="grid grid-cols-2 gap-3">
+                <!-- Unidad de Medida (always visible) -->
+                <div>
+                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Unidad de Medida</label>
+                  <select v-model="logistics.unit"
+                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer">
+                    <option value="BOX">Caja</option>
+                    <option value="BULK">Bulto</option>
+                    <option value="SACK">Saco</option>
+                    <option value="KG">Kg</option>
+                    <option value="LITER">Litro</option>
+                    <option value="LOT">Lote</option>
+                    <option value="UNIT">Unidad</option>
+                  </select>
+                </div>
+
+                <!-- Advanced logistics block (hidden when UNIT) -->
+                <template v-if="logistics.unit !== 'UNIT'">
+                  <!-- Cantidad de Bultos / Sacos Comprados -->
                   <div>
-                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Unidad de Medida</label>
-                    <select v-model="logistics.unit"
-                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer">
-                      <option value="BOX">Caja</option>
-                      <option value="BULK">Bulto</option>
-                      <option value="SACK">Saco</option>
-                      <option value="KG">Kg</option>
-                      <option value="LITER">Litro</option>
-                      <option value="LOT">Lote</option>
-                      <option value="UNIT">Unidad</option>
-                    </select>
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      {{ isContinuousUnit ? 'Cantidad de Sacos / Tambores Comprados' : 'Cantidad de Bultos / Cajas Compradas' }}
+                    </label>
+                    <input v-model.number="logistics.boxQuantity" type="number" min="1" step="1" placeholder="1"
+                      @input="recalcLogisticsCost"
+                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
                   </div>
+
                   <div>
-                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Cantidad por Empaque</label>
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      {{ isContinuousUnit ? 'Peso / Contenido por Saco (Kg o Litros)' : 'Cantidad de Unidades por Bulto' }}
+                    </label>
                     <input v-model.number="logistics.qtyPerPackage" type="number" min="1" step="1" placeholder="1"
                       @input="recalcLogisticsCost"
                       class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
                   </div>
-                </div>
-                <div class="grid grid-cols-2 gap-3">
-                  <div>
-                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Costo Total del Bulto (USD)</label>
-                    <input v-model.number="logistics.bulkCostUsd" type="number" min="0" step="0.0001" placeholder="0.00"
-                      @input="recalcLogisticsCost"
-                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
-                  </div>
-                  <div>
-                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Flete / Importación (USD)</label>
-                    <input v-model.number="logistics.freightUsd" type="number" min="0" step="0.0001" placeholder="0.00 (opcional)"
-                      @input="recalcLogisticsCost"
-                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
-                  </div>
-                </div>
 
-                <!-- Resultado + conversión a VES -->
-                <div class="bg-blue-50 dark:bg-blue-500/[0.06] border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
-                  <div class="flex items-center justify-between">
-                    <span class="text-[10px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Costo Unitario Calculado</span>
-                    <span class="text-sm font-mono font-bold text-blue-900 dark:text-blue-200">
-                      ${{ computedLogisticsUnitCost }}
-                    </span>
+                  <!-- Currency toggle -->
+                  <div>
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Moneda de la Factura de Compra</label>
+                    <div class="flex gap-1 p-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
+                      <button type="button" @click="logistics.purchaseCurrency = 'USD'"
+                        class="px-4 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                        :class="logistics.purchaseCurrency === 'USD' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'">
+                        USD ($)
+                      </button>
+                      <button type="button" @click="logistics.purchaseCurrency = 'VES'"
+                        class="px-4 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                        :class="logistics.purchaseCurrency === 'VES' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'">
+                        VES (Bs.)
+                      </button>
+                    </div>
                   </div>
-                  <p class="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">
-                    (Costo Bulto ${{ logistics.bulkCostUsd.toFixed(4) }} + Flete ${{ logistics.freightUsd.toFixed(4) }}) / {{ logistics.qtyPerPackage }} uds
+
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                        {{ isContinuousUnit ? 'Costo Total del Saco' : 'Costo Total del Bulto' }} ({{ logistics.purchaseCurrency === 'USD' ? 'USD' : 'VES' }})
+                      </label>
+                      <input v-model.number="logistics.bulkCost" type="number" min="0" step="0.0001" placeholder="0.00"
+                        @input="recalcLogisticsCost"
+                        class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                    </div>
+                    <div>
+                      <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                        Flete / Importación ({{ logistics.purchaseCurrency === 'USD' ? 'USD' : 'VES' }})
+                      </label>
+                      <input v-model.number="logistics.freight" type="number" min="0" step="0.0001" placeholder="0.00 (opcional)"
+                        @input="recalcLogisticsCost"
+                        class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                    </div>
+                  </div>
+
+                  <!-- Resultado + conversión a VES -->
+                  <div class="bg-blue-50 dark:bg-blue-500/[0.06] border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
+                    <div class="flex items-center justify-between">
+                      <span class="text-[10px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Costo Unitario Calculado</span>
+                  <span class="text-sm font-mono font-bold text-blue-900 dark:text-blue-200">
+                    {{ computedLogisticsUnitCost }}
+                      </span>
+                    </div>
+                    <p class="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">
+                      <template v-if="logistics.purchaseCurrency === 'USD'">
+                        (${{ fmt(logistics.bulkCost) }} + ${{ fmt(logistics.freight) }}) / {{ logistics.boxQuantity }} {{ isContinuousUnit ? 'saco(s)' : 'bulto(s)' }} / {{ logistics.qtyPerPackage }} {{ isContinuousUnit ? 'Kg / L' : 'uds' }}
+                      </template>
+                      <template v-else>
+                        (Bs. {{ fmt(logistics.bulkCost) }} + Bs. {{ fmt(logistics.freight) }}) / {{ logistics.boxQuantity }} {{ isContinuousUnit ? 'saco(s)' : 'bulto(s)' }} / {{ logistics.qtyPerPackage }} {{ isContinuousUnit ? 'Kg / L' : 'uds' }}
+                        <span v-if="rateValue > 0" class="text-[10px] text-blue-500 dark:text-blue-400"> × tasa Bs. {{ fmt(rateValue) }}/USD</span>
+                      </template>
+                    </p>
+                    <div v-if="rateValue > 0 && computedLogisticsUnitCostNum > 0" class="mt-1.5 pt-1.5 border-t border-blue-200 dark:border-blue-500/20">
+                      <span class="text-[10px] text-blue-600 dark:text-blue-400">Equivalente en VES (BCV):</span>
+                      <span class="text-sm font-mono font-bold text-blue-900 dark:text-blue-200 ml-2">
+                        {{ fmtVES(bcvRound(computedLogisticsUnitCostNum * rateValue, 2)) }}
+                      </span>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- Direct‑per‑unit mode -->
+                <div v-if="logistics.unit === 'UNIT'" class="bg-blue-50 dark:bg-blue-500/[0.06] border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
+                  <p class="text-xs text-blue-700 dark:text-blue-400">
+                    Costo directo por unidad — ingresa el costo en la sección <strong>"Costo y Margen"</strong> más abajo.
                   </p>
-                  <div v-if="rateValue > 0 && computedLogisticsUnitCostNum > 0" class="mt-1.5 pt-1.5 border-t border-blue-200 dark:border-blue-500/20">
-                    <span class="text-[10px] text-blue-600 dark:text-blue-400">Equivalente en VES (BCV):</span>
-                    <span class="text-sm font-mono font-bold text-blue-900 dark:text-blue-200 ml-2">
-                      Bs. {{ (computedLogisticsUnitCostNum * rateValue).toFixed(2) }}
-                    </span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -327,14 +382,20 @@
               <div class="grid grid-cols-2 gap-3">
                 <div>
                   <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Costo USD</label>
-                  <input v-model.number="form.cost_price_usd" type="number" min="0" step="0.0001" placeholder="0.00"
-                    @input="recalcSuggested"
+                  <input type="text" inputmode="decimal" placeholder="0,00"
+                    :value="miCostUsd.display.value"
+                    @focus="miCostUsd.onFocus"
+                    @input="miCostUsd.onInput"
+                    @blur="miCostUsd.onBlur"
                     class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
                 </div>
                 <div>
                   <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Costo VES</label>
-                  <input v-model.number="form.cost_price_ves" type="number" min="0" step="0.01" placeholder="0.00"
-                    @input="onCostVesEdit"
+                  <input type="text" inputmode="decimal" placeholder="0,00"
+                    :value="miCostVes.display.value"
+                    @focus="miCostVes.onFocus"
+                    @input="miCostVes.onInput"
+                    @blur="miCostVes.onBlur"
                     class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
                 </div>
               </div>
@@ -377,12 +438,12 @@
                 <div class="grid grid-cols-2 gap-3">
                   <div>
                     <span class="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">USD</span>
-                    <p class="text-lg font-mono font-bold text-blue-900 dark:text-blue-200">${{ suggestedPriceUsd }}</p>
+                    <p class="text-lg font-mono font-bold text-blue-900 dark:text-blue-200">{{ fmtUSD(suggestedPriceUsdNum) }}</p>
                   </div>
                   <div>
                     <span class="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">VES</span>
-                    <p class="text-lg font-mono font-bold text-blue-900 dark:text-blue-200">Bs. {{ suggestedPriceVes }}</p>
-                    <p v-if="rateValue > 0" class="text-[10px] text-blue-500 dark:text-blue-400">Tasa BCV: Bs. {{ rateValue.toFixed(2) }}</p>
+                    <p class="text-lg font-mono font-bold text-blue-900 dark:text-blue-200">{{ suggestedPriceVes }}</p>
+                    <p v-if="rateValue > 0" class="text-[10px] text-blue-500 dark:text-blue-400">Tasa BCV: {{ fmtVES(rateValue) }}</p>
                     <p v-else class="text-[10px] text-amber-500 dark:text-amber-400">Cargando tasa BCV...</p>
                   </div>
                 </div>
@@ -398,12 +459,20 @@
               <div class="grid grid-cols-2 gap-3">
                 <div>
                   <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Precio USD</label>
-                  <input v-model.number="form.price_usd" type="number" min="0" step="0.01" placeholder="0.00" @input="onPriceUsdInput"
+                  <input type="text" inputmode="decimal" placeholder="0,00"
+                    :value="miPriceUsd.display.value"
+                    @focus="miPriceUsd.onFocus"
+                    @input="miPriceUsd.onInput"
+                    @blur="miPriceUsd.onBlur"
                     class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
                 </div>
                 <div>
                   <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Precio VES</label>
-                  <input v-model.number="form.price_ves" type="number" min="0" step="0.01" placeholder="0.00" @input="onPriceVesInput"
+                  <input type="text" inputmode="decimal" placeholder="0,00"
+                    :value="miPriceVes.display.value"
+                    @focus="miPriceVes.onFocus"
+                    @input="miPriceVes.onInput"
+                    @blur="miPriceVes.onBlur"
                     class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
                 </div>
               </div>
@@ -579,7 +648,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import { reactive, ref, computed, watch, onMounted, onUnmounted, nextTick, type Ref } from 'vue';
 import {
   X, ChevronDown, Search, ScanBarcode, ScanLine, Save, Loader2,
   Percent, DollarSign, Package, PackagePlus, BadgeDollarSign, AlertTriangle, Info, Plus,
@@ -618,8 +687,10 @@ interface FlatCategory extends CategoryNode {
 interface LogisticsState {
   unit: string;
   qtyPerPackage: number;
-  bulkCostUsd: number;
-  freightUsd: number;
+  boxQuantity: number;
+  bulkCost: number;
+  freight: number;
+  purchaseCurrency: 'USD' | 'VES';
 }
 
 // ── Props & emits ──
@@ -633,6 +704,73 @@ const emit = defineEmits<{
 const { fetchApi } = useApi();
 const { success: notifySuccess, error: notifyError } = useNotify();
 const { rateValue, fetchForexRate } = useForexRate();
+
+// ── BCV rounding & es‑VE formatting helpers ──
+
+function bcvRound(value: number, decimals: number = 2): number {
+  const factor = 10 ** decimals;
+  return Math.round((value + Number.EPSILON) * factor) / factor;
+}
+
+const _numberFmt = new Intl.NumberFormat('es-VE', {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+function fmt(value: number): string {
+  return _numberFmt.format(value);
+}
+function fmtUSD(value: number): string {
+  return '$ ' + _numberFmt.format(value);
+}
+function fmtVES(value: number): string {
+  return 'Bs. ' + _numberFmt.format(value);
+}
+
+// ── Monetary input helpers (comma‑accepting, es‑VE blur formatting) ──
+
+interface MonetaryInput {
+  display: Ref<string>;
+  onFocus: () => void;
+  onInput: (e: Event) => void;
+  onBlur: () => void;
+}
+
+function useMonetaryInput(
+  get: () => number,
+  set: (v: number) => void,
+  precision = 2,
+): MonetaryInput {
+  const raw = ref('');
+  const editing = ref(false);
+
+  function onFocus() {
+    raw.value = _numberFmt.format(get());
+    editing.value = true;
+  }
+
+  function onInput(e: Event) {
+    raw.value = (e.target as HTMLInputElement).value;
+    const parsed = parseFloat(raw.value.replace(/\./g, '').replace(',', '.'));
+    if (!isNaN(parsed)) set(bcvRound(parsed, precision));
+  }
+
+  function onBlur() {
+    editing.value = false;
+    const parsed = parseFloat(raw.value.replace(/\./g, '').replace(',', '.'));
+    if (!isNaN(parsed)) set(bcvRound(parsed, precision));
+  }
+
+  const display = computed(() => (editing.value ? raw.value : _numberFmt.format(get())));
+
+  return { display, onFocus, onInput, onBlur };
+}
+
+const miCostUsd = useMonetaryInput(() => form.cost_price_usd, v => { form.cost_price_usd = v; recalcSuggested(); }, 2);
+const miCostVes = useMonetaryInput(() => form.cost_price_ves, v => { form.cost_price_ves = v; onCostVesEdit(); }, 2);
+const miPriceUsd = useMonetaryInput(() => form.price_usd, v => { form.price_usd = v; onPriceUsdInput(); }, 2);
+const miPriceVes = useMonetaryInput(() => form.price_ves, v => { form.price_ves = v; onPriceVesInput(); }, 2);
+const miInitCost = useMonetaryInput(() => form.initial_cost_price, v => { form.initial_cost_price = v; }, 2);
 
 const tabs = [
   { key: 'general', label: 'Información General' },
@@ -834,8 +972,10 @@ const logisticsEnabled = ref(false);
 const logistics = reactive<LogisticsState>({
   unit: 'BOX',
   qtyPerPackage: 1,
-  bulkCostUsd: 0,
-  freightUsd: 0,
+  boxQuantity: 1,
+  bulkCost: 0,
+  freight: 0,
+  purchaseCurrency: 'USD',
 });
 
 // ── Form ──
@@ -904,6 +1044,7 @@ function restoreDraft() {
     if (data.logistics) Object.assign(logistics, data.logistics);
     if (data.logisticsEnabled !== undefined) logisticsEnabled.value = data.logisticsEnabled;
     if (data.fiscalModuleEnabled !== undefined) fiscalModuleEnabled.value = data.fiscalModuleEnabled;
+    if (logisticsEnabled.value) recalcLogisticsCost();
   } catch {
     clearDraft();
   }
@@ -929,23 +1070,38 @@ const showFiscalWarning = computed(() => {
     && form.iva_type !== 'EXENTO';
 });
 
+// ── Computed: continuous (KG / LITER) detection ──
+
+const isContinuousUnit = computed(() => logistics.unit === 'KG' || logistics.unit === 'LITER');
+
 // ── Computed: logistics unit cost ──
 
-const computedLogisticsUnitCostNum = computed(() => {
-  if (!logisticsEnabled.value || logistics.qtyPerPackage <= 0) return 0;
-  return (logistics.bulkCostUsd + logistics.freightUsd) / logistics.qtyPerPackage;
-});
+function logisticsCostUsd(): number {
+  if (!logisticsEnabled.value || logistics.qtyPerPackage <= 0 || logistics.boxQuantity <= 0) return 0;
+  let total = logistics.bulkCost + logistics.freight;
+  if (logistics.purchaseCurrency === 'VES') {
+    total = rateValue.value > 0 ? total / rateValue.value : 0;
+  }
+  const perBox = total / logistics.boxQuantity;
+  return bcvRound(perBox / logistics.qtyPerPackage, 2);
+}
 
-const computedLogisticsUnitCost = computed(() => {
-  return computedLogisticsUnitCostNum.value.toFixed(4);
+const computedLogisticsUnitCostNum = computed(logisticsCostUsd);
+const computedLogisticsUnitCost = computed(() => fmtUSD(computedLogisticsUnitCostNum.value));
+
+// Auto‑calculate initial physical stock from logistics
+watch([() => logistics.boxQuantity, () => logistics.qtyPerPackage], ([boxes, perPkg]) => {
+  if (logisticsEnabled.value && boxes > 0 && perPkg > 0) {
+    form.initial_physical_stock = boxes * perPkg;
+  }
 });
 
 function recalcLogisticsCost() {
-  if (logisticsEnabled.value && logistics.qtyPerPackage > 0) {
-    const unitCost = (logistics.bulkCostUsd + logistics.freightUsd) / logistics.qtyPerPackage;
+  if (logisticsEnabled.value && logistics.qtyPerPackage > 0 && logistics.boxQuantity > 0) {
+    const unitCost = logisticsCostUsd();
     form.initial_cost_price = unitCost;
     form.cost_price_usd = unitCost;
-    form.cost_price_ves = unitCost * (rateValue.value || 0);
+    form.cost_price_ves = bcvRound(unitCost * (rateValue.value || 0), 2);
     form.default_purchase_unit = logistics.unit;
   }
 }
@@ -974,7 +1130,7 @@ function onPriceUsdInput() {
   priceUsdUserEdited.value = true;
   priceVesUserEdited.value = false;
   if (rateValue.value > 0) {
-    form.price_ves = Number((form.price_usd * rateValue.value).toFixed(2));
+    form.price_ves = bcvRound(form.price_usd * rateValue.value, 2);
   }
 }
 
@@ -982,7 +1138,7 @@ function onPriceVesInput() {
   priceVesUserEdited.value = true;
   priceUsdUserEdited.value = false;
   if (rateValue.value > 0) {
-    form.price_usd = Number((form.price_ves / rateValue.value).toFixed(4));
+    form.price_usd = bcvRound(form.price_ves / rateValue.value, 2);
   }
 }
 
@@ -997,36 +1153,38 @@ function onDocumentClick() {
 }
 
 const effectiveCostUsd = computed(() => {
-  if (logisticsEnabled.value && logistics.qtyPerPackage > 0) {
+  if (logisticsEnabled.value && logistics.qtyPerPackage > 0 && logistics.boxQuantity > 0) {
     return computedLogisticsUnitCostNum.value;
   }
   return form.cost_price_usd || 0;
 });
 
-const suggestedPriceUsd = computed(() => {
+const suggestedPriceUsdNum = computed(() => {
   const cost = effectiveCostUsd.value;
   const margin = form.profit_margin || 0;
-  if (cost <= 0 || margin <= 0) return '0.00';
+  if (cost <= 0 || margin <= 0) return 0;
+  let raw: number;
   if (form.margin_type === 'FINANCIAL') {
     const divisor = 1 - margin / 100;
-    return divisor <= 0.01 ? '0.00' : (cost / divisor).toFixed(2);
+    raw = divisor <= 0.01 ? 0 : cost / divisor;
+  } else {
+    raw = cost * (1 + margin / 100);
   }
-  return (cost * (1 + margin / 100)).toFixed(2);
+  return bcvRound(raw, 2);
 });
 
 const suggestedPriceVes = computed(() => {
-  const usd = Number(suggestedPriceUsd.value) || 0;
-  if (usd > 0 && rateValue.value > 0) {
-    return (usd * rateValue.value).toFixed(2);
+  if (suggestedPriceUsdNum.value > 0 && rateValue.value > 0) {
+    return fmtVES(bcvRound(suggestedPriceUsdNum.value * rateValue.value, 2));
   }
-  return '0.00';
+  return fmtVES(0);
 });
 
 // ── Auto-fill Precios de Venta desde sugerido ──
 
-watch(suggestedPriceUsd, (val) => {
+watch(suggestedPriceUsdNum, (val) => {
   if (!priceUsdUserEdited.value && !priceVesUserEdited.value) {
-    form.price_usd = Number(val);
+    form.price_usd = val;
   }
 });
 
@@ -1061,6 +1219,12 @@ function validate(): boolean {
 
 async function handleSubmit() {
   if (!validate()) return;
+  // Ensure BCV 2‑decimal rounding on all monetary fields before submit
+  form.cost_price_usd = bcvRound(form.cost_price_usd, 2);
+  form.cost_price_ves = bcvRound(form.cost_price_ves, 2);
+  form.price_usd = bcvRound(form.price_usd, 2);
+  form.price_ves = bcvRound(form.price_ves, 2);
+  form.initial_cost_price = bcvRound(form.initial_cost_price, 2);
   submitting.value = true;
   try {
     const selectedCat = flatTree.value.find(c => c.id === selectedCategoryId.value);
@@ -1087,8 +1251,8 @@ async function handleSubmit() {
     };
 
     if (logisticsEnabled.value && logistics.qtyPerPackage > 0) {
-      payload.costo_bulto_total_usd = logistics.bulkCostUsd;
-      payload.costo_flete_usd = logistics.freightUsd;
+      payload.costo_bulto_total_usd = logistics.bulkCost;
+      payload.costo_flete_usd = logistics.freight;
       payload.default_purchase_unit = logistics.unit;
     }
 
@@ -1096,7 +1260,7 @@ async function handleSubmit() {
 
     await fetchApi('/api/v1/products/', {
       method: 'POST',
-      data: JSON.stringify(payload),
+      data: payload,
     });
     notifySuccess('Producto creado exitosamente');
     clearDraft();
@@ -1104,7 +1268,15 @@ async function handleSubmit() {
     emit('productCreated', payload);
     emit('close');
   } catch (e: any) {
-    notifyError(e?.response?.data?.error || e?.message || 'Error al crear producto');
+    const drfData = e.data;
+    if (drfData && typeof drfData === 'object' && !Array.isArray(drfData)) {
+      const msg = Object.entries(drfData)
+        .map(([, msgs]) => (Array.isArray(msgs) ? msgs[0] : msgs))
+        .filter(Boolean)
+        .join('. ');
+      if (msg) { notifyError(msg); return; }
+    }
+    notifyError(e?.message || 'Error al crear producto');
   } finally {
     submitting.value = false;
   }
@@ -1139,8 +1311,10 @@ function resetForm() {
   logisticsEnabled.value = false;
   logistics.unit = 'BOX';
   logistics.qtyPerPackage = 1;
-  logistics.bulkCostUsd = 0;
-  logistics.freightUsd = 0;
+  logistics.boxQuantity = 1;
+  logistics.bulkCost = 0;
+  logistics.freight = 0;
+  logistics.purchaseCurrency = 'USD';
   fiscalModuleEnabled.value = true;
   costVesUserEdited.value = false;
   priceUsdUserEdited.value = false;
