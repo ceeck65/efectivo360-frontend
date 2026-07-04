@@ -31,8 +31,8 @@
           <select v-model="filterStatus"
             class="w-full h-10 px-3.5 text-sm border border-slate-300 rounded-lg bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
             <option value="">Todos los estados</option>
-            <option value="active">Activos</option>
-            <option value="inactive">Inactivos</option>
+            <option value="active">Con stock</option>
+            <option value="inactive">Sin stock</option>
           </select>
         </div>
       </div>
@@ -56,10 +56,10 @@
               <th class="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Precio USD</th>
               <th class="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase hidden lg:table-cell">Precio VES</th>
               <th class="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase hidden lg:table-cell">Margen</th>
-              <th class="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase hidden lg:table-cell">Tipo</th>
+              <th class="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase hidden lg:table-cell">Inventario</th>
               <th class="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase hidden xl:table-cell">Sugerido</th>
-              <th class="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Método</th>
-              <th class="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase w-20">Estado</th>
+              <th class="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Venta</th>
+              <th class="text-center px-4 py-3 text-xs font-semibold text-slate-500 uppercase w-20">Stock</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
@@ -67,8 +67,18 @@
               @click="navigateToEdit(p)"
               class="hover:bg-slate-50/50 transition-colors cursor-pointer">
               <td class="px-4 py-3">
-                <span class="text-slate-800 font-medium">{{ p.name }}</span>
-                <p v-if="p.barcode" class="text-[10px] text-slate-400 font-mono mt-0.5">{{ p.barcode }}</p>
+                <div class="flex items-center gap-3">
+                  <div class="w-9 h-9 rounded-lg overflow-hidden shrink-0 bg-slate-100 flex items-center justify-center ring-1 ring-slate-200 relative">
+                    <img v-if="p.image_url" :src="p.image_url" alt=""
+                      class="w-full h-full object-cover absolute inset-0"
+                      @error="onImageError" />
+                    <ImageIcon class="w-4 h-4 text-slate-300" />
+                  </div>
+                  <div class="min-w-0">
+                    <span class="text-slate-800 font-medium truncate block max-w-[220px]">{{ p.name }}</span>
+                    <p v-if="p.barcode" class="text-[10px] text-slate-400 font-mono mt-0.5">{{ p.barcode }}</p>
+                  </div>
+                </div>
               </td>
               <td class="px-4 py-3 text-slate-600 font-mono text-xs">{{ p.sku }}</td>
               <td class="px-4 py-3 hidden md:table-cell"><span class="text-xs text-slate-500">{{ p.category || '—' }}</span></td>
@@ -115,24 +125,12 @@
                 </span>
               </td>
 
-              <!-- MARGIN TYPE -->
-              <td class="px-4 py-3 text-center hidden lg:table-cell" @click.stop>
-                <button v-if="editingKey === p.id + '-margin_type'"
-                  @click="commitEdit(p, 'margin_type')"
-                  class="text-[10px] font-semibold px-2 py-1 rounded-full border transition-colors"
-                  :class="val(p, 'margin_type') === 'FINANCIAL'
-                    ? 'bg-emerald-50 border-emerald-300 text-emerald-700'
-                    : 'bg-amber-50 border-amber-300 text-amber-700'">
-                  {{ val(p, 'margin_type') === 'FINANCIAL' ? 'Financiero' : 'Tradicional' }} ✓
-                </button>
-                <button v-else
-                  @click.stop="toggleMarginType(p)"
-                  class="text-[10px] font-semibold px-2 py-1 rounded-full border transition-colors cursor-pointer"
-                  :class="val(p, 'margin_type') === 'FINANCIAL'
-                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
-                    : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'">
-                  {{ val(p, 'margin_type') === 'FINANCIAL' ? '🛡️ Financiero' : '➕ Tradicional' }}
-                </button>
+              <!-- INVENTORY TYPE -->
+              <td class="px-4 py-3 text-center hidden lg:table-cell">
+                <span class="inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full"
+                  :class="inventoryBadge(p.inventory_type)">
+                  {{ inventoryLabel(p.inventory_type) }}
+                </span>
               </td>
 
               <!-- SUGERIDO (cálculo en vivo) -->
@@ -143,27 +141,21 @@
                 </span>
               </td>
 
-              <td class="px-4 py-3 text-center" @click.stop="startEdit(p, 'inventory_method')">
-                <select v-if="editingKey === p.id + '-inventory_method'"
-                  v-model="editBuffer"
-                  class="text-xs border border-blue-400 rounded px-1.5 py-0.5 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  @change="commitEdit(p, 'inventory_method')" @blur="commitEdit(p, 'inventory_method')" autofocus>
-                  <option value="FIFO">FIFO</option>
-                  <option value="LIFO">LIFO</option>
-                  <option value="AVERAGE">Promedio</option>
-                </select>
-                <span v-else class="inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full cursor-pointer"
-                  :class="methodBadge(val(p, 'inventory_method'))">
-                  {{ methodLabel(val(p, 'inventory_method')) }}
+              <!-- SALE TYPE -->
+              <td class="px-4 py-3 text-center">
+                <span class="inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full"
+                  :class="saleBadge(p.sale_type)">
+                  {{ saleLabel(p.sale_type) }}
                 </span>
               </td>
+
+              <!-- STOCK / ESTADO -->
               <td class="px-4 py-3 text-center">
-                <button @click.stop="toggleActive(p)"
-                  class="inline-flex items-center gap-1 text-[10px] font-medium cursor-pointer hover:opacity-80 transition-opacity px-2 py-1 rounded"
-                  :class="val(p, 'is_active') ? 'text-emerald-700 hover:bg-emerald-50' : 'text-slate-400 hover:bg-slate-100'">
+                <span class="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded"
+                  :class="val(p, 'is_active') ? 'text-emerald-700 bg-emerald-50' : 'text-slate-400 bg-slate-50'">
                   <span class="w-1.5 h-1.5 rounded-full" :class="val(p, 'is_active') ? 'bg-emerald-500' : 'bg-slate-300'" />
-                  {{ val(p, 'is_active') ? 'Activo' : 'Inactivo' }}
-                </button>
+                  {{ val(p, 'is_active') ? 'Activo' : 'Sin stock' }}
+                </span>
               </td>
             </tr>
             <tr v-if="filteredProducts.length === 0">
@@ -201,16 +193,27 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
-import { Plus, Search, Package, Loader2, Save } from 'lucide-vue-next';
+import { Plus, Search, Package, Loader2, Save, Image as ImageIcon } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
 import ProductCreateDrawer from './ProductCreateDrawer.vue';
 
 interface CatalogProduct {
-  id: string; name: string; sku: string; barcode: string | null;
-  category: string; price_usd: number; price_ves: number;
-  cost_price_usd: number; profit_margin: number; margin_type: string;
-  inventory_method: string; is_active: boolean;
-  status: string; global_product_id: string | null;
+  id: number;
+  name: string;
+  sku: string;
+  barcode: string | null;
+  category: string;
+  image_url: string | null;
+  price_usd: number;
+  price_ves: number;
+  cost_price_usd: number;
+  profit_margin: number;
+  margin_type: string;
+  inventory_type: string;
+  sale_type: string;
+  current_stock: number;
+  is_active: boolean;
+  global_product_id: number | null;
 }
 
 const router = useRouter();
@@ -224,9 +227,76 @@ const filterStatus = ref('');
 // Inline editing state
 const editingKey = ref<string | null>(null);
 const editBuffer = ref<any>(null);
-const dirty = ref<Map<string, Record<string, any>>>(new Map());
+const dirty = ref<Map<number, Record<string, any>>>(new Map());
 const saving = ref(false);
-const editRef = ref<HTMLInputElement | null>(null);
+
+// ── Normalizer ──
+
+function normalizeProduct(api: any): CatalogProduct {
+  const priceUsd = parseFloat(api.base_price_usd ?? api.price_data?.current_prices?.usd ?? 0);
+  const priceVes = parseFloat(api.base_price_ves ?? api.price_data?.current_prices?.ves ?? 0);
+  const costUsd = parseFloat(api.cost_price_usd ?? 0);
+  const margin = parseFloat(api.porcentaje_ganancia ?? 0);
+  const stock = api.current_stock ?? 0;
+  return {
+    id: api.id,
+    name: api.name || '',
+    sku: api.sku || '',
+    barcode: api.barcode || null,
+    category: api.category || '',
+    image_url: api.image || api.image_url || null,
+    price_usd: priceUsd,
+    price_ves: priceVes,
+    cost_price_usd: costUsd,
+    profit_margin: margin,
+    margin_type: 'FINANCIAL',
+    inventory_type: api.inventory_type || 'SIMPLE',
+    sale_type: api.sale_type || 'UNIDAD',
+    current_stock: stock,
+    is_active: stock > 0,
+    global_product_id: api.global_product?.id ?? null,
+  };
+}
+
+// ── Helpers ──
+
+function onImageError(e: Event) {
+  const img = e.target as HTMLImageElement;
+  const src = img.getAttribute('src');
+  if (!src || img.dataset.retried) { img.style.display = 'none'; return; }
+  img.dataset.retried = '1';
+  try {
+    const parsed = new URL(src);
+    if (parsed.hostname !== window.location.hostname || parsed.pathname.includes('http%3A')) {
+      const parts = parsed.pathname.split('/').filter(Boolean);
+      const tail = parts.slice(-2).join('/');
+      img.src = `${window.location.origin}/efectivo360-media/media/${tail}`;
+      return;
+    }
+  } catch { /* fall through */ }
+  img.style.display = 'none';
+}
+
+function inventoryLabel(t: string) {
+  const map: Record<string, string> = { SIMPLE: 'Simple', COMPOUND: 'Compuesto' };
+  return map[t] || t;
+}
+
+function inventoryBadge(t: string) {
+  if (t === 'COMPOUND') return 'bg-violet-50 text-violet-700 border border-violet-200';
+  return 'bg-sky-50 text-sky-700 border border-sky-200';
+}
+
+function saleLabel(t: string) {
+  const map: Record<string, string> = { UNIDAD: 'Unidad', PESO: 'Peso', LIQUIDO: 'Líquido' };
+  return map[t] || t;
+}
+
+function saleBadge(t: string) {
+  if (t === 'PESO') return 'bg-amber-50 text-amber-700 border border-amber-200';
+  if (t === 'LIQUIDO') return 'bg-cyan-50 text-cyan-700 border border-cyan-200';
+  return 'bg-slate-50 text-slate-600 border border-slate-200';
+}
 
 // ── Computed ──
 
@@ -286,7 +356,7 @@ function val(p: CatalogProduct, field: string): any {
 }
 
 function displayNum(p: CatalogProduct, field: string): string {
-  const v = val(p, field) || 0;
+  const v = val(p, field) ?? 0;
   return Number(v).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
@@ -301,9 +371,7 @@ function startEdit(p: CatalogProduct, field: string) {
 }
 
 function commitEdit(p: CatalogProduct, field: string) {
-  const newVal = (field === 'margin_type')
-    ? (val(p, 'margin_type') === 'FINANCIAL' ? 'TRADITIONAL' : 'FINANCIAL')
-    : editBuffer.value;
+  const newVal = editBuffer.value;
   if (newVal === undefined) { cancelEdit(); return; }
 
   const existing = dirty.value.get(p.id) ?? {};
@@ -326,28 +394,6 @@ function cancelEdit() {
   editBuffer.value = null;
 }
 
-function toggleMarginType(p: CatalogProduct) {
-  const existing = dirty.value.get(p.id) ?? {};
-  const current = (existing.margin_type !== undefined ? existing.margin_type : p.margin_type);
-  dirty.value.set(p.id, { ...existing, margin_type: current === 'FINANCIAL' ? 'TRADITIONAL' : 'FINANCIAL' });
-}
-
-function toggleActive(p: CatalogProduct) {
-  const existing = dirty.value.get(p.id) ?? {};
-  dirty.value.set(p.id, { ...existing, is_active: !val(p, 'is_active') });
-}
-
-function methodLabel(m: string) {
-  const map: Record<string, string> = { AVERAGE: 'Promedio', FIFO: 'FIFO', LIFO: 'LIFO' };
-  return map[m] || m;
-}
-
-function methodBadge(m: string) {
-  if (m === 'FIFO') return 'bg-amber-50 text-amber-700 border border-amber-200';
-  if (m === 'LIFO') return 'bg-violet-50 text-violet-700 border border-violet-200';
-  return 'bg-sky-50 text-sky-700 border border-sky-200';
-}
-
 // ── Navigation to edit form ──
 
 function navigateToEdit(p: CatalogProduct) {
@@ -356,11 +402,23 @@ function navigateToEdit(p: CatalogProduct) {
 
 // ── Save ──
 
+const FIELD_MAP: Record<string, string> = {
+  price_usd: 'base_price_usd',
+  price_ves: 'base_price_ves',
+  profit_margin: 'porcentaje_ganancia',
+};
+
 async function saveChanges() {
   if (dirty.value.size === 0) return;
   saving.value = true;
   try {
-    const payload = Array.from(dirty.value.entries()).map(([id, changes]) => ({ id, ...changes }));
+    const payload = Array.from(dirty.value.entries()).map(([id, changes]) => {
+      const mapped: Record<string, any> = { id };
+      for (const [key, value] of Object.entries(changes)) {
+        mapped[FIELD_MAP[key] || key] = value;
+      }
+      return mapped;
+    });
     await fetchApi('/api/v1/products/bulk-update/', {
       method: 'PATCH',
       data: JSON.stringify(payload),
@@ -388,7 +446,8 @@ async function loadProducts() {
   loading.value = true;
   try {
     const res = await fetchApi<any>('/api/v1/products/?page_size=500');
-    products.value = Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
+    const raw = Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
+    products.value = raw.map(normalizeProduct);
   } catch {
     products.value = [];
   } finally {

@@ -55,7 +55,7 @@
         <!-- Tab Content -->
         <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
           <TabBusinessInfo v-if="activeTab === 'info'" />
-          <TabBusinessProfile v-if="activeTab === 'profile'" />
+          <TabBusinessProfile v-if="activeTab === 'profile'" :tenantId="auth.tenantUlid" />
           <TabMonetaryMgmt v-if="activeTab === 'monetary'" />
           <TabFiscalConfig v-if="activeTab === 'fiscal'" />
           <TabTechnicalConfig v-if="activeTab === 'technical'" />

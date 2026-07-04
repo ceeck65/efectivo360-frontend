@@ -31,7 +31,14 @@
           <!-- ================================================================ -->
           <!-- TAB: Información General -->
           <!-- ================================================================ -->
-          <template v-if="activeTab === 'general'">
+          <div v-show="activeTab === 'general'">
+            <!-- Dual Search: Local Inventory + Global Catalog -->
+            <ProductDualSearch
+              @select-local="onSelectLocal"
+              @select-global="onSelectGlobal"
+              @create-custom="onCreateCustom"
+            />
+            <hr class="border-slate-200 dark:border-white/[0.06]" />
             <!-- Image -->
             <div>
               <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Imagen del Producto</label>
@@ -74,6 +81,12 @@
                 </button>
               </div>
               <p v-if="errors.barcode" class="text-[11px] text-red-500 mt-1">{{ errors.barcode }}</p>
+              <div v-if="isCheckingBarcode" class="mt-2 flex items-center gap-2 text-[11px] text-slate-500">
+                <Loader2 class="w-3.5 h-3.5 animate-spin" /> Verificando en catálogo global...
+              </div>
+              <div v-if="isNewProductGlobal" class="mt-2 p-3 bg-blue-50 dark:bg-blue-500/[0.06] border border-blue-200 dark:border-blue-500/20 rounded-lg text-sm text-blue-700 dark:text-blue-300">
+                <span class="font-bold">✨ ¡Producto Nuevo detectado!</span> Este artículo no se encuentra en el catálogo global de Efectivo 360. Se registrará localmente en tu inventario y pasará a nuestra mesa de control para su verificación y aprobación global.
+              </div>
             </div>
 
             <BarcodeScanner
@@ -101,67 +114,19 @@
               <p v-if="errors.sku" class="text-[11px] text-red-500 mt-1">{{ errors.sku }}</p>
             </div>
 
-            <!-- Category (buscador interactivo + cascade) -->
-            <div class="relative" ref="categoryTriggerRef">
-              <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Categoría <span class="text-red-400">*</span></label>
-              <button type="button" @click="catOpen = !catOpen"
-                class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] rounded-lg flex items-center justify-between transition-colors bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200">
-                <span class="truncate text-left pr-2">
-                  {{ selectedCategoryName || 'Seleccionar categoría...' }}
-                </span>
-                <ChevronDown class="w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform" :class="{ 'rotate-180': catOpen }" />
-              </button>
+            <!-- Category async select -->
+            <CategoryAsyncSelect v-model="selectedCategoryId" @select="onCategorySelect" />
 
-              <!-- Dropdown buscador -->
-              <div v-if="catOpen" data-cat-dropdown
-                class="fixed z-[200] bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/[0.08] rounded-lg shadow-xl overflow-hidden"
-                :style="catDropdownStyle">
-                <div class="p-2 border-b border-slate-100 dark:border-white/[0.06]">
-                  <div class="relative">
-                    <Search class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-                    <input v-model="catFilter" type="text" placeholder="Buscar categoría..."
-                      class="w-full h-8 pl-8 pr-3 text-xs border border-slate-200 dark:border-white/[0.08] rounded-md bg-slate-50 dark:bg-white/[0.03] text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                  </div>
-                </div>
-                <div class="max-h-60 overflow-y-auto py-1">
-                  <div v-if="filteredCategories.length === 0" class="px-3 py-4 text-center text-xs text-slate-400">Sin resultados</div>
-                  <button v-for="node in filteredCategories" :key="node.id"
-                    @click="selectCategory(node)"
-                    class="w-full text-left px-3 py-1.5 text-sm hover:bg-blue-50 dark:hover:bg-blue-500/[0.08] transition-colors flex items-center gap-2"
-                    :style="{ paddingLeft: (node._depth * 12 + 12) + 'px' }"
-                    :class="selectedCategoryId === node.id ? 'bg-blue-50 dark:bg-blue-500/[0.12] text-blue-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-300'">
-                    <span v-if="node._depth > 0" class="text-slate-300 text-[10px] shrink-0">{{ '·'.repeat(Math.min(node._depth, 3)) }}</span>
-                    <span class="truncate">{{ node.name }}</span>
-                    <span class="text-[10px] text-slate-400 font-mono ml-auto shrink-0">{{ node.code }}</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <!-- Brand (deshabilitado hasta que se elija categoría) -->
-            <div>
-              <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Marca</label>
-              <div class="flex gap-2">
-                <select v-model="form.brand" :disabled="!selectedCategoryId"
-                  class="flex-1 h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer"
-                  :class="selectedCategoryId
-                    ? 'bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200'
-                    : 'bg-slate-100 dark:bg-white/[0.01] text-slate-400 dark:text-slate-500 cursor-not-allowed'">
-                  <option :value="null">{{ selectedCategoryId ? 'Sin marca' : 'Primero elige una categoría' }}</option>
-                  <option v-for="b in brands" :key="b.id" :value="b.id">{{ b.name }}</option>
-                </select>
-                <button type="button" @click="showBrandModal = true" :disabled="!selectedCategoryId"
-                  class="h-9 px-3 rounded-lg text-sm font-medium border transition-colors flex items-center gap-1.5 shrink-0"
-                  :class="selectedCategoryId
-                    ? 'border-slate-300 dark:border-white/[0.08] text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'
-                    : 'border-slate-200 dark:border-white/[0.04] text-slate-300 dark:text-slate-500 cursor-not-allowed'">
-                  <Plus class="w-4 h-4" /> Nueva Marca
-                </button>
-              </div>
-              <p v-if="loadingBrands" class="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-                <Loader2 class="w-3 h-3 animate-spin" /> Cargando marcas...
-              </p>
-            </div>
+            <!-- Brand async select + creatable -->
+            <BrandCreatableSelect
+              :key="selectedCategoryId ?? 'empty-brand-select'"
+              v-model="form.brand"
+              :options="brands"
+              :loading="loadingBrands"
+              :disabled="!selectedCategoryId"
+              placeholder="Buscar o crear marca..."
+              @create-inline="onBrandCreateInline"
+            />
 
             <!-- IVA Type + Switch Módulo Fiscal + Alerta Preventiva -->
             <div>
@@ -218,12 +183,12 @@
                 class="w-full px-3 py-2 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors resize-none"></textarea>
             </div>
 
-          </template>
+          </div>
 
           <!-- ================================================================ -->
           <!-- TAB: Precios y Logística -->
           <!-- ================================================================ -->
-          <template v-if="activeTab === 'pricing'">
+          <div v-show="activeTab === 'pricing'">
             <!-- Initial Stock Banner -->
             <div class="bg-amber-50 dark:bg-amber-500/[0.06] border border-amber-200 dark:border-amber-500/20 rounded-lg p-3">
               <div class="flex items-center gap-2 mb-2">
@@ -250,124 +215,213 @@
               </div>
             </div>
 
-            <!-- Toggle Logística por Bulto / Empaque Mayorista -->
+            <!-- Selector de Tipo de Medida (Unidad / Peso / Líquido) -->
             <div class="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] rounded-lg p-4 space-y-3">
-              <label class="flex items-center gap-3 cursor-pointer select-none">
-                <div class="relative w-[44px] h-[24px]">
-                  <input type="checkbox" v-model="logisticsEnabled"
-                    class="sr-only peer" />
-                  <div class="w-[44px] h-[24px] rounded-full bg-slate-300 dark:bg-white/[0.12] peer-checked:bg-blue-600 transition-colors" />
-                  <div class="absolute top-[3px] left-[3px] w-[18px] h-[18px] rounded-full bg-white shadow-sm peer-checked:translate-x-[20px] transition-transform" />
-                </div>
-                <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  📦 Activar Configuración de Logística por Bulto / Empaque Mayorista
-                </span>
-              </label>
+              <div class="flex items-center gap-2">
+                <Package class="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Unidad de Medida</span>
+              </div>
+              <div class="grid grid-cols-3 gap-2">
+                <button type="button" @click="form.measurement_type = 'UNIDAD'; form.container_type = 'CAJA'"
+                  class="flex flex-col items-center justify-center h-14 rounded-xl border-2 font-semibold text-xs transition-colors"
+                  :class="form.measurement_type === 'UNIDAD' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/[0.06] text-blue-600 dark:text-blue-400' : 'border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-slate-400 hover:border-slate-300'">
+                  <span class="text-base">📦</span>
+                  <span>Unidad</span>
+                </button>
+                <button type="button" @click="form.measurement_type = 'PESO'; form.container_type = 'SACO'"
+                  class="flex flex-col items-center justify-center h-14 rounded-xl border-2 font-semibold text-xs transition-colors"
+                  :class="form.measurement_type === 'PESO' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/[0.06] text-blue-600 dark:text-blue-400' : 'border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-slate-400 hover:border-slate-300'">
+                  <span class="text-base">⚖️</span>
+                  <span>Peso</span>
+                </button>
+                <button type="button" @click="form.measurement_type = 'LIQUIDO'; form.container_type = 'BIDON'"
+                  class="flex flex-col items-center justify-center h-14 rounded-xl border-2 font-semibold text-xs transition-colors"
+                  :class="form.measurement_type === 'LIQUIDO' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/[0.06] text-blue-600 dark:text-blue-400' : 'border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-slate-400 hover:border-slate-300'">
+                  <span class="text-base">🧪</span>
+                  <span>Líquido</span>
+                </button>
+              </div>
 
-              <div v-if="logisticsEnabled" class="space-y-3 pt-2 border-t border-slate-200 dark:border-white/[0.06]">
-                <!-- Unidad de Medida (always visible) -->
+              <!-- Selector de sub‑tipo de contenedor para PESO -->
+              <div v-if="form.measurement_type === 'UNIDAD'" class="pt-2">
+                <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de empaque</label>
+                <div class="flex gap-1 p-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
+                  <button type="button" @click="form.container_type = 'CAJA'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                    :class="form.container_type === 'CAJA' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Caja</button>
+                  <button type="button" @click="form.container_type = 'BULTO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                    :class="form.container_type === 'BULTO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Bulto</button>
+                  <button type="button" @click="form.container_type = 'PAQUETE'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                    :class="form.container_type === 'PAQUETE' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Paquete</button>
+                </div>
+              </div>
+
+              <div v-if="form.measurement_type === 'PESO'" class="pt-2 space-y-2">
+                <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de empaque</label>
+                <div class="flex gap-1 p-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
+                  <button type="button" @click="form.weight_container = 'SACO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                    :class="form.weight_container === 'SACO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">👜 Saco</button>
+                  <button type="button" @click="form.weight_container = 'CESTA'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                    :class="form.weight_container === 'CESTA' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🧺 Cesta</button>
+                  <button type="button" @click="form.weight_container = 'BUN_CAJA'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                    :class="form.weight_container === 'BUN_CAJA' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Bún / Caja</button>
+                  <button type="button" @click="form.weight_container = 'KG_DIRECTO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                    :class="form.weight_container === 'KG_DIRECTO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">⚖️ Kg directo</button>
+                </div>
+              </div>
+
+              <div v-if="form.measurement_type === 'LIQUIDO'" class="pt-2 space-y-2">
+                <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de empaque</label>
+                <div class="flex gap-1 p-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
+                  <button type="button" @click="form.liquid_container = 'BIDON'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                    :class="form.liquid_container === 'BIDON' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🛢️ Bidón</button>
+                  <button type="button" @click="form.liquid_container = 'TAMBOR'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                    :class="form.liquid_container === 'TAMBOR' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🥁 Tambor</button>
+                  <button type="button" @click="form.liquid_container = 'GALON'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                    :class="form.liquid_container === 'GALON' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">⛽ Galón</button>
+                  <button type="button" @click="form.liquid_container = 'LT_DIRECTO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                    :class="form.liquid_container === 'LT_DIRECTO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🧪 Litro directo</button>
+                </div>
+              </div>
+
+              <!-- Campos de cantidad y capacidad (genéricos, labels dinámicos) -->
+              <div class="grid grid-cols-2 gap-3 pt-2">
                 <div>
-                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Unidad de Medida</label>
-                  <select v-model="logistics.unit"
-                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer">
-                    <option value="BOX">Caja</option>
-                    <option value="BULK">Bulto</option>
-                    <option value="SACK">Saco</option>
-                    <option value="KG">Kg</option>
-                    <option value="LITER">Litro</option>
-                    <option value="LOT">Lote</option>
-                    <option value="UNIT">Unidad</option>
-                  </select>
+                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                    {{ form.measurement_type === 'PESO'
+                      ? (form.weight_container === 'KG_DIRECTO' ? 'Cantidad de Kg' : 'Cantidad de ' + (form.weight_container === 'SACO' ? 'Sacos' : form.weight_container === 'CESTA' ? 'Cestas' : 'Bún / Cajas'))
+                      : form.measurement_type === 'LIQUIDO'
+                        ? (form.liquid_container === 'LT_DIRECTO' ? 'Cantidad de Litros' : 'Cantidad de ' + (form.liquid_container === 'BIDON' ? 'Bidones' : form.liquid_container === 'TAMBOR' ? 'Tambores' : 'Galones'))
+                        : 'Cantidad de ' + (form.container_type === 'CAJA' ? 'Cajas' : form.container_type === 'BULTO' ? 'Bultos' : 'Paquetes')
+                    }}
+                  </label>
+                  <input v-model.number="form.cantidad_contenedores" type="number" min="1" step="1" placeholder="1"
+                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
                 </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                    {{ form.measurement_type === 'PESO'
+                      ? (form.weight_container === 'KG_DIRECTO' ? 'Kg por contenedor' : 'Kg por ' + (form.weight_container === 'SACO' ? 'Saco' : form.weight_container === 'CESTA' ? 'Cesta' : 'Bún / Caja'))
+                      : form.measurement_type === 'LIQUIDO'
+                        ? (form.liquid_container === 'LT_DIRECTO' ? 'Litros por contenedor' : 'Litros por ' + (form.liquid_container === 'BIDON' ? 'Bidón' : form.liquid_container === 'TAMBOR' ? 'Tambor' : 'Galón'))
+                        : 'Unidades por ' + (form.container_type === 'CAJA' ? 'Caja' : form.container_type === 'BULTO' ? 'Bulto' : 'Paquete')
+                    }}
+                  </label>
+                  <input v-model.number="form.capacidad_por_contenedor" type="number" min="0.1" step="0.1" placeholder="1"
+                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                </div>
+              </div>
 
-                <!-- Advanced logistics block (hidden when UNIT) -->
-                <template v-if="logistics.unit !== 'UNIT'">
-                  <!-- Cantidad de Bultos / Sacos Comprados -->
-                  <div>
-                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                      {{ isContinuousUnit ? 'Cantidad de Sacos / Tambores Comprados' : 'Cantidad de Bultos / Cajas Compradas' }}
-                    </label>
-                    <input v-model.number="logistics.boxQuantity" type="number" min="1" step="1" placeholder="1"
-                      @input="recalcLogisticsCost"
-                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
-                  </div>
-
-                  <div>
-                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                      {{ isContinuousUnit ? 'Peso / Contenido por Saco (Kg o Litros)' : 'Cantidad de Unidades por Bulto' }}
-                    </label>
-                    <input v-model.number="logistics.qtyPerPackage" type="number" min="1" step="1" placeholder="1"
-                      @input="recalcLogisticsCost"
-                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
-                  </div>
-
-                  <!-- Currency toggle -->
-                  <div>
-                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Moneda de la Factura de Compra</label>
-                    <div class="flex gap-1 p-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
-                      <button type="button" @click="logistics.purchaseCurrency = 'USD'"
-                        class="px-4 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                        :class="logistics.purchaseCurrency === 'USD' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'">
-                        USD ($)
-                      </button>
-                      <button type="button" @click="logistics.purchaseCurrency = 'VES'"
-                        class="px-4 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                        :class="logistics.purchaseCurrency === 'VES' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'">
-                        VES (Bs.)
-                      </button>
-                    </div>
-                  </div>
-
-                  <div class="grid grid-cols-2 gap-3">
-                    <div>
-                      <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                        {{ isContinuousUnit ? 'Costo Total del Saco' : 'Costo Total del Bulto' }} ({{ logistics.purchaseCurrency === 'USD' ? 'USD' : 'VES' }})
-                      </label>
-                      <input v-model.number="logistics.bulkCost" type="number" min="0" step="0.0001" placeholder="0.00"
-                        @input="recalcLogisticsCost"
-                        class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
-                    </div>
-                    <div>
-                      <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                        Flete / Importación ({{ logistics.purchaseCurrency === 'USD' ? 'USD' : 'VES' }})
-                      </label>
-                      <input v-model.number="logistics.freight" type="number" min="0" step="0.0001" placeholder="0.00 (opcional)"
-                        @input="recalcLogisticsCost"
-                        class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
-                    </div>
-                  </div>
-
-                  <!-- Resultado + conversión a VES -->
-                  <div class="bg-blue-50 dark:bg-blue-500/[0.06] border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
-                    <div class="flex items-center justify-between">
-                      <span class="text-[10px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Costo Unitario Calculado</span>
+              <!-- Stock total calculado en lenguaje humano -->
+              <div class="bg-blue-50 dark:bg-blue-500/[0.06] border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Stock Total Calculado</span>
                   <span class="text-sm font-mono font-bold text-blue-900 dark:text-blue-200">
-                    {{ computedLogisticsUnitCost }}
-                      </span>
-                    </div>
-                    <p class="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">
-                      <template v-if="logistics.purchaseCurrency === 'USD'">
-                        (${{ fmt(logistics.bulkCost) }} + ${{ fmt(logistics.freight) }}) / {{ logistics.boxQuantity }} {{ isContinuousUnit ? 'saco(s)' : 'bulto(s)' }} / {{ logistics.qtyPerPackage }} {{ isContinuousUnit ? 'Kg / L' : 'uds' }}
-                      </template>
-                      <template v-else>
-                        (Bs. {{ fmt(logistics.bulkCost) }} + Bs. {{ fmt(logistics.freight) }}) / {{ logistics.boxQuantity }} {{ isContinuousUnit ? 'saco(s)' : 'bulto(s)' }} / {{ logistics.qtyPerPackage }} {{ isContinuousUnit ? 'Kg / L' : 'uds' }}
-                        <span v-if="rateValue > 0" class="text-[10px] text-blue-500 dark:text-blue-400"> × tasa Bs. {{ fmt(rateValue) }}/USD</span>
-                      </template>
-                    </p>
-                    <div v-if="rateValue > 0 && computedLogisticsUnitCostNum > 0" class="mt-1.5 pt-1.5 border-t border-blue-200 dark:border-blue-500/20">
-                      <span class="text-[10px] text-blue-600 dark:text-blue-400">Equivalente en VES (BCV):</span>
-                      <span class="text-sm font-mono font-bold text-blue-900 dark:text-blue-200 ml-2">
-                        {{ fmtVES(bcvRound(computedLogisticsUnitCostNum * rateValue, 2)) }}
-                      </span>
-                    </div>
-                  </div>
-                </template>
+                    {{ calculatedStockTotal }}
+                    <span class="text-[10px] font-normal">
+                      {{ form.measurement_type === 'PESO'
+                        ? 'Kg'
+                        : form.measurement_type === 'LIQUIDO'
+                          ? 'Litros'
+                          : 'Unidades'
+                      }}
+                    </span>
+                    <span class="text-[10px] text-blue-500 dark:text-blue-400 ml-1">
+                      ({{ form.cantidad_contenedores }} {{ form.measurement_type === 'PESO'
+                        ? (form.weight_container === 'KG_DIRECTO' ? 'Kg' : '× ' + form.capacidad_por_contenedor + ' Kg/' + (form.weight_container === 'SACO' ? 'saco' : form.weight_container === 'CESTA' ? 'cesta' : 'bún'))
+                        : form.measurement_type === 'LIQUIDO'
+                          ? (form.liquid_container === 'LT_DIRECTO' ? 'Litros' : '× ' + form.capacidad_por_contenedor + ' L/' + (form.liquid_container === 'BIDON' ? 'bidón' : form.liquid_container === 'TAMBOR' ? 'tambor' : 'galón'))
+                          : '× ' + form.capacidad_por_contenedor + ' uds/' + (form.container_type === 'CAJA' ? 'caja' : form.container_type === 'BULTO' ? 'bulto' : 'paquete')
+                      }})
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </div>
 
-                <!-- Direct‑per‑unit mode -->
-                <div v-if="logistics.unit === 'UNIT'" class="bg-blue-50 dark:bg-blue-500/[0.06] border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
-                  <p class="text-xs text-blue-700 dark:text-blue-400">
-                    Costo directo por unidad — ingresa el costo en la sección <strong>"Costo y Margen"</strong> más abajo.
-                  </p>
+            <!-- Costos y Flete Mayorista (con conversión VES→USD) -->
+            <div class="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] rounded-lg p-4 space-y-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <Package class="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                  <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Costos y Flete Mayorista</span>
+                </div>
+                <!-- Currency toggle -->
+                <div class="flex gap-1 p-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
+                  <button type="button" @click="selectedInvoiceCurrency = 'USD'"
+                    class="px-3 py-1 text-[10px] font-semibold rounded-md transition-colors"
+                    :class="selectedInvoiceCurrency === 'USD' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'">
+                    USD ($)
+                  </button>
+                  <button type="button" @click="selectedInvoiceCurrency = 'VES'"
+                    class="px-3 py-1 text-[10px] font-semibold rounded-md transition-colors"
+                    :class="selectedInvoiceCurrency === 'VES' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'">
+                    VES (Bs.)
+                  </button>
+                </div>
+              </div>
+
+              <!-- Badge informativo (solo lectura) -->
+              <div class="p-3 bg-blue-50/50 dark:bg-blue-500/[0.04] border border-blue-200 dark:border-blue-500/20 rounded-lg text-xs text-blue-800 dark:text-blue-300 flex items-center justify-between">
+                <span>Distribución de costos para:</span>
+                <span class="font-bold bg-blue-100 dark:bg-blue-500/[0.12] px-2.5 py-1 rounded-md text-sm text-blue-700 dark:text-blue-300">
+                  {{ form.cantidad_contenedores }} {{ containerLabel }}{{ form.cantidad_contenedores !== 1 ? 's' : '' }}
+                  <span class="text-[10px] opacity-70">({{ form.capacidad_por_contenedor }}
+                    {{ form.measurement_type === 'PESO' ? 'Kg' : form.measurement_type === 'LIQUIDO' ? 'L' : 'uds' }} c/u)</span>
+                </span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                    Costo Total del {{ containerLabel }} ({{ selectedInvoiceCurrency === 'USD' ? 'USD' : 'VES' }})
+                  </label>
+                  <input v-model.number="UIFields.costo_ingresado_usuario" type="number" min="0" step="0.01" placeholder="0.00"
+                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                    Flete / Importación ({{ selectedInvoiceCurrency === 'USD' ? 'USD' : 'VES' }})
+                  </label>
+                  <input v-model.number="UIFields.flete_ingresado_usuario" type="number" min="0" step="0.01" placeholder="0.00"
+                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                </div>
+              </div>
+
+              <!-- Custom exchange rate (solo cuando la factura es en VES) -->
+              <div v-if="selectedInvoiceCurrency === 'VES'" class="p-3 bg-amber-50/50 dark:bg-amber-500/[0.04] border border-amber-200 dark:border-amber-500/20 rounded-lg">
+                <label class="block text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-1">
+                  Tasa de Cambio de la Factura ({{ selectedInvoiceCurrency === 'VES' ? 'Bs. por USD' : '' }})
+                </label>
+                <input v-model.number="dekaRate" type="number" min="0" step="0.01" :placeholder="rateValue > 0 ? String(rateValue) : '0.00'"
+                  class="w-full h-9 px-3 text-sm border border-amber-300 dark:border-amber-500/30 bg-white dark:bg-white/[0.04] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-amber-500/20 focus:border-amber-400 focus:outline-none transition-colors" />
+                <p v-if="dekaRate > 0 && UIFields.costo_ingresado_usuario > 0" class="text-[10px] text-amber-600 dark:text-amber-400 mt-1">
+                  Costo en USD: <strong>${{ fmt(finalCostoBultoUSD) }}</strong>
+                  <span v-if="UIFields.flete_ingresado_usuario > 0">
+                    · Flete: <strong>${{ fmt(finalFleteUSD) }}</strong>
+                  </span>
+                </p>
+              </div>
+
+              <!-- Costo unitario calculado -->
+              <div v-if="finalCostoBultoUSD > 0" class="bg-blue-50 dark:bg-blue-500/[0.06] border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Costo Unitario</span>
+                  <span class="text-sm font-mono font-bold text-blue-900 dark:text-blue-200">
+                    $ {{ fmt(bulkUnitCost) }}
+                  </span>
+                </div>
+                <p class="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">
+                  ({{ form.cantidad_contenedores }} × <template v-if="selectedInvoiceCurrency === 'VES'">Bs. {{ fmt(UIFields.costo_ingresado_usuario) }} / {{ fmt(dekaRate) }} = </template>${{ fmt(finalCostoBultoUSD) }}
+                  <template v-if="finalFleteUSD > 0"> + ${{ fmt(finalFleteUSD) }} flete</template>)
+                  / {{ form.cantidad_contenedores * form.capacidad_por_contenedor }}
+                  {{ form.measurement_type === 'PESO' ? 'Kg' : form.measurement_type === 'LIQUIDO' ? 'L' : 'uds' }}
+                  = <strong>${{ fmt(bulkUnitCost) }}</strong>
+                </p>
+                <div v-if="rateValue > 0 && bulkUnitCost > 0" class="mt-1.5 pt-1.5 border-t border-blue-200 dark:border-blue-500/20">
+                  <span class="text-[10px] text-blue-600 dark:text-blue-400">Equivalente en VES (BCV):</span>
+                  <span class="text-sm font-mono font-bold text-blue-900 dark:text-blue-200 ml-2">
+                    {{ fmtVES(bcvRound(bulkUnitCost * rateValue, 2)) }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -484,6 +538,15 @@
                 <Package class="w-4 h-4 text-slate-500 dark:text-slate-400" />
                 <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Logística</span>
               </div>
+              <div>
+                <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Estrategia de Inventario</label>
+                <select v-model="form.inventory_type"
+                  class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer">
+                  <option value="KARDEX">Kardex — Control transaccional</option>
+                  <option value="SIMPLE">Simple — Stock directo</option>
+                  <option value="NONE">Servicio — Sin inventario</option>
+                </select>
+              </div>
               <div class="grid grid-cols-2 gap-3">
                 <div>
                   <div class="flex items-center gap-1.5 mb-1">
@@ -528,7 +591,7 @@
                   class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
               </div>
             </div>
-          </template>
+          </div>
         </div>
 
         <!-- Footer -->
@@ -588,16 +651,7 @@
 
         <!-- Category -->
         <div class="mb-3">
-          <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Categoría <span class="text-red-400">*</span></label>
-          <select v-model="newBrandCategoryId"
-            class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer"
-            :class="{'border-red-400 bg-red-50 dark:bg-red-500/[0.04]': brandFormErrors.category}">
-            <option :value="null">Seleccionar categoría...</option>
-            <option v-for="cat in flatTree" :key="cat.id" :value="cat.id">
-              {{ '·'.repeat(Math.min(cat._depth, 3)) }} {{ cat.name }}
-            </option>
-          </select>
-          <p v-if="brandFormErrors.category" class="text-[11px] text-red-500 mt-1">{{ brandFormErrors.category }}</p>
+          <CategoryAsyncSelect v-model="newBrandCategoryId" />
         </div>
 
         <!-- Policy -->
@@ -648,17 +702,23 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, computed, watch, onMounted, onUnmounted, nextTick, type Ref } from 'vue';
+import { reactive, ref, computed, watch, onMounted, onUnmounted, type Ref } from 'vue';
 import {
-  X, ChevronDown, Search, ScanBarcode, ScanLine, Save, Loader2,
-  Percent, DollarSign, Package, PackagePlus, BadgeDollarSign, AlertTriangle, Info, Plus,
+  X, ScanBarcode, ScanLine, Save, Loader2,
+  Percent, DollarSign, Package, PackagePlus, BadgeDollarSign, AlertTriangle, Info,
   ImagePlus, CheckCircle2, Trash2, Camera,
 } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
 import { useForexRate } from '@/composables/useForexRate';
+import { useAuthStore } from '@/stores/auth';
 import BarcodeScanner from '@/components/shared/BarcodeScanner.vue';
 import ProductImageStudio from '@/views/admin/super-console/components/ProductImageStudio.vue';
+import CategoryAsyncSelect from './CategoryAsyncSelect.vue';
+import BrandCreatableSelect from './BrandCreatableSelect.vue';
+import ProductDualSearch from './ProductDualSearch.vue';
+import type { DualSearchProduct } from './ProductDualSearch.vue';
+// ── Types ──
 
 // ── Types ──
 
@@ -699,11 +759,13 @@ const props = defineProps<{ visible: boolean }>();
 const emit = defineEmits<{
   close: [];
   productCreated: [payload: Record<string, any>];
+  selectLocal: [product: DualSearchProduct];
 }>();
 
-const { fetchApi } = useApi();
+const { fetchApi, apiClient } = useApi();
 const { success: notifySuccess, error: notifyError } = useNotify();
 const { rateValue, fetchForexRate } = useForexRate();
+const authStore = useAuthStore();
 
 // ── BCV rounding & es‑VE formatting helpers ──
 
@@ -783,78 +845,77 @@ const submitting = ref(false);
 // Scanner
 const scanning = ref(false);
 
-// ── Categories (searchable autocomplete) ──
+// ── Categories (async select) ──
 
-const categoryTree = ref<CategoryNode[]>([]);
 const selectedCategoryId = ref<number | string | null>(null);
-const catOpen = ref(false);
-const catFilter = ref('');
-const categoryTriggerRef = ref<HTMLElement | null>(null);
-const catDropdownStyle = ref<Record<string, string>>({});
+const selectedCategoryName = ref('');
 
-const flatTree = computed<FlatCategory[]>(() => {
-  const list: FlatCategory[] = [];
-  function walk(nodes: CategoryNode[], depth: number) {
-    for (const n of nodes) {
-      list.push({ ...n, _depth: depth, children: undefined as any });
-      if (n.children) walk(n.children, depth + 1);
-    }
+function onCategorySelect(cat: FlatCategory) {
+  selectedCategoryName.value = cat.name;
+}
+
+// ── Cascading brand loading when category changes ──
+
+watch(() => selectedCategoryId.value, async (newCatId) => {
+  if (!newCatId) {
+    brands.value = [];
+    return;
   }
-  if (categoryTree.value) walk(categoryTree.value, 0);
-  return list;
+  console.log('Gatillando marcas para categoría ID:', newCatId);
+  await onCategoryChange();
 });
 
-const filteredCategories = computed(() => {
-  if (!catFilter.value.trim()) return flatTree.value;
-  const q = catFilter.value.toLowerCase();
-  return flatTree.value.filter(
-    n => n.name.toLowerCase().includes(q) || (n.code || '').toLowerCase().includes(q),
-  );
-});
+// ── Dual Search Handlers ──
 
-const selectedCategoryName = computed(() => {
-  if (!selectedCategoryId.value) return '';
-  const found = flatTree.value.find(n => n.id === selectedCategoryId.value);
-  return found ? found.name : '';
-});
-
-function selectCategory(node: FlatCategory) {
-  selectedCategoryId.value = node.id;
-  catOpen.value = false;
-  catFilter.value = '';
-  onCategoryChange();
-}
-
-function updateCatDropdownPos() {
-  if (!categoryTriggerRef.value) return;
-  const rect = categoryTriggerRef.value.getBoundingClientRect();
-  catDropdownStyle.value = {
-    top: (rect.bottom + 4) + 'px',
-    left: rect.left + 'px',
-    width: rect.width + 'px',
-    maxHeight: '260px',
-    zIndex: '9999',
-  };
-}
-
-function onOutsideCatClick(e: MouseEvent) {
-  const target = e.target as Node;
-  if (categoryTriggerRef.value?.contains(target)) return;
-  const panel = document.querySelector('[data-cat-dropdown]');
-  if (panel?.contains(target)) return;
-  catOpen.value = false;
-}
-
-watch(catOpen, async (v) => {
-  if (v) {
-    await nextTick();
-    updateCatDropdownPos();
-  } else {
-    catFilter.value = '';
+function onSelectLocal(product: DualSearchProduct) {
+  form.name = product.name;
+  form.sku = String(product.sku ?? '');
+  form.barcode = product.barcode ?? '';
+  if (product.brand_display) form.brand = product.brand_id ?? null;
+  if (product.description) form.description = product.description;
+  if (product.category_global_id) {
+    selectedCategoryId.value = product.category_global_id;
+    selectedCategoryName.value = product.category ?? '';
   }
-});
+  // Emit signal to parent to switch drawer to stock-adjustment mode
+  emit('selectLocal', product);
+}
 
-// ── Brands (cascade) ──
+function onSelectGlobal(product: DualSearchProduct) {
+  form.name = product.name;
+  form.sku = String(product.sku ?? '');
+  form.barcode = product.barcode ?? '';
+  if (product.brand) form.brand = product.brand_id ?? null;
+  if (product.description) form.description = product.description;
+  if (product.cost_price_usd) form.cost_price_usd = product.cost_price_usd;
+  if (product.cost_price_ves) form.cost_price_ves = product.cost_price_ves;
+  if (product.base_price_usd) form.price_usd = product.base_price_usd;
+  if (product.base_price_ves) form.price_ves = product.base_price_ves;
+  if (product.category_global_id) {
+    selectedCategoryId.value = product.category_global_id;
+    selectedCategoryName.value = product.category ?? '';
+  }
+  if (product.image_url) form.image = product.image_url;
+  if (product.iva_type) form.iva_type = product.iva_type;
+}
+
+function onCreateCustom(term: string) {
+  form.name = term;
+  form.sku = '';
+  form.barcode = '';
+  form.brand = null;
+  form.description = '';
+  form.image = '';
+  form.cost_price_usd = 0;
+  form.cost_price_ves = 0;
+  form.price_usd = 0;
+  form.price_ves = 0;
+  form.initial_physical_stock = 0;
+  selectedCategoryId.value = null;
+  selectedCategoryName.value = '';
+}
+
+// ── Brands (cascade + creatable) ─-
 
 const brands = ref<BrandItem[]>([]);
 const loadingBrands = ref(false);
@@ -946,14 +1007,17 @@ watch(showBrandModal, (v) => {
 // ── Image Studio ──
 
 const showImageStudio = ref(false);
+const selectedImageFile = ref<File | Blob | null>(null);
 
-function onStudioProcessed(_blob: Blob, previewUrl: string) {
+function onStudioProcessed(blob: Blob, previewUrl: string) {
   form.image = previewUrl;
+  selectedImageFile.value = blob;
   showImageStudio.value = false;
 }
 
 function removeImage() {
   form.image = '';
+  selectedImageFile.value = null;
 }
 
 // ── Fiscal ──
@@ -964,7 +1028,7 @@ const fiscalSettings = reactive<FiscalSettings>({
   es_contribuyente_especial: false,
 });
 
-const fiscalModuleEnabled = ref(true);
+const fiscalModuleEnabled = ref(false);
 
 // ── Logistics toggle ──
 
@@ -978,6 +1042,49 @@ const logistics = reactive<LogisticsState>({
   purchaseCurrency: 'USD',
 });
 
+// ── Mayorista cost / freight UI (currency toggle + VES conversion) ──
+
+const selectedInvoiceCurrency = ref<'USD' | 'VES'>('USD');
+const UIFields = reactive({ costo_ingresado_usuario: 0, flete_ingresado_usuario: 0 });
+const dekaRate = ref(0); // custom rate; defaults to BCV rate when switching to VES
+
+watch(selectedInvoiceCurrency, (cur) => {
+  if (cur === 'VES' && dekaRate.value === 0 && rateValue.value > 0) {
+    dekaRate.value = rateValue.value;
+  }
+});
+
+const containerLabel = computed(() => {
+  if (form.measurement_type === 'PESO') {
+    if (form.weight_container === 'SACO') return 'Saco';
+    if (form.weight_container === 'CESTA') return 'Cesta';
+    if (form.weight_container === 'KG_DIRECTO') return 'Kilo';
+    return 'Bulto';
+  }
+  if (form.measurement_type === 'LIQUIDO') {
+    if (form.liquid_container === 'BIDON') return 'Bidón';
+    if (form.liquid_container === 'TAMBOR') return 'Tambor';
+    return 'Envase';
+  }
+  return 'Bulto / Caja';
+});
+
+const finalCostoBultoUSD = computed(() => {
+  if (selectedInvoiceCurrency.value === 'VES') {
+    return UIFields.costo_ingresado_usuario > 0 && dekaRate.value > 0
+      ? UIFields.costo_ingresado_usuario / dekaRate.value : 0;
+  }
+  return UIFields.costo_ingresado_usuario;
+});
+
+const finalFleteUSD = computed(() => {
+  if (selectedInvoiceCurrency.value === 'VES') {
+    return UIFields.flete_ingresado_usuario > 0 && dekaRate.value > 0
+      ? UIFields.flete_ingresado_usuario / dekaRate.value : 0;
+  }
+  return UIFields.flete_ingresado_usuario;
+});
+
 // ── Form ──
 
 const form = reactive({
@@ -988,6 +1095,13 @@ const form = reactive({
   category: '',
   description: '',
   image: '',
+  global_product_id: null as number | null,
+  measurement_type: 'UNIDAD',
+  container_type: 'CAJA',
+  weight_container: 'SACO',
+  liquid_container: 'BIDON',
+  cantidad_contenedores: 1,
+  capacidad_por_contenedor: 1,
   iva_type: 'GENERAL',
   cost_price_usd: 0,
   cost_price_ves: 0,
@@ -996,6 +1110,7 @@ const form = reactive({
   price_usd: 0,
   price_ves: 0,
   inventory_method: 'AVERAGE',
+  inventory_type: 'SIMPLE',
   default_purchase_unit: 'UNIT',
   units_per_package: 1,
   initial_physical_stock: 0,
@@ -1044,7 +1159,6 @@ function restoreDraft() {
     if (data.logistics) Object.assign(logistics, data.logistics);
     if (data.logisticsEnabled !== undefined) logisticsEnabled.value = data.logisticsEnabled;
     if (data.fiscalModuleEnabled !== undefined) fiscalModuleEnabled.value = data.fiscalModuleEnabled;
-    if (logisticsEnabled.value) recalcLogisticsCost();
   } catch {
     clearDraft();
   }
@@ -1072,39 +1186,49 @@ const showFiscalWarning = computed(() => {
 
 // ── Computed: continuous (KG / LITER) detection ──
 
-const isContinuousUnit = computed(() => logistics.unit === 'KG' || logistics.unit === 'LITER');
+const isContinuousUnit = computed(() => form.measurement_type === 'PESO' || form.measurement_type === 'LIQUIDO');
 
-// ── Computed: logistics unit cost ──
+const bulkUnitCost = computed(() => {
+  const totalCosto = form.cantidad_contenedores * finalCostoBultoUSD.value;
+  const inversionTotal = totalCosto + finalFleteUSD.value;
+  const stockTotal = form.cantidad_contenedores * form.capacidad_por_contenedor;
+  if (stockTotal <= 0) return 0;
+  return bcvRound(inversionTotal / stockTotal, 4);
+});
 
-function logisticsCostUsd(): number {
-  if (!logisticsEnabled.value || logistics.qtyPerPackage <= 0 || logistics.boxQuantity <= 0) return 0;
-  let total = logistics.bulkCost + logistics.freight;
-  if (logistics.purchaseCurrency === 'VES') {
-    total = rateValue.value > 0 ? total / rateValue.value : 0;
-  }
-  const perBox = total / logistics.boxQuantity;
-  return bcvRound(perBox / logistics.qtyPerPackage, 2);
-}
+const calculatedStockTotal = computed(() => {
+  return form.cantidad_contenedores * form.capacidad_por_contenedor;
+});
 
-const computedLogisticsUnitCostNum = computed(logisticsCostUsd);
-const computedLogisticsUnitCost = computed(() => fmtUSD(computedLogisticsUnitCostNum.value));
-
-// Auto‑calculate initial physical stock from logistics
-watch([() => logistics.boxQuantity, () => logistics.qtyPerPackage], ([boxes, perPkg]) => {
-  if (logisticsEnabled.value && boxes > 0 && perPkg > 0) {
-    form.initial_physical_stock = boxes * perPkg;
+watch([finalCostoBultoUSD, finalFleteUSD], () => {
+  const unit = bulkUnitCost.value;
+  if (unit > 0) {
+    form.cost_price_usd = unit;
+    form.initial_cost_price = unit;
+    if (rateValue.value > 0) {
+      form.cost_price_ves = bcvRound(unit * rateValue.value, 2);
+    }
   }
 });
 
-function recalcLogisticsCost() {
-  if (logisticsEnabled.value && logistics.qtyPerPackage > 0 && logistics.boxQuantity > 0) {
-    const unitCost = logisticsCostUsd();
-    form.initial_cost_price = unitCost;
-    form.cost_price_usd = unitCost;
-    form.cost_price_ves = bcvRound(unitCost * (rateValue.value || 0), 2);
-    form.default_purchase_unit = logistics.unit;
+watch(calculatedStockTotal, (val) => {
+  form.initial_physical_stock = val;
+});
+
+watch(() => form.measurement_type, () => {
+  logisticsEnabled.value = true;
+  form.cantidad_contenedores = 1;
+  form.capacidad_por_contenedor = 1;
+  if (form.measurement_type === 'PESO') {
+    form.weight_container = 'SACO';
+    form.container_type = 'SACO';
+  } else if (form.measurement_type === 'LIQUIDO') {
+    form.liquid_container = 'BIDON';
+    form.container_type = 'BIDON';
+  } else {
+    form.container_type = 'CAJA';
   }
-}
+});
 
 // ── Costo VES editable → tracking si el usuario lo tocó a mano ──
 
@@ -1153,9 +1277,8 @@ function onDocumentClick() {
 }
 
 const effectiveCostUsd = computed(() => {
-  if (logisticsEnabled.value && logistics.qtyPerPackage > 0 && logistics.boxQuantity > 0) {
-    return computedLogisticsUnitCostNum.value;
-  }
+  const bulk = bulkUnitCost.value;
+  if (bulk > 0) return bulk;
   return form.cost_price_usd || 0;
 });
 
@@ -1227,45 +1350,56 @@ async function handleSubmit() {
   form.initial_cost_price = bcvRound(form.initial_cost_price, 2);
   submitting.value = true;
   try {
-    const selectedCat = flatTree.value.find(c => c.id === selectedCategoryId.value);
-    const payload: Record<string, any> = {
-      barcode: form.barcode.trim() || '',
-      name: form.name.trim(),
-      sku: form.sku.trim(),
-      brand: form.brand,
-      category: selectedCat ? selectedCat.name : '',
-      description: form.description.trim(),
-      iva_type: fiscalModuleEnabled.value ? form.iva_type : 'EXENTO',
-      cost_price_usd: form.cost_price_usd,
-      cost_price_ves: form.cost_price_ves,
-      profit_margin: form.profit_margin,
-      margin_type: form.margin_type,
-      price_usd: form.price_usd,
-      price_ves: form.price_ves,
-      inventory_method: form.inventory_method,
-      default_purchase_unit: form.default_purchase_unit,
-      units_per_package: form.units_per_package,
-      initial_physical_stock: form.initial_physical_stock,
-      initial_cost_price: form.initial_cost_price,
-      image_b64: form.image || '',
-    };
+    const formData = new FormData();
 
-    if (logisticsEnabled.value && logistics.qtyPerPackage > 0) {
-      payload.costo_bulto_total_usd = logistics.bulkCost;
-      payload.costo_flete_usd = logistics.freight;
-      payload.default_purchase_unit = logistics.unit;
+    formData.append('name', form.name);
+    formData.append('sku', form.sku);
+    formData.append('barcode', form.barcode || '');
+    formData.append('category', selectedCategoryName.value || form.category || '');
+    formData.append('description', form.description || '');
+    formData.append('iva_type', fiscalModuleEnabled.value ? form.iva_type : 'EXENTO');
+    formData.append('cost_price_usd', String(form.cost_price_usd || 0));
+    formData.append('cost_price_ves', String(form.cost_price_ves || 0));
+    formData.append('base_price_usd', String(form.price_usd || 0));
+    formData.append('base_price_ves', String(form.price_ves || 0));
+    formData.append('profit_margin', String(form.profit_margin || 0));
+    formData.append('margin_type', form.margin_type);
+    formData.append('inventory_type', form.inventory_type);
+    formData.append('inventory_method', form.inventory_method);
+    formData.append('default_purchase_unit', form.default_purchase_unit);
+    formData.append('units_per_package', String(form.units_per_package || 1));
+    formData.append('initial_stock', String(form.initial_physical_stock || 0));
+    formData.append('initial_cost_price', String(form.initial_cost_price || 0));
+    formData.append('tenant_id', authStore.tenantUlid || '');
+    formData.append('category_id', String(Number(selectedCategoryId.value)));
+    formData.append('is_new_global', String(isNewProductGlobal.value));
+    if (form.global_product_id) {
+      formData.append('global_product_id', String(form.global_product_id));
+    }
+    if (form.brand) {
+      formData.append('brand_id', form.brand);
     }
 
-    if (payload.brand === null) delete payload.brand;
+    // Logistics fields — generic container payload (backend normalizes via cross-fallback)
+    formData.append('cantidad_contenedores', String(form.cantidad_contenedores));
+    formData.append('capacidad_por_contenedor', String(form.capacidad_por_contenedor));
+    formData.append('costo_bulto_total_usd', String(finalCostoBultoUSD.value));
+    formData.append('costo_flete_usd', String(finalFleteUSD.value));
 
-    await fetchApi('/api/v1/products/', {
-      method: 'POST',
-      data: payload,
+    // Image: prefer native File/Blob from ImageStudio, fallback to URL string
+    if (selectedImageFile.value instanceof Blob) {
+      formData.append('image', selectedImageFile.value, 'product_image.webp');
+    } else if (typeof form.image === 'string' && form.image.startsWith('http')) {
+      formData.append('image', form.image);
+    }
+
+    await apiClient.post('/api/products/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
     notifySuccess('Producto creado exitosamente');
     clearDraft();
     resetForm();
-    emit('productCreated', payload);
+    emit('productCreated', { name: form.name, sku: form.sku });
     emit('close');
   } catch (e: any) {
     const drfData = e.data;
@@ -1290,6 +1424,13 @@ function resetForm() {
   form.category = '';
   form.description = '';
   form.image = '';
+  form.global_product_id = null;
+  form.measurement_type = 'UNIDAD';
+  form.container_type = 'CAJA';
+  form.weight_container = 'SACO';
+  form.liquid_container = 'BIDON';
+  form.cantidad_contenedores = 1;
+  form.capacidad_por_contenedor = 1;
   form.iva_type = 'GENERAL';
   form.cost_price_usd = 0;
   form.cost_price_ves = 0;
@@ -1298,6 +1439,7 @@ function resetForm() {
   form.price_usd = 0;
   form.price_ves = 0;
   form.inventory_method = 'AVERAGE';
+  form.inventory_type = 'SIMPLE';
   form.default_purchase_unit = 'UNIT';
   form.units_per_package = 1;
   form.initial_physical_stock = 0;
@@ -1315,7 +1457,11 @@ function resetForm() {
   logistics.bulkCost = 0;
   logistics.freight = 0;
   logistics.purchaseCurrency = 'USD';
-  fiscalModuleEnabled.value = true;
+  UIFields.costo_ingresado_usuario = 0;
+  UIFields.flete_ingresado_usuario = 0;
+  dekaRate.value = 0;
+  selectedInvoiceCurrency.value = 'USD';
+  fiscalModuleEnabled.value = false;
   costVesUserEdited.value = false;
   priceUsdUserEdited.value = false;
   priceVesUserEdited.value = false;
@@ -1330,12 +1476,13 @@ function resetForm() {
   brandFormErrors.category = '';
   showBrandImageStudio.value = false;
   showImageStudio.value = false;
+  selectedImageFile.value = null;
+  isNewProductGlobal.value = false;
+  isCheckingBarcode.value = false;
   scanning.value = false;
 }
 
 function handleClose() {
-  resetForm();
-  clearDraft();
   emit('close');
 }
 
@@ -1347,10 +1494,13 @@ async function onCategoryChange() {
   if (!selectedCategoryId.value) return;
   loadingBrands.value = true;
   try {
-    const res = await fetchApi<any>(`/api/v1/catalog/categories/${selectedCategoryId.value}/brands/`);
-    brands.value = Array.isArray(res)
-      ? res.map((b: any) => ({ id: b.id, name: b.name }))
-      : [];
+    const res = await fetchApi<any>(`/api/v1/catalog/brands/`, {
+      params: {
+        category_id: selectedCategoryId.value,
+      },
+    });
+    brands.value = (Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []))
+      .map((b: any) => ({ id: b.id, name: b.name }));
   } catch {
     brands.value = [];
   } finally {
@@ -1358,7 +1508,62 @@ async function onCategoryChange() {
   }
 }
 
+function onBrandCreateInline(name: string) {
+  if (!selectedCategoryId.value) return;
+
+  newBrandName.value = name.trim();
+  newBrandCategoryId.value = selectedCategoryId.value;
+  newBrandLogo.value = '';
+  brandFormErrors.name = '';
+  brandFormErrors.category = '';
+  showBrandModal.value = true;
+}
+
 // ── Scanner ──
+
+const isNewProductGlobal = ref(false);
+const isCheckingBarcode = ref(false);
+let checkBarcodeDebounce: ReturnType<typeof setTimeout> | null = null;
+
+async function checkGlobalCatalog(value: string) {
+  if (!value || value.length < 3) return;
+  isCheckingBarcode.value = true;
+  try {
+    const response = await apiClient.get(`/api/global-products/global-check/?search=${encodeURIComponent(value)}`);
+    const globalProduct = response.data ?? response;
+    if (globalProduct?.id) {
+      isNewProductGlobal.value = false;
+      form.name = globalProduct.name || form.name;
+      if (globalProduct.category_id) {
+        selectedCategoryId.value = globalProduct.category_id;
+        selectedCategoryName.value = globalProduct.category || '';
+      }
+      if (globalProduct.brand_id) form.brand = globalProduct.brand_id;
+      if (globalProduct.image_url) form.image = globalProduct.image_url;
+      if (globalProduct.description) form.description = globalProduct.description;
+      form.global_product_id = globalProduct.id;
+    } else {
+      isNewProductGlobal.value = true;
+      form.global_product_id = null;
+    }
+  } catch {
+    isNewProductGlobal.value = false;
+  } finally {
+    isCheckingBarcode.value = false;
+  }
+}
+
+watch(() => form.barcode, (newVal) => {
+  if (checkBarcodeDebounce) clearTimeout(checkBarcodeDebounce);
+  checkBarcodeDebounce = setTimeout(() => checkGlobalCatalog(newVal || ''), 500);
+});
+
+watch(() => form.sku, (newVal) => {
+  if (!form.barcode && newVal) {
+    if (checkBarcodeDebounce) clearTimeout(checkBarcodeDebounce);
+    checkBarcodeDebounce = setTimeout(() => checkGlobalCatalog(newVal || ''), 500);
+  }
+});
 
 const searchingBarcode = ref(false);
 
@@ -1374,22 +1579,23 @@ async function lookupBarcode(code: string) {
       if (image_url) form.image = image_url;
       notifySuccess(`Producto encontrado: ${name || sku || code}`);
       if (category) {
-        const catNode = flatTree.value.find(
-          n => n.name.toLowerCase() === category.toLowerCase()
-        );
-        if (catNode) {
-          selectedCategoryId.value = catNode.id;
-          loadingBrands.value = true;
-          try {
-            const brandRes = await fetchApi<any>(`/api/v1/catalog/categories/${catNode.id}/brands/`);
-            brands.value = Array.isArray(brandRes) ? brandRes.map((b: any) => ({ id: b.id, name: b.name })) : [];
-          } catch { brands.value = []; }
-          finally { loadingBrands.value = false; }
-          if (brand) {
-            const match = brands.value.find((b: BrandItem) => b.id === brand);
-            if (match) form.brand = match.id;
+        try {
+          const catRes = await fetchApi<any>('/api/v1/catalog/categories/', { params: { tenant_id: authStore.tenantUlid || '', search: category, page_size: 1 } });
+          const catItems = Array.isArray(catRes?.results) ? catRes.results : (Array.isArray(catRes) ? catRes : []);
+          const catNode = catItems[0];
+          if (catNode) {
+            selectedCategoryId.value = catNode.id;
+            selectedCategoryName.value = catNode.name;
+            if (brand) {
+              // wait for brands to settle, then match
+              const unwatch = watch(brands, (list) => {
+                const match = list.find((b: BrandItem) => b.id === brand);
+                if (match) form.brand = match.id;
+                unwatch();
+              }, { once: true });
+            }
           }
-        }
+        } catch { /* ignore */ }
       }
     }
   } catch { /* ignore */ }
@@ -1401,7 +1607,6 @@ function toggleScanner() {
 }
 
 onUnmounted(() => {
-  document.removeEventListener('click', onOutsideCatClick, true);
   document.removeEventListener('click', onDocumentClick);
 });
 
@@ -1410,27 +1615,17 @@ onUnmounted(() => {
 watch(() => props.visible, async (v) => {
   if (v) {
     activeTab.value = 'general';
-    await Promise.all([loadCategories(), loadFiscalSettings(), fetchForexRate()]);
-    document.addEventListener('click', onOutsideCatClick, true);
+    await Promise.all([loadFiscalSettings(), fetchForexRate()]);
     document.addEventListener('click', onDocumentClick);
     if (!fiscalSettings.enable_iva) {
       form.iva_type = 'EXENTO';
       fiscalModuleEnabled.value = false;
     }
   } else {
-    document.removeEventListener('click', onOutsideCatClick, true);
     document.removeEventListener('click', onDocumentClick);
   }
 });
 
-async function loadCategories() {
-  try {
-    const res = await fetchApi<any>('/api/v1/catalog/categories/?page_size=200');
-    categoryTree.value = Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
-  } catch {
-    categoryTree.value = [];
-  }
-}
 
 async function loadFiscalSettings() {
   try {

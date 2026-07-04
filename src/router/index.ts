@@ -217,6 +217,12 @@ const router = createRouter({
         meta: { requiresAuth: true },
       },
       {
+        path: '/admin/staff/inventory',
+        name: 'InventoryList',
+        component: () => import('@/views/admin/staff/inventory/InventoryList.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: '/admin/inventory/kardex',
         name: 'InventoryKardex',
         component: () => import('@/views/admin/staff/inventory/InventoryKardexView.vue'),
