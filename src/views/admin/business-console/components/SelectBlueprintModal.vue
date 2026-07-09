@@ -72,24 +72,24 @@ const { Search, Check, Loader2 } = AllIcons;
 import { useApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
 
-interface IndustryBlueprint {
-  id: number;
+interface BusinessType {
+  id: string;
   name: string;
   code: string;
   icon: string;
   description: string;
 }
 
-const emit = defineEmits<{ selected: [blueprint: IndustryBlueprint]; cancel: [] }>();
+const emit = defineEmits<{ selected: [blueprint: BusinessType]; cancel: [] }>();
 
 const { fetchApi } = useApi();
 const { success, error: notifyError } = useNotify();
 
 const query = ref('');
-const selectedId = ref<number | null>(null);
+const selectedId = ref<string | null>(null);
 const saving = ref(false);
 const fetching = ref(true);
-const blueprints = ref<IndustryBlueprint[]>([]);
+const blueprints = ref<BusinessType[]>([]);
 
 const filtered = computed(() => {
   if (!query.value) return blueprints.value;
@@ -99,7 +99,7 @@ const filtered = computed(() => {
 
 onMounted(async () => {
   try {
-    const res = await fetchApi<any>('/api/v1/industry-blueprints/?page=1&page_size=100');
+    const res = await fetchApi<any>('/api/v1/business-types/?page=1&page_size=100');
     blueprints.value = Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
   } catch {
     blueprints.value = [];
@@ -117,9 +117,9 @@ async function confirm() {
   if (!selectedId.value) return;
   saving.value = true;
   try {
-    const res = await fetchApi<IndustryBlueprint>('/api/v1/tenants/blueprints/set-primary/', {
+    const res = await fetchApi<BusinessType>('/api/v1/tenants/me/setup-business/', {
       method: 'POST',
-      data: { blueprint_id: selectedId.value },
+      data: { business_type_ulid: selectedId.value, selected_category_ulids: [] },
     });
     success('Rubro principal configurado correctamente');
     emit('selected', res);

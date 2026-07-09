@@ -432,7 +432,7 @@ onMounted(async () => {
   if (step.value >= 4) loadStep4Data();
   try {
     const [bps, _countries] = await Promise.all([
-      fetchApi('/api/v1/industry-blueprints/') as Promise<any>,
+      fetchApi('/api/v1/business-types/') as Promise<any>,
       geography.fetchCountries(),
     ]);
     blueprints.value = bps?.results || bps || [];

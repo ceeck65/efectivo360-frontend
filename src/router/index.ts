@@ -48,6 +48,13 @@ const router = createRouter({
       path: '/register',
       redirect: '/es/register',
     },
+    // Reset password (forced after login with temp password)
+    {
+      path: '/auth/reset-password',
+      name: 'ResetPassword',
+      component: () => import('@/views/auth/ResetPasswordView.vue'),
+      meta: { requiresAuth: true, hideSidebar: true },
+    },
     // 404 - Full screen without layout
     {
       path: '/:pathMatch(.*)*',
@@ -149,11 +156,37 @@ const router = createRouter({
      },
 // POS - Punto de Venta - Available to authenticated users (staff and tenants)
      {
-       path: '/admin/pos',
-       name: 'PosMain',
-       component: () => import('@/views/admin/staff/pos/PosMainView.vue'),
-       meta: { requiresAuth: true },
-     },
+         path: '/admin/pos',
+         name: 'PosMain',
+         component: () => import('@/views/admin/staff/pos/PosMainView.vue'),
+         meta: { requiresAuth: true },
+         beforeEnter: async (_to, _from, next) => {
+           const { useCajaStore } = await import('@/stores/caja');
+           const cajaStore = useCajaStore();
+           const turno = await cajaStore.verificarTurnoActivo();
+           if (turno) {
+             next();
+           } else {
+             next({ name: 'PosApertura' });
+           }
+         },
+       },
+       {
+         path: '/admin/pos/apertura',
+         name: 'PosApertura',
+         component: () => import('@/views/admin/staff/pos/AperturaCaja.vue'),
+         meta: { requiresAuth: true, hideSidebar: true },
+         beforeEnter: async (_to, _from, next) => {
+           const { useCajaStore } = await import('@/stores/caja');
+           const cajaStore = useCajaStore();
+           const turno = await cajaStore.verificarTurnoActivo();
+           if (turno) {
+             next({ name: 'PosMain' });
+           } else {
+             next();
+           }
+         },
+       },
 // Treasury - Available to authenticated users (staff and tenants)
      {
        path: '/admin/staff/treasury',
@@ -265,6 +298,13 @@ const router = createRouter({
       component: () => import('@/views/tenant/AddonsMarketplace.vue'),
       meta: { requiresAuth: true },
     },
+    // Metadata-based Module Marketplace
+    {
+      path: '/admin/tenant/modules',
+      name: 'TenantModules',
+      component: () => import('@/views/admin/MarketplaceView.vue'),
+      meta: { requiresAuth: true },
+    },
     // Navigation Menu Modules - Staff only
     {
       path: '/admin/menu-modules',
@@ -340,6 +380,14 @@ router.beforeEach((to, _from, next) => {
     if (authStore.user?.role === 'EXTERNAL_AUDITOR' && to.path.startsWith('/admin/dashboard')) {
       isRedirecting = true;
       next('/auditor/dashboard');
+      setTimeout(() => { isRedirecting = false; }, 100);
+      return;
+    }
+
+    // Force password change if required (skip for reset-password itself)
+    if (authStore.requiresPasswordChange && to.name !== 'ResetPassword') {
+      isRedirecting = true;
+      next({ name: 'ResetPassword' });
       setTimeout(() => { isRedirecting = false; }, 100);
       return;
     }

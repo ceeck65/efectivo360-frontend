@@ -47,58 +47,19 @@
             <div class="flex-1">
               <div class="flex items-center gap-2">
                 <p class="font-medium text-slate-900 dark:text-white">{{ blueprint.name }}</p>
-                
-                <!-- Default Categories Badge -->
                 <span
-                  v-if="blueprint.default_categories && blueprint.default_categories.length > 0"
+                  v-if="blueprint.sort_order !== undefined"
                   class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300"
                 >
-                  {{ blueprint.default_categories.length }} categorías
+                  Orden: {{ blueprint.sort_order }}
                 </span>
-
-                <!-- Groups Badge -->
-                <span
-                  v-if="blueprint.schema_logic && blueprint.schema_logic.grupos"
-                  class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300 cursor-help"
-                  :title="Object.keys(blueprint.schema_logic.grupos).join(', ')"
-                >
-                  {{ Object.keys(blueprint.schema_logic.grupos).length }} grupos
-                </span>
-
-                <!-- Business Conditions Badges -->
-                <template v-if="blueprint.business_conditions">
-                  <span
-                    v-if="blueprint.business_conditions.fractional_sale"
-                    class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium border border-slate-200 text-slate-700 dark:border-white/[0.06] dark:text-slate-300"
-                  >
-                    Fraccionado
-                  </span>
-                  <span
-                    v-if="blueprint.business_conditions.service_management"
-                    class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium border border-slate-200 text-slate-700 dark:border-white/[0.06] dark:text-slate-300"
-                  >
-                    Servicios
-                  </span>
-                  <span
-                    v-if="blueprint.business_conditions.attribute_control"
-                    class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium border border-slate-200 text-slate-700 dark:border-white/[0.06] dark:text-slate-300"
-                  >
-                    Atributos
-                  </span>
-                  <span
-                    v-if="blueprint.business_conditions.traceability"
-                    class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium border border-slate-200 text-slate-700 dark:border-white/[0.06] dark:text-slate-300"
-                  >
-                    Trazabilidad
-                  </span>
-                </template>
               </div>
               <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Código: {{ blueprint.code }}</p>
               <p
-                v-if="blueprint.required_features && blueprint.required_features.length > 0"
+                v-if="blueprint.description"
                 class="text-xs text-slate-500 dark:text-slate-400"
               >
-                Features: {{ blueprint.required_features.join(', ') }}
+                {{ blueprint.description }}
               </p>
             </div>
 
@@ -110,30 +71,6 @@
                 <Edit3 class="h-4 w-4" />
                 Editar
               </button>
-              <button
-                @click="openEditGroups(blueprint)"
-                class="inline-flex items-center justify-center gap-1 h-8 px-3 text-sm font-medium text-slate-700 border border-purple-200 rounded-lg hover:bg-purple-50 dark:text-slate-300 dark:border-purple-900 dark:hover:bg-purple-900/20"
-              >
-                <Settings class="h-4 w-4 text-purple-600" />
-                Grupos
-              </button>
-              <label class="flex items-center gap-2 rounded-md border border-slate-200 px-3 py-1.5 text-sm dark:border-white/[0.06]">
-                <span class="text-slate-700 dark:text-slate-300">Activo</span>
-                <button
-                  @click="toggleActive(blueprint, !blueprint.is_active)"
-                  :class="[
-                    'relative inline-flex h-4 w-7 items-center rounded-full transition-colors',
-                    blueprint.is_active ? 'bg-green-600' : 'bg-slate-200'
-                  ]"
-                >
-                  <span
-                    :class="[
-                      'inline-block h-3 w-3 transform rounded-full bg-white transition-transform',
-                      blueprint.is_active ? 'translate-x-4' : 'translate-x-0.5'
-                    ]"
-                  />
-                </button>
-              </label>
               <button
                 @click="handleDelete(blueprint)"
                 class="inline-flex items-center justify-center gap-1 h-8 px-3 text-sm font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 dark:text-red-400 dark:border-red-900 dark:hover:bg-red-900/20"
@@ -161,35 +98,18 @@
       @close="closeEditModal"
       @updated="loadBlueprints"
     />
-
-    <!-- Edit Groups Modal -->
-    <EditBlueprintGroupsModal
-      :blueprint="editingBlueprint"
-      :is-open="isGroupsModalOpen"
-      @close="closeGroupsModal"
-      @updated="loadBlueprints"
-    />
   </div>
 </template>
 
 <script setup lang="ts">
-/**
- * @fileoverview Vista de gestión de blueprints (tipos de comercio)
- * @module @modules/blueprints/views/BlueprintsManagementView
- */
 import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
 import type { Blueprint } from '../types';
-import { Building2, Plus, Edit3, Settings, Trash2 } from 'lucide-vue-next';
+import { Building2, Plus, Edit3, Trash2 } from 'lucide-vue-next';
 import CreateBlueprintModal from '../components/CreateBlueprintModal.vue';
 import EditBlueprintModal from '../components/EditBlueprintModal.vue';
-import EditBlueprintGroupsModal from '../components/EditBlueprintGroupsModal.vue';
-
-// =============================================================================
-// STATE
-// =============================================================================
 
 const authStore = useAuthStore();
 const { fetchApi } = useApi();
@@ -200,23 +120,14 @@ const blueprints = ref<Blueprint[]>([]);
 const isCreateModalOpen = ref(false);
 const editingBlueprint = ref<Blueprint | null>(null);
 const isEditModalOpen = ref(false);
-const isGroupsModalOpen = ref(false);
-
-// =============================================================================
-// COMPUTED
-// =============================================================================
 
 const user = computed(() => authStore.user);
 const isStaff = computed(() => user.value?.is_staff || false);
 
-// =============================================================================
-// METHODS
-// =============================================================================
-
 const loadBlueprints = async () => {
   try {
     loading.value = true;
-    const response = await fetchApi<Blueprint[] | { results?: Blueprint[] }>('/api/v1/industry-blueprints/');
+    const response = await fetchApi<Blueprint[] | { results?: Blueprint[] }>('/api/v1/business-types/');
     blueprints.value = Array.isArray(response) ? response : (response as { results?: Blueprint[] }).results ?? [];
   } catch (error) {
     notifyError(error instanceof Error ? error.message : 'No se pudieron cargar los tipos de comercio.');
@@ -234,34 +145,9 @@ const openEdit = (blueprint: Blueprint) => {
   isEditModalOpen.value = true;
 };
 
-const openEditGroups = (blueprint: Blueprint) => {
-  editingBlueprint.value = blueprint;
-  isGroupsModalOpen.value = true;
-};
-
 const closeEditModal = () => {
   isEditModalOpen.value = false;
   editingBlueprint.value = null;
-};
-
-const closeGroupsModal = () => {
-  isGroupsModalOpen.value = false;
-  editingBlueprint.value = null;
-};
-
-const toggleActive = async (blueprint: Blueprint, active: boolean) => {
-  try {
-    await fetchApi(`/api/v1/industry-blueprints/${blueprint.id}/`, {
-      method: 'PATCH',
-      data: { is_active: active },
-    });
-    blueprints.value = blueprints.value.map(item =>
-      item.id === blueprint.id ? { ...item, is_active: active } : item
-    );
-    notifySuccess('Estado actualizado.');
-  } catch (error) {
-    notifyError(error instanceof Error ? error.message : 'No se pudo actualizar el estado.');
-  }
 };
 
 const handleDelete = async (blueprint: Blueprint) => {
@@ -269,17 +155,13 @@ const handleDelete = async (blueprint: Blueprint) => {
   if (!confirmed) return;
   
   try {
-    await fetchApi(`/api/v1/industry-blueprints/${blueprint.id}/`, { method: 'DELETE' });
+    await fetchApi(`/api/v1/business-types/${blueprint.id}/`, { method: 'DELETE' });
     blueprints.value = blueprints.value.filter(item => item.id !== blueprint.id);
     notifySuccess('Tipo de comercio eliminado.');
   } catch (error) {
     notifyError(error instanceof Error ? error.message : 'No se pudo eliminar el tipo de comercio.');
   }
 };
-
-// =============================================================================
-// LIFECYCLE
-// =============================================================================
 
 onMounted(() => {
   if (!isStaff.value) {

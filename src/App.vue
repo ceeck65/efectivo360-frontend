@@ -16,6 +16,11 @@
     <RouterView />
   </div>
 
+  <!-- POS routes - fullscreen, no sidebar/header -->
+  <div v-else-if="isPosRoute" class="min-h-screen">
+    <RouterView />
+  </div>
+
   <!-- Admin/Dashboard pages - with sidebar -->
   <div v-else-if="isAdminRoute" class="flex h-screen w-full overflow-hidden">
     <!-- Sidebar -->
@@ -112,7 +117,7 @@ const isAuthRoute = computed(() => {
 
 const isAdminRoute = computed(() => {
   const path = route.path;
-  return (path.startsWith('/admin') || path.startsWith('/auditor')) && !isSimpleRoute.value;
+  return (path.startsWith('/admin') || path.startsWith('/auditor')) && !isSimpleRoute.value && !isPosRoute.value;
 });
 
 const isSimpleRoute = computed(() => {
@@ -120,6 +125,7 @@ const isSimpleRoute = computed(() => {
   return path.startsWith('/admin/setup') || path.startsWith('/admin/onboarding') || path.startsWith('/admin/welcome-to-360');
 });
 
+const isPosRoute = computed(() => route.path === '/admin/pos' || route.path === '/admin/pos/apertura');
 const isPosView = computed(() => route.path === '/admin/pos');
 
 const needsShopWizard = computed(() => {

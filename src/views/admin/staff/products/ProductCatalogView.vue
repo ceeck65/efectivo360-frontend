@@ -68,11 +68,12 @@
               class="hover:bg-slate-50/50 transition-colors cursor-pointer">
               <td class="px-4 py-3">
                 <div class="flex items-center gap-3">
-                  <div class="w-9 h-9 rounded-lg overflow-hidden shrink-0 bg-slate-100 flex items-center justify-center ring-1 ring-slate-200 relative">
-                    <img v-if="p.image_url" :src="p.image_url" alt=""
+                  <div class="w-9 h-9 rounded-lg overflow-hidden shrink-0 flex items-center justify-center ring-1 ring-slate-200 relative"
+                    :class="p.image_url && !imageErrors.has(p.id) ? 'bg-transparent' : 'bg-slate-50'">
+                    <img v-if="p.image_url && !imageErrors.has(p.id)" :src="p.image_url" alt=""
                       class="w-full h-full object-cover absolute inset-0"
-                      @error="onImageError" />
-                    <ImageIcon class="w-4 h-4 text-slate-300" />
+                      @error="onImageError(p.id)" />
+                    <Package v-else class="w-5 h-5 text-slate-300" />
                   </div>
                   <div class="min-w-0">
                     <span class="text-slate-800 font-medium truncate block max-w-[220px]">{{ p.name }}</span>
@@ -193,12 +194,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
-import { Plus, Search, Package, Loader2, Save, Image as ImageIcon } from 'lucide-vue-next';
+import { Plus, Search, Package, Loader2, Save } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
 import ProductCreateDrawer from './ProductCreateDrawer.vue';
 
 interface CatalogProduct {
-  id: number;
+  id: string;
   name: string;
   sku: string;
   barcode: string | null;
@@ -224,10 +225,12 @@ const products = ref<CatalogProduct[]>([]);
 const search = ref('');
 const filterStatus = ref('');
 
+const imageErrors = ref<Set<string>>(new Set());
+
 // Inline editing state
 const editingKey = ref<string | null>(null);
 const editBuffer = ref<any>(null);
-const dirty = ref<Map<number, Record<string, any>>>(new Map());
+const dirty = ref<Map<string, Record<string, any>>>(new Map());
 const saving = ref(false);
 
 // ── Normalizer ──
@@ -260,21 +263,8 @@ function normalizeProduct(api: any): CatalogProduct {
 
 // ── Helpers ──
 
-function onImageError(e: Event) {
-  const img = e.target as HTMLImageElement;
-  const src = img.getAttribute('src');
-  if (!src || img.dataset.retried) { img.style.display = 'none'; return; }
-  img.dataset.retried = '1';
-  try {
-    const parsed = new URL(src);
-    if (parsed.hostname !== window.location.hostname || parsed.pathname.includes('http%3A')) {
-      const parts = parsed.pathname.split('/').filter(Boolean);
-      const tail = parts.slice(-2).join('/');
-      img.src = `${window.location.origin}/efectivo360-media/media/${tail}`;
-      return;
-    }
-  } catch { /* fall through */ }
-  img.style.display = 'none';
+function onImageError(productId: string) {
+  imageErrors.value = new Set(imageErrors.value).add(productId);
 }
 
 function inventoryLabel(t: string) {

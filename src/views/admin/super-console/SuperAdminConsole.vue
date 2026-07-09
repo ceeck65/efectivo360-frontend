@@ -119,7 +119,7 @@ async function loadAllData() {
   loading.value = true;
   try {
     const [bp, cat, attr, tenants] = await Promise.all([
-      fetchApi<{ count: number }>('/api/v1/industry-blueprints/'),
+      fetchApi<{ count: number }>('/api/v1/business-types/'),
       fetchApi<{ count: number }>('/api/v1/categories/'),
       fetchApi<{ count: number }>('/api/v1/admin/master-attributes/'),
       fetchApi<{ count: number }>('/api/v1/tenants/'),

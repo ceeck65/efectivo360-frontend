@@ -77,7 +77,8 @@
                     :is="getIcon(item.icon)"
                     class="h-[18px] w-[18px] shrink-0 stroke-[1.5]"
                   />
-                  <span>{{ item.label }}</span>
+                  <span class="flex-1 text-left">{{ item.label }}</span>
+                  <Lock v-if="getItemLocked(item.path)" class="h-3.5 w-3.5 shrink-0 text-amber-400" />
                 </button>
               </template>
             </div>
@@ -122,9 +123,10 @@
                       :is="getIcon(item.icon)"
                       class="h-[18px] w-[18px] shrink-0 stroke-[1.5]"
                     />
-                    <span :class="[!showLabels ? 'hidden' : 'block']">
+                    <span :class="[!showLabels ? 'hidden' : 'block', 'flex-1 text-left']">
                       {{ item.label }}
                     </span>
+                    <Lock v-if="getItemLocked(item.path) && showLabels" class="h-3.5 w-3.5 shrink-0 text-amber-400" />
                   </button>
                 </template>
               </template>
@@ -133,13 +135,31 @@
         </template>
       </nav>
 
-      <!-- Footer -->
+      <!-- Footer / Usage Indicator -->
       <div class="space-y-2 p-3 text-xs rounded-bento border border-white/[0.08] bg-black/25 text-white/50 backdrop-blur-sm" :class="!showLabels ? 'hidden' : 'block'">
+        <div v-if="!esIlimitado" class="space-y-1.5">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5">
+              <Ticket class="h-3 w-3 text-blue-400" />
+              <span class="text-white/60">Tickets disponibles</span>
+            </div>
+            <span class="font-semibold text-white/80 tabular-nums">{{ ticketsDisponibles.toLocaleString() }}</span>
+          </div>
+          <div v-if="sinVencimiento" class="text-[10px] text-white/40">· Sin vencimiento</div>
+        </div>
+        <div v-else class="flex items-center gap-1.5">
+          <span class="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          <span class="text-emerald-300/80 font-semibold text-[10px] tracking-wide uppercase">Full Ilimitado</span>
+        </div>
+        <button @click="navigateTo('/admin/tenant/modules', 'marketplace')"
+          class="flex w-full items-center gap-1.5 rounded-lg bg-white/5 px-2 py-1.5 text-[10px] font-semibold text-white/60 hover:bg-white/10 hover:text-white transition-colors">
+          <ShoppingCart class="h-3 w-3" />
+          Marketplace
+        </button>
         <div class="flex items-center gap-2">
           <span class="h-2 w-2 rounded-full bg-emerald-500" />
           <span>Online</span>
         </div>
-        <p class="mt-1">Sistema ERP Efectivo 360</p>
       </div>
 
       <!-- Collapse Toggle (Desktop only) -->
@@ -197,8 +217,12 @@ import {
   CheckCircle2,
   LineChart,
   MoreHorizontal,
+  Lock,
+  ShoppingCart,
+  Ticket,
 } from 'lucide-vue-next';
 import { useNavigationStore, type MenuItem } from '@/stores/navigation';
+import { useTenantMetadata } from '@/composables/useTenantMetadata';
 
 // Icon mapping from Lucide
 const iconMap: Record<string, any> = {
@@ -254,6 +278,29 @@ const emit = defineEmits<{
 const route = useRoute();
 const router = useRouter();
 const navigationStore = useNavigationStore();
+const { isModuleLocked, ticketsDisponibles, esIlimitado, sinVencimiento } = useTenantMetadata();
+
+// Map nav paths to module keys for access control
+const MODULE_ROUTE_MAP: Record<string, string> = {
+  '/admin/branches': 'multi_sucursal',
+  '/admin/sucursales': 'multi_sucursal',
+  '/admin/dispatch': 'control_despacho',
+  '/admin/dispatch-routes': 'rutas_despacho',
+  '/admin/routes': 'rutas_despacho',
+  '/admin/reports/advanced': 'reportes_avanzados',
+  '/admin/inventory/advanced': 'inventario_avanzado',
+  '/admin/warehouse': 'bodega_multiple',
+  '/admin/crm': 'crm',
+};
+
+function getRequiredModule(path: string): string | null {
+  for (const [prefix, modKey] of Object.entries(MODULE_ROUTE_MAP)) {
+    if (path.startsWith(prefix)) return modKey;
+  }
+  return null;
+}
+
+
 
 // State
 const isCollapsed = computed({
@@ -286,6 +333,8 @@ onMounted(async () => {
   if (window.innerWidth < BREAKPOINT) {
     isCollapsed.value = true;
   }
+
+  // Load transaction usage from metadata (handled by useTenantMetadata)
 
   // Fetch navigation on mount
   navigationStore.clearCache();
@@ -387,12 +436,27 @@ function closeMobile() {
   emit('update:modelValue', false);
 }
 
-function navigateTo(path: string, itemId: string) {
+function navigateToItem(path: string, itemId: string) {
   router.push(path);
   setActiveItem(itemId);
   if (isMobile.value) {
     closeMobile();
   }
+}
+
+function navigateTo(path: string, itemId: string) {
+  const modKey = getRequiredModule(path);
+  if (modKey && isModuleLocked(modKey)) {
+    router.push('/admin/tenant/modules');
+    if (isMobile.value) closeMobile();
+    return;
+  }
+  navigateToItem(path, itemId);
+}
+
+function getItemLocked(path: string): boolean {
+  const modKey = getRequiredModule(path);
+  return modKey ? isModuleLocked(modKey) : false;
 }
 
 function isItemActive(path: string): boolean {

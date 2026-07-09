@@ -55,7 +55,9 @@ interface User {
   is_withholding_agent?: boolean | null;
   auto_generate_retention_vouchers?: boolean | null;
   permissions?: string[];
-  permissions_matrix?: Record<string, string[]>;  // Matriz de capacidades: { "vta": ["view", "create"], "inv": ["view"] }
+  /** @deprecated Frontend solo lee `permissions: string[]`. El backend enviará la matriz plana. */
+  permissions_matrix?: Record<string, string[]>;
+  requires_password_change?: boolean;
 }
 
 // CMS Permissions interface
@@ -75,6 +77,7 @@ export const useAuthStore = defineStore('auth', () => {
   const refreshToken = ref<string | null>(localStorage.getItem('refresh_token'));
   const cmsPermissions = ref<any | null>(null);
   const isLoading = ref(false);
+  const requiresPasswordChange = ref(false);
 
   // Load user from localStorage on init
   const storedUser = localStorage.getItem(USER_STORAGE_KEY);
@@ -128,23 +131,12 @@ export const useAuthStore = defineStore('auth', () => {
     return user.value.permissions?.includes(permission) || false;
   };
 
-  const hasPerm = (module: string, action: string): boolean => {
-    /**
-     * Verifica si el usuario tiene un permiso específico usando la matriz de capacidades.
-     * Ejemplo: hasPerm('vta', 'create') retorna true si el usuario puede crear ventas.
-     */
-    if (!user.value) return false;
-    if (user.value.is_superuser) return true;
-    
-    const matrix = user.value.permissions_matrix;
-    if (!matrix) return false;
-    
-    const moduleActions = matrix[module];
-    if (!moduleActions) return false;
-    
-    return moduleActions.includes(action);
+  /** @deprecated Usar `hasPermission(flatCode)`. Frontend solo reacciona a `permissions: string[]`. */
+  const hasPerm = (_module: string, _action: string): boolean => {
+    return false;
   };
 
+  /** @deprecated Usar `hasPermission(code)`. Se eliminará en próxima versión. */
   const hasCmsPermissionCode = (code: string): boolean => {
     if (!cmsPermissions.value) return false;
     if (user.value?.role === 'FOUNDER' || user.value?.role === 'OWNER' || user.value?.user_type === 'ADMIN') return true;
@@ -166,6 +158,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null;
     refreshToken.value = null;
     cmsPermissions.value = null;
+    requiresPasswordChange.value = false;
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem(USER_STORAGE_KEY);
@@ -241,12 +234,19 @@ export const useAuthStore = defineStore('auth', () => {
       setTokens(tokenData.access, tokenData.refresh);
       
       // Then fetch full user data from /me/ (same as React)
-      await fetchUser();
+      const userData = await fetchUser();
       
       // Fetch CMS permissions (same as React)
       await fetchCmsPermissions();
       
-      notifySuccess('¡Bienvenido! Sesión iniciada correctamente.');
+      // Check if password change is required
+      if (userData?.requires_password_change) {
+        requiresPasswordChange.value = true;
+      }
+      
+      if (!requiresPasswordChange.value) {
+        notifySuccess('¡Bienvenido! Sesión iniciada correctamente.');
+      }
     } catch (err) {
       notifyError('Error al iniciar sesión. Verifica tus credenciales.');
       throw err;
@@ -339,6 +339,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
   };
 
+  const confirmPasswordChange = (): void => {
+    requiresPasswordChange.value = false;
+    if (user.value) {
+      user.value.requires_password_change = false;
+      saveUserToStorage(user.value);
+    }
+  };
+
   return {
     user,
     token,
@@ -353,6 +361,7 @@ export const useAuthStore = defineStore('auth', () => {
     hasTenant,
     hasConfiguredTenant,
     isGlobalMode,
+    requiresPasswordChange,
     setTokens,
     clearAuth,
     login,
@@ -368,5 +377,6 @@ export const useAuthStore = defineStore('auth', () => {
     saveCmsPermissionsToStorage,
     switchTenant,
     refreshUserPermissions,
+    confirmPasswordChange,
   };
 });

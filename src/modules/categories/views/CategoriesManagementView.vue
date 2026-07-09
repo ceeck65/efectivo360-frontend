@@ -143,21 +143,7 @@
             </select>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Industry Blueprint</label>
-            <select
-              v-model="createBlueprintId"
-              class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300"
-            >
-              <option value="__NONE__">Sin blueprint (heredar del padre)</option>
-              <option v-for="bp in blueprints" :key="bp.id" :value="bp.id">
-                {{ bp.name }} ({{ bp.code }})
-              </option>
-            </select>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Si no seleccionas un blueprint, la categoría heredará del padre.
-            </p>
-          </div>
+
         </div>
 
         <div class="border-t border-slate-200 p-6 flex justify-end gap-2 dark:border-white/[0.06]">
@@ -218,21 +204,7 @@
             />
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1 dark:text-slate-300">Industry Blueprint</label>
-            <select
-              v-model="editBlueprintId"
-              class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e] dark:text-slate-300"
-            >
-              <option value="__NONE__">Sin blueprint (heredar del padre)</option>
-              <option v-for="bp in blueprints" :key="bp.id" :value="bp.id">
-                {{ bp.name }} ({{ bp.code }})
-              </option>
-            </select>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              Si no seleccionas un blueprint, la categoría heredará del padre.
-            </p>
-          </div>
+
         </div>
 
         <div class="border-t border-slate-200 p-6 flex justify-end gap-2 dark:border-white/[0.06]">
@@ -290,13 +262,11 @@ const createModalOpen = ref(false);
 const createNombre = ref('');
 const createIcono = ref('');
 const createParentId = ref(ROOT_PARENT);
-const createBlueprintId = ref('');
 
 const editModalOpen = ref(false);
 const editingCategory = ref<CategoryNode | null>(null);
 const editNombre = ref('');
 const editIcono = ref('');
-const editBlueprintId = ref('');
 
 // =============================================================================
 // COMPUTED
@@ -355,7 +325,7 @@ const toggleRow = (id: number) => {
   expandedRows.value = next;
 };
 
-const getBlueprintName = (blueprintId: number | null) => {
+const getBlueprintName = (blueprintId: string | number | null) => {
   if (!blueprintId) return null;
   const bp = blueprints.value.find(b => b.id === blueprintId);
   return bp?.name || null;
@@ -389,7 +359,7 @@ const loadCategories = async () => {
 
 const loadBlueprints = async () => {
   try {
-    const data = await fetchApi<{ results: BlueprintOption[] }>('/api/v1/industry-blueprints/');
+    const data = await fetchApi<{ results: BlueprintOption[] }>('/api/v1/business-types/');
     blueprints.value = data.results || [];
   } catch {
     blueprints.value = [];
@@ -400,7 +370,6 @@ const openCreate = () => {
   createNombre.value = '';
   createIcono.value = '';
   createParentId.value = ROOT_PARENT;
-  createBlueprintId.value = '';
   createModalOpen.value = true;
 };
 
@@ -421,10 +390,6 @@ const handleCreate = async () => {
       payload.parent_id = Number(createParentId.value);
     }
 
-    if (createBlueprintId.value && createBlueprintId.value !== '__NONE__') {
-      payload.industry_blueprint_id = Number(createBlueprintId.value);
-    }
-
     await fetchApi('/api/v1/global/categorias/', {
       method: 'POST',
       data: payload,
@@ -436,7 +401,6 @@ const handleCreate = async () => {
     createNombre.value = '';
     createIcono.value = '';
     createParentId.value = ROOT_PARENT;
-    createBlueprintId.value = '';
     await loadCategories();
   } catch (error) {
     notifyError('Error al crear la categoría.');
@@ -449,7 +413,6 @@ const openEdit = (category: CategoryNode) => {
   editingCategory.value = category;
   editNombre.value = category.nombre;
   editIcono.value = category.icono || '';
-  editBlueprintId.value = category.blueprint_id?.toString() || '__NONE__';
   editModalOpen.value = true;
 };
 
@@ -465,12 +428,6 @@ const handleUpdate = async () => {
       nombre: editNombre.value.trim(),
       icon: editIcono.value.trim(),
     };
-
-    if (editBlueprintId.value && editBlueprintId.value !== '__NONE__') {
-      payload.industry_blueprint_id = Number(editBlueprintId.value);
-    } else {
-      payload.industry_blueprint_id = null;
-    }
 
     await fetchApi(`/api/v1/categories/${editingCategory.value.id}/`, {
       method: 'PATCH',

@@ -4,68 +4,38 @@ import { useAuthStore } from '@/stores/auth';
 export function usePermissions() {
   const authStore = useAuthStore();
 
+  /** Flat list of permission strings from backend */
+  const permissions = computed<string[]>(() => authStore.user?.permissions ?? []);
+
   /**
-   * Check if user has a specific permission
-   * @param module - Permission module (e.g., 'MENUS', 'operations', 'finance')
-   * @param code - Permission code (e.g., 'mnu_dashboard', 'CAN_VIEW_SALES')
-   * @returns boolean
+   * Check if user has a specific permission code.
+   * Frontend never evaluates business logic — only reacts to strings from backend.
    */
   const hasPerm = (_module: string, code: string): boolean => {
-    if (!authStore.user) return false;
-    
-    // Superusers have all permissions
-    if (authStore.user.is_superuser) return true;
-    
-    // Check if user has the specific permission
-    const userPermissions = authStore.cmsPermissions as string[] || [];
-    return userPermissions.includes(code);
+    return authStore.hasPermission(code);
   };
 
-  /**
-   * Check if user has any permission from a list
-   * @param permissions - Array of permission codes
-   * @returns boolean
-   */
-  const hasAnyPerm = (permissions: string[]): boolean => {
-    if (!authStore.user) return false;
-    if (authStore.user.is_superuser) return true;
-    
-    const userPermissions = authStore.cmsPermissions as string[] || [];
-    return permissions.some(perm => userPermissions.includes(perm));
+  /** Check if user has any permission from a list */
+  const hasAnyPerm = (codes: string[]): boolean => {
+    return codes.some(c => authStore.hasPermission(c));
   };
 
-  /**
-   * Check if user has all permissions from a list
-   * @param permissions - Array of permission codes
-   * @returns boolean
-   */
-  const hasAllPerms = (permissions: string[]): boolean => {
-    if (!authStore.user) return false;
-    if (authStore.user.is_superuser) return true;
-    
-    const userPermissions = authStore.cmsPermissions as string[] || [];
-    return permissions.every(perm => userPermissions.includes(perm));
+  /** Check if user has all permissions from a list */
+  const hasAllPerms = (codes: string[]): boolean => {
+    return codes.every(c => authStore.hasPermission(c));
   };
 
-  /**
-   * Check if user is staff
-   * @returns boolean
-   */
+  /** Check if user is staff */
   const isStaff = computed(() => authStore.user?.is_staff || false);
 
-  /**
-   * Check if user is superuser
-   * @returns boolean
-   */
+  /** Check if user is superuser */
   const isSuperuser = computed(() => authStore.user?.is_superuser || false);
 
-  /**
-   * Check if user is store owner (not staff)
-   * @returns boolean
-   */
+  /** Check if user is store owner (not staff) */
   const isStoreOwner = computed(() => authStore.user && !authStore.user.is_staff);
 
   return {
+    permissions,
     hasPerm,
     hasAnyPerm,
     hasAllPerms,

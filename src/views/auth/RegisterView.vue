@@ -134,10 +134,12 @@
                   <input
                     :class="cn('pl-10 flex h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus-visible:border-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/20 focus-visible:ring-offset-0', inputAuthClass)"
                     autoComplete="username"
+                    placeholder="ej: dueno_bodega"
                     v-model="form.ownerUsername"
                   />
                 </div>
                 <p v-if="errors.ownerUsername" class="text-sm text-red-500">{{ errors.ownerUsername }}</p>
+                <p class="text-xs text-slate-400 mt-1">Opcional. Identificador único sin espacios para iniciar sesión (ej: mi_tienda360)</p>
               </div>
               <div class="space-y-2">
                 <label class="text-sm font-medium text-slate-700">{{ t('auth.email') }}</label>
@@ -165,20 +167,6 @@
                 </div>
                 <p v-if="errors.password" class="text-sm text-red-500">{{ errors.password }}</p>
               </div>
-              <div class="space-y-2">
-                <label class="text-sm font-medium text-slate-700">{{ t('auth.confirmPassword') }}</label>
-                <div class="relative">
-                  <Lock class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="password"
-                    :class="cn('pl-10 flex h-11 w-full rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus-visible:border-brand-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/20 focus-visible:ring-offset-0', inputAuthClass)"
-                    autoComplete="new-password"
-                    v-model="form.confirmPassword"
-                  />
-                </div>
-                <p v-if="errors.confirmPassword" class="text-sm text-red-500">{{ errors.confirmPassword }}</p>
-              </div>
-
               <button
                 type="submit"
                 :disabled="isSubmitting"
@@ -228,7 +216,6 @@ const form = reactive({
   ownerUsername: '',
   email: '',
   password: '',
-  confirmPassword: '',
 });
 
 const msg = ref<{ type: 'ok' | 'err'; text: string } | null>(null);
@@ -242,7 +229,6 @@ const t = (key: string): string => {
     'auth.ownerUsername': 'Nombre de usuario',
     'auth.email': 'Correo electrónico',
     'auth.password': 'Contraseña',
-    'auth.confirmPassword': 'Confirmar contraseña',
     'auth.registering': 'Registrando...',
     'auth.registerSubmit': 'Registrar',
     'auth.haveAccount': '¿Ya tienes cuenta?',
@@ -256,12 +242,10 @@ const t = (key: string): string => {
 const validate = (): boolean => {
   Object.keys(errors).forEach(k => delete errors[k]);
 
-  if (!form.ownerUsername.trim()) errors.ownerUsername = 'El nombre de usuario es requerido';
   if (!form.email.trim()) errors.email = 'El correo es requerido';
   else if (!/^\S+@\S+\.\S+$/.test(form.email)) errors.email = 'Correo inválido';
   if (!form.password) errors.password = 'La contraseña es requerida';
   else if (form.password.length < 6) errors.password = 'Mínimo 6 caracteres';
-  if (form.password !== form.confirmPassword) errors.confirmPassword = 'Las contraseñas no coinciden';
 
   return Object.keys(errors).length === 0;
 };

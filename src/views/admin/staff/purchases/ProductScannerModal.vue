@@ -408,7 +408,7 @@ async function loadBlueprints() {
   if (blueprints.value.length > 0) return;
   loadingBlueprints.value = true;
   try {
-    const res = await fetchApi<any>('/api/v1/tenants/blueprints/available/');
+    const res = await fetchApi<any>('/api/v1/tenants/me/blueprints/');
     blueprints.value = Array.isArray(res) ? res : [];
   } catch { blueprints.value = []; }
   finally { loadingBlueprints.value = false; }
@@ -416,7 +416,7 @@ async function loadBlueprints() {
 
 async function toggleBlueprint(bp: any) {
   try {
-    await fetchApi('/api/v1/tenants/blueprints/extend/', {
+    await fetchApi('/api/v1/tenants/me/blueprints/toggle/', {
       method: 'POST',
       data: { business_type_id: bp.id, subscribe: !bp.subscribed },
     });

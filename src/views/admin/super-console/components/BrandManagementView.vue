@@ -40,7 +40,7 @@
               <!-- Logo -->
               <td class="px-4 py-3">
                 <div class="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center overflow-hidden">
-                  <img v-if="brand.logo_url" :src="brand.logo_url" class="w-full h-full object-contain" alt="" />
+                  <img v-if="brand.logo" :src="brand.logo" class="w-full h-full object-contain" alt="" />
                   <Tag v-else class="w-4 h-4 text-slate-300" />
                 </div>
               </td>
@@ -109,7 +109,7 @@ import { useNotify } from '@/composables/useNotify';
 import BrandFormModal from './BrandFormModal.vue';
 
 interface BrandItem {
-  id: string; name: string; slug: string; logo_url?: string; description?: string;
+  id: string; name: string; slug: string; logo?: string; description?: string;
   is_active: boolean; tenant_id: string | null;
   smart_categories?: Array<{ id: number; name: string }>;
 }

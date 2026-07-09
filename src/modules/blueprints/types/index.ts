@@ -70,20 +70,17 @@ export interface ProductSchemaField {
 // =============================================================================
 
 /**
- * Blueprint de industria (Tipo de comercio)
+ * BusinessType (Tipo de comercio)
  */
 export interface Blueprint {
-  id: number;
+  id: string;
   code: string;
   name: string;
   icon?: string;
-  is_active: boolean;
-  required_features?: string[];
-  category_structure?: unknown[];
-  default_categories?: string[];
-  business_conditions?: BusinessConditions;
-  product_schema?: ProductSchemaField[];
-  schema_logic?: SchemaLogic;
+  description?: string;
+  sort_order?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // =============================================================================
@@ -91,31 +88,24 @@ export interface Blueprint {
 // =============================================================================
 
 /**
- * Datos para crear blueprint
+ * Datos para crear business type
  */
 export interface BlueprintCreateData {
   code: string;
   name: string;
   icon?: string;
-  is_active: boolean;
-  required_features: string[];
-  category_structure: unknown[];
-  default_categories: string[];
-  business_conditions: BusinessConditions;
-  product_schema: ProductSchemaField[];
+  description?: string;
+  sort_order?: number;
 }
 
 /**
- * Datos para actualizar blueprint
+ * Datos para actualizar business type
  */
 export interface BlueprintUpdateData {
   name?: string;
   icon?: string;
-  is_active?: boolean;
-  required_features?: string[];
-  default_categories?: string[];
-  business_conditions?: BusinessConditions;
-  product_schema?: ProductSchemaField[];
+  description?: string;
+  sort_order?: number;
 }
 
 /**

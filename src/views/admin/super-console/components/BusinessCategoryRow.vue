@@ -17,7 +17,7 @@
 
       <!-- Name + code -->
       <div class="flex-1 min-w-0">
-        <p class="text-sm font-medium text-slate-800 truncate">
+        <p class="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
           <span v-if="(node as any).icon" class="mr-1.5">{{ (node as any).icon }}</span>{{ node.name }}
         </p>
         <p class="text-[10px] text-slate-400 font-mono truncate">{{ node.code }}</p>
@@ -26,13 +26,13 @@
       <!-- Status indicator -->
       <span
         v-if="inherited"
-        class="shrink-0 text-[10px] text-slate-400 italic flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-50"
+        class="shrink-0 text-[10px] text-slate-400 italic flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-50 dark:bg-white/[0.04]"
       >
         <Lock class="w-2.5 h-2.5" /> heredada
       </span>
       <span
         v-else-if="hasChildren && isOn"
-        class="shrink-0 text-[10px] text-emerald-600 flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50"
+        class="shrink-0 text-[10px] text-emerald-600 flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 dark:bg-emerald-500/10"
       >
         {{ activeDescendants }} hijos
       </span>
@@ -40,10 +40,11 @@
       <!-- Toggle -->
       <button
         @click="toggle"
-        :disabled="inherited"
+        :disabled="saving"
         :class="[
           'relative shrink-0 w-10 h-5 rounded-full transition-colors duration-200',
-          isOn ? 'bg-emerald-500' : 'bg-slate-300',
+          isOn ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600',
+          saving ? 'opacity-50 cursor-wait' : '',
           inherited ? 'opacity-40 cursor-not-allowed' : ''
         ]"
       >
@@ -63,12 +64,13 @@
         :key="child.id"
         :node="child"
         :depth="(depth ?? 0) + 1"
-        :business-type-id="businessTypeId"
-        :parent-active="isOn"
-        :mappings="mappings"
+        :selected-ids="selectedIds"
+        :active-business-type-id="activeBusinessTypeId"
+        :parent-on="isOn"
         :search-query="searchQuery"
         :expand-all-key="expandAllKey"
-        @toggle-node="(nodeId, active) => $emit('toggleNode', nodeId, active)"
+        :saving="saving"
+        @toggle-node="(nodeId) => $emit('toggleNode', nodeId)"
       />
     </div>
   </div>
@@ -83,22 +85,23 @@ interface TreeNode {
   is_active?: boolean; children?: TreeNode[];
 }
 
-interface CategoryMapping {
-  category_id: number; business_type_id: number; active: boolean;
-}
-
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   node: TreeNode;
   depth?: number;
-  businessTypeId: number;
-  parentActive?: boolean;
-  mappings: CategoryMapping[];
+  selectedIds: number[];
+  activeBusinessTypeId: number;
+  parentOn?: boolean;
   searchQuery?: string;
   expandAllKey?: number;
-}>();
+  saving?: boolean;
+}>(), {
+  selectedIds: () => [],
+  saving: false,
+  parentOn: false,
+});
 
 const emit = defineEmits<{
-  toggleNode: [nodeId: number, active: boolean];
+  toggleNode: [nodeId: number];
 }>();
 
 const hasChildren = computed(() => !!(props.node.children?.length));
@@ -121,33 +124,23 @@ watch(
     const key = props.expandAllKey ?? 0;
 
     if (key === 1) {
-      // Expand All
       expanded.value = hasChildren.value;
     } else if (key === 2) {
-      // Collapse All
       expanded.value = false;
     } else if (q) {
-      // Search mode: expand if node or any descendant matches
       expanded.value = matchesQuery(props.node, q);
     } else {
-      // Default: expand first two levels
       expanded.value = isExpandedByDefault(props.depth ?? 0);
     }
   },
   { immediate: true }
 );
 
-const directMapping = computed(() =>
-  props.mappings.find(m => m.category_id === props.node.id && m.business_type_id === props.businessTypeId)
-);
+const isOn = computed(() => (props.selectedIds ?? []).includes(props.node.id));
 
-const isOn = computed(() => directMapping.value?.active ?? false);
-
-// Inherited: parent is active but this node has no direct mapping (or mapping is inactive)
-// If parent is active and there's no explicit OFF mapping, the node inherits
 const inherited = computed(() => {
-  if (!props.parentActive) return false;
-  return !directMapping.value || !directMapping.value.active;
+  if (!props.parentOn) return false;
+  return !(props.selectedIds ?? []).includes(props.node.id);
 });
 
 const activeDescendants = computed(() => {
@@ -155,8 +148,7 @@ const activeDescendants = computed(() => {
     let c = 0;
     if (n.children) {
       for (const ch of n.children) {
-        const dm = props.mappings.find(m => m.category_id === ch.id && m.business_type_id === props.businessTypeId);
-        if (dm?.active) c++;
+        if ((props.selectedIds ?? []).includes(ch.id)) c++;
         c += count(ch);
       }
     }
@@ -167,6 +159,6 @@ const activeDescendants = computed(() => {
 
 function toggle() {
   if (inherited.value) return;
-  emit('toggleNode', props.node.id, !isOn.value);
+  emit('toggleNode', props.node.id);
 }
 </script>

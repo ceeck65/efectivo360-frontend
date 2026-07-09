@@ -1,13 +1,8 @@
-/**
- * @fileoverview Servicio de API para el módulo Inventory
- * @module @modules/inventory/services/inventory.service
- */
-
 import { httpClient } from '@core/index.js';
+import { useAuthStore } from '@/stores/auth';
 import type {
   ULID,
   PaginatedResponse,
-  ApiResponse,
   PaginationParams,
 } from '@core/types';
 import type {
@@ -21,78 +16,54 @@ import type {
   CreateProductDTO,
   UpdateProductDTO,
   CreateStockMovementDTO,
-  ProductListResponse,
-  StockMovementListResponse,
-  InventorySummaryResponse,
 } from '../types';
 
-/** Base URL para endpoints de inventario */
-const BASE_URL = '/inventory';
+const PRODUCTS_URL = '/api/products';
+const CATEGORIES_URL = '/api/v1/catalog/categories';
 
-/**
- * Servicio para gestionar operaciones de inventario vía API
- * @namespace InventoryService
- */
+function tenantParam(): Record<string, string> {
+  const raw = useAuthStore().user?.tenant;
+  const tid = raw != null ? String(raw) : null;
+  return tid?.trim() ? { tenant_id: tid } : {};
+}
+
 export const InventoryService = {
   // ==================== PRODUCTOS ====================
-  
-  /**
-   * Obtiene lista paginada de productos con filtros
-   * @param {ProductFilters} params - Parámetros de filtrado y paginación
-   * @returns {Promise<PaginatedResponse<Product>>} Lista de productos
-   */
+
   async getProducts(params: ProductFilters = {}): Promise<PaginatedResponse<Product>> {
-    const response = await httpClient.get<ProductListResponse>(`${BASE_URL}/products/`, {
+    const response = await httpClient.get<any>(`${PRODUCTS_URL}/`, {
       params: {
         page: params.page || 1,
         page_size: params.pageSize || 20,
         search: params.search,
-        category_id: params.categoryId,
-        category: params.category,
-        low_stock: params.lowStockOnly,
-        is_active: params.activeOnly,
-        sku: params.sku,
-        min_price: params.minPrice,
-        max_price: params.maxPrice,
-        expiring_soon: params.expiringSoon,
-        ordering: params.ordering || '-created_at',
-        date_from: params.dateFrom,
-        date_to: params.dateTo,
-        status: params.status?.join(','),
+        ...tenantParam(),
       },
     });
-    return response.data;
+    const body = response.data;
+    return {
+      count: body.count ?? 0,
+      next: body.next ?? null,
+      previous: body.previous ?? null,
+      results: (body.results ?? []).map(mapProduct),
+    };
   },
 
-  /**
-   * Obtiene un producto por su ID (ULID)
-   * @param {ULID} id - ID del producto
-   * @returns {Promise<Product>} Producto encontrado
-   */
   async getProductById(id: ULID): Promise<Product> {
-    const response = await httpClient.get<ApiResponse<Product>>(`${BASE_URL}/products/${id}/`);
-    return response.data.data;
-  },
-
-  /**
-   * Obtiene un producto por su SKU
-   * @param {string} sku - SKU del producto
-   * @returns {Promise<Product>} Producto encontrado
-   */
-  async getProductBySku(sku: string): Promise<Product> {
-    const response = await httpClient.get<ApiResponse<Product>>(`${BASE_URL}/products/by-sku/`, {
-      params: { sku },
+    const response = await httpClient.get<any>(`${PRODUCTS_URL}/${id}/`, {
+      params: { ...tenantParam() },
     });
-    return response.data.data;
+    return mapProduct(response.data);
   },
 
-  /**
-   * Crea un nuevo producto
-   * @param {CreateProductDTO} data - Datos del producto a crear
-   * @returns {Promise<Product>} Producto creado
-   */
+  async getProductBySku(sku: string): Promise<Product> {
+    const response = await httpClient.get<any>(`${PRODUCTS_URL}/by-sku/`, {
+      params: { sku, ...tenantParam() },
+    });
+    return mapProduct(response.data);
+  },
+
   async createProduct(data: CreateProductDTO): Promise<Product> {
-    const response = await httpClient.post<ApiResponse<Product>>(`${BASE_URL}/products/`, {
+    const response = await httpClient.post<any>(`${PRODUCTS_URL}/`, {
       sku: data.sku,
       name: data.name,
       description: data.description,
@@ -107,18 +78,13 @@ export const InventoryService = {
       barcode: data.barcode,
       track_lots: data.trackLots ?? false,
       track_expiry: data.trackExpiry ?? false,
+      ...tenantParam(),
     });
-    return response.data.data;
+    return mapProduct(response.data);
   },
 
-  /**
-   * Actualiza un producto existente
-   * @param {ULID} id - ID del producto
-   * @param {UpdateProductDTO} data - Datos a actualizar
-   * @returns {Promise<Product>} Producto actualizado
-   */
   async updateProduct(id: ULID, data: UpdateProductDTO): Promise<Product> {
-    const response = await httpClient.patch<ApiResponse<Product>>(`${BASE_URL}/products/${id}/`, {
+    const response = await httpClient.patch<any>(`${PRODUCTS_URL}/${id}/`, {
       ...(data.sku && { sku: data.sku }),
       ...(data.name && { name: data.name }),
       ...(data.description !== undefined && { description: data.description }),
@@ -133,49 +99,33 @@ export const InventoryService = {
       ...(data.isActive !== undefined && { is_active: data.isActive }),
       ...(data.trackLots !== undefined && { track_lots: data.trackLots }),
       ...(data.trackExpiry !== undefined && { track_expiry: data.trackExpiry }),
+      ...tenantParam(),
     });
-    return response.data.data;
+    return mapProduct(response.data);
   },
 
-  /**
-   * Elimina (soft delete) un producto
-   * @param {ULID} id - ID del producto
-   */
   async deleteProduct(id: ULID): Promise<void> {
-    await httpClient.delete(`${BASE_URL}/products/${id}/`);
+    await httpClient.delete(`${PRODUCTS_URL}/${id}/`, {
+      params: { ...tenantParam() },
+    });
   },
 
-  /**
-   * Busca productos por código de barras
-   * @param {string} barcode - Código de barras escaneado
-   * @returns {Promise<Product[]>} Productos coincidentes
-   */
   async searchByBarcode(barcode: string): Promise<Product[]> {
-    const response = await httpClient.get<ApiResponse<Product[]>>(`${BASE_URL}/products/search-barcode/`, {
-      params: { barcode },
+    const response = await httpClient.get<any>(`${PRODUCTS_URL}/search-barcode/`, {
+      params: { barcode, ...tenantParam() },
     });
-    return response.data.data;
+    return (response.data?.results ?? []).map(mapProduct);
   },
 
   // ==================== BLUEPRINT / CHAMELEON FORM ====================
 
-  /**
-   * Obtiene la configuración del blueprint activo para el tenant actual.
-   * Usado para adaptar el formulario de productos al tipo de negocio.
-   * @returns {Promise<object>} Configuración del blueprint
-   */
   async getBlueprintConfig(): Promise<Record<string, unknown>> {
-    const response = await httpClient.get(`/v1/blueprints/config/`);
+    const response = await httpClient.get(`/api/v1/blueprints/config/`);
     return response.data;
   },
 
-  /**
-   * Valida que un producto sea coherente con el rubro del tenant.
-   * @param {string} productName - Nombre del producto
-   * @returns {Promise<object>} Resultado de validación
-   */
   async validateProduct(productName: string): Promise<Record<string, unknown>> {
-    const response = await httpClient.post(`/v1/inventory/validate-product/`, {
+    const response = await httpClient.post(`/api/v1/inventory/validate-product/`, {
       product_name: productName,
     });
     return response.data;
@@ -183,17 +133,11 @@ export const InventoryService = {
 
   // ==================== CATEGORÍAS INTELIGENTES (EFI) ====================
 
-  /**
-   * Sugiere una categoría para un producto usando el motor Efi
-   * @param {string} productName - Nombre del producto
-   * @param {string} [businessTypeId] - ID del tipo de negocio (IndustryBlueprint)
-   * @returns {Promise<{ suggested: boolean; category: object | null }>} Sugerencia
-   */
   async suggestCategory(
     productName: string,
     businessTypeId?: string
   ): Promise<{ suggested: boolean; category: object | null }> {
-    const response = await httpClient.post(`/v1/inventory/suggest-category/`, {
+    const response = await httpClient.post(`/api/v1/inventory/suggest-category/`, {
       product_name: productName,
       business_type_id: businessTypeId,
     });
@@ -202,26 +146,34 @@ export const InventoryService = {
 
   // ==================== CATEGORÍAS ====================
 
-  /**
-   * Obtiene lista de categorías de productos
-   * @returns {Promise<PaginatedResponse<ProductCategoryEntity>>} Lista de categorías
-   */
   async getCategories(): Promise<PaginatedResponse<ProductCategoryEntity>> {
-    const response = await httpClient.get<PaginatedResponse<ProductCategoryEntity>>(
-      `${BASE_URL}/categories/`
-    );
-    return response.data;
+    const response = await httpClient.get<any>(`${CATEGORIES_URL}/`, {
+      params: {
+        page_size: 1000,
+        ...tenantParam(),
+      },
+    });
+    const body = response.data;
+    const results = (body.results ?? body ?? []).map((c: any) => ({
+      id: c.id || c.code || '',
+      name: c.name || '',
+      description: '',
+      color: '',
+      icon: c.icon || '📦',
+      parentId: undefined,
+    }));
+    return {
+      count: body.count ?? results.length,
+      next: body.next ?? null,
+      previous: body.previous ?? null,
+      results,
+    };
   },
 
   // ==================== MOVIMIENTOS DE STOCK ====================
 
-  /**
-   * Obtiene movimientos de stock paginados
-   * @param {StockMovementFilters} params - Filtros para movimientos
-   * @returns {Promise<PaginatedResponse<StockMovement>>} Lista de movimientos
-   */
   async getStockMovements(params: StockMovementFilters = {}): Promise<PaginatedResponse<StockMovement>> {
-    const response = await httpClient.get<StockMovementListResponse>(`${BASE_URL}/movements/`, {
+    const response = await httpClient.get<any>(`${PRODUCTS_URL}/movements/`, {
       params: {
         page: params.page || 1,
         page_size: params.pageSize || 20,
@@ -232,17 +184,12 @@ export const InventoryService = {
         performed_by: params.performedBy,
         reference_type: params.referenceType,
         ordering: params.ordering || '-movement_date',
+        ...tenantParam(),
       },
     });
     return response.data;
   },
 
-  /**
-   * Obtiene movimientos de un producto específico
-   * @param {ULID} productId - ID del producto
-   * @param {PaginationParams} params - Parámetros de paginación
-   * @returns {Promise<PaginatedResponse<StockMovement>>} Movimientos del producto
-   */
   async getProductMovements(
     productId: ULID,
     params: PaginationParams = {}
@@ -250,13 +197,8 @@ export const InventoryService = {
     return this.getStockMovements({ ...params, productId });
   },
 
-  /**
-   * Registra un nuevo movimiento de stock
-   * @param {CreateStockMovementDTO} data - Datos del movimiento
-   * @returns {Promise<StockMovement>} Movimiento registrado
-   */
   async createStockMovement(data: CreateStockMovementDTO): Promise<StockMovement> {
-    const response = await httpClient.post<ApiResponse<StockMovement>>(`${BASE_URL}/movements/`, {
+    const response = await httpClient.post<any>(`${PRODUCTS_URL}/movements/`, {
       product_id: data.productId,
       movement_type: data.movementType,
       quantity: data.quantity,
@@ -267,17 +209,11 @@ export const InventoryService = {
       notes: data.notes,
       lot_number: data.lotNumber,
       expiry_date: data.expiryDate,
+      ...tenantParam(),
     });
-    return response.data.data;
+    return mapStockMovement(response.data);
   },
 
-  /**
-   * Realiza ajuste de inventario
-   * @param {ULID} productId - ID del producto
-   * @param {number} newQuantity - Nueva cantidad a establecer
-   * @param {string} reason - Razón del ajuste
-   * @returns {Promise<StockMovement>} Movimiento de ajuste creado
-   */
   async adjustStock(
     productId: ULID,
     newQuantity: number,
@@ -293,63 +229,95 @@ export const InventoryService = {
 
   // ==================== LOTES ====================
 
-  /**
-   * Obtiene lotes de un producto
-   * @param {ULID} productId - ID del producto
-   * @returns {Promise<ProductLot[]>} Lista de lotes
-   */
   async getProductLots(productId: ULID): Promise<ProductLot[]> {
-    const response = await httpClient.get<ApiResponse<ProductLot[]>>(
-      `${BASE_URL}/products/${productId}/lots/`
-    );
-    return response.data.data;
+    const response = await httpClient.get<any>(`${PRODUCTS_URL}/${productId}/lots/`, {
+      params: { ...tenantParam() },
+    });
+    return response.data?.results ?? [];
   },
 
-  /**
-   * Obtiene lotes próximos a vencer
-   * @param {number} days - Días para considerar "próximo"
-   * @returns {Promise<ProductLot[]>} Lista de lotes
-   */
   async getExpiringLots(days: number = 30): Promise<ProductLot[]> {
-    const response = await httpClient.get<ApiResponse<ProductLot[]>>(
-      `${BASE_URL}/lots/expiring/`,
-      { params: { days } }
-    );
-    return response.data.data;
+    const response = await httpClient.get<any>(`${PRODUCTS_URL}/lots/expiring/`, {
+      params: { days, ...tenantParam() },
+    });
+    return response.data?.results ?? [];
   },
 
   // ==================== REPORTES Y RESUMEN ====================
 
-  /**
-   * Obtiene resumen del inventario para dashboard
-   * @returns {Promise<InventorySummary>} Resumen de inventario
-   */
   async getInventorySummary(): Promise<InventorySummary> {
-    const response = await httpClient.get<InventorySummaryResponse>(`${BASE_URL}/summary/`);
-    return response.data.data;
+    const response = await httpClient.get<any>(`${PRODUCTS_URL}/summary/`, {
+      params: { ...tenantParam() },
+    });
+    return response.data;
   },
 
-  /**
-   * Obtiene productos con stock bajo
-   * @returns {Promise<Product[]>} Productos con alerta de stock
-   */
   async getLowStockProducts(): Promise<Product[]> {
-    const response = await httpClient.get<ApiResponse<Product[]>>(
-      `${BASE_URL}/products/low-stock/`
-    );
-    return response.data.data;
+    const response = await httpClient.get<any>(`${PRODUCTS_URL}/low-stock/`, {
+      params: { ...tenantParam() },
+    });
+    return (response.data?.results ?? []).map(mapProduct);
   },
 
-  /**
-   * Valoración total del inventario
-   * @returns {Promise<{ totalValue: number; totalCost: number }>} Valoración
-   */
   async getInventoryValuation(): Promise<{ totalValue: number; totalCost: number }> {
-    const response = await httpClient.get<ApiResponse<{ totalValue: number; totalCost: number }>>(
-      `${BASE_URL}/valuation/`
-    );
-    return response.data.data;
+    const response = await httpClient.get<any>(`${PRODUCTS_URL}/valuation/`, {
+      params: { ...tenantParam() },
+    });
+    return response.data;
   },
 } as const;
+
+function mapProduct(item: any): Product {
+  const priceUsd = parseFloat(item.base_price_usd ?? item.price_data?.current_prices?.usd ?? 0);
+  return {
+    id: item.id ?? '',
+    sku: item.sku ?? '',
+    name: item.name ?? '',
+    description: item.description ?? '',
+    category: item.category ?? '',
+    categoryId: item.category_global_id ?? item.category_id ?? '',
+    unitOfMeasure: (item.measurement_unit || item.unit_of_measure || 'UNIT') as any,
+    salePrice: Math.round(priceUsd * 100),
+    costPrice: Math.round(parseFloat(item.cost_price_usd ?? 0) * 100),
+    currentStock: Number(item.current_stock ?? item.base_unit_stock ?? 0),
+    minStockLevel: Number(item.minimum_stock ?? 0),
+    maxStockLevel: 0,
+    location: item.location ?? '',
+    barcode: item.sku ?? '',
+    isActive: true,
+    trackLots: false,
+    trackExpiry: false,
+    image: item.image_url ?? item.image ?? '',
+    image_url: item.image_url ?? item.image ?? '',
+    status: 'ACTIVE' as any,
+    createdBy: item.created_by ?? '',
+    updatedBy: item.updated_by ?? '',
+    createdAt: item.created_at ?? item.createdAt ?? '',
+    updatedAt: item.updated_at ?? item.updatedAt ?? '',
+  };
+}
+
+function mapStockMovement(item: any): StockMovement {
+  return {
+    id: item.id ?? '',
+    productId: item.product_id ?? '',
+    productName: item.product_name ?? '',
+    movementType: item.movement_type ?? 'ADJUSTMENT',
+    quantity: Number(item.quantity ?? 0),
+    unitCost: Number(item.unit_cost ?? 0),
+    referenceType: item.reference_type ?? '',
+    referenceId: item.reference_id ?? '',
+    referenceNumber: item.reference_number ?? '',
+    notes: item.notes ?? '',
+    performedBy: item.performed_by ?? '',
+    performedByName: item.performed_by_name ?? '',
+    movementDate: item.movement_date ?? item.created_at ?? '',
+    status: 'ACTIVE' as any,
+    createdBy: item.created_by ?? '',
+    updatedBy: item.updated_by ?? '',
+    createdAt: item.created_at ?? item.createdAt ?? '',
+    updatedAt: item.updated_at ?? item.updatedAt ?? '',
+  };
+}
 
 export default InventoryService;

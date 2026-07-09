@@ -60,15 +60,11 @@ const userInitial = computed(() =>
   (authStore.user?.first_name?.[0] || authStore.user?.username?.[0] || '?').toUpperCase()
 );
 
-// User capabilities summary
+// User capabilities summary — flat permission strings from backend
 const userCapabilities = computed(() => {
-  const matrix = authStore.user?.permissions_matrix;
-  if (!matrix) return [];
-  
-  return Object.entries(matrix).map(([module, actions]) => ({
-    module,
-    actions: actions.join(', ')
-  }));
+  const perms = authStore.user?.permissions;
+  if (!perms?.length) return [];
+  return perms.map(p => ({ module: p, actions: '' }));
 });
 
 // Keyboard shortcut for command palette

@@ -99,32 +99,33 @@
               <button
                 v-for="bt in businessTypes"
                 :key="bt.id"
-                @click="selectedBusinessType = bt"
+                @click="selectBusinessType(bt)"
                 class="w-full text-left px-4 py-3.5 transition-colors duration-150"
-                :class="selectedBusinessType?.id === bt.id ? 'bg-emerald-50 dark:bg-emerald-500/10 border-l-2 border-emerald-500' : 'hover:bg-slate-50 dark:hover:bg-white/[0.03] border-l-2 border-transparent'"
+                :class="activeBusinessType?.id === bt.id ? 'bg-emerald-50 dark:bg-emerald-500/10 border-l-2 border-emerald-500' : 'hover:bg-slate-50 dark:hover:bg-white/[0.03] border-l-2 border-transparent'"
               >
-                <p class="text-sm font-medium" :class="selectedBusinessType?.id === bt.id ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-slate-200'">
+                <p class="text-sm font-medium" :class="activeBusinessType?.id === bt.id ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-slate-200'">
                   <span v-if="bt.icon" class="mr-1.5">{{ bt.icon }}</span>{{ bt.name }}
                 </p>
                 <p class="text-[11px] text-slate-400 mt-0.5 font-mono">{{ bt.code }}</p>
+                <p class="text-[10px] text-slate-400 mt-0.5">category_ids: {{ bt.category_ids?.length ?? 0 }}</p>
               </button>
             </div>
           </div>
         </div>
 
         <div class="col-span-8">
-          <template v-if="selectedBusinessType">
+          <template v-if="activeBusinessType">
             <div class="flex items-center justify-between mb-4">
               <div>
                 <h2 class="text-lg font-semibold text-slate-900 dark:text-white">
-                  <span v-if="selectedBusinessType.icon" class="mr-1.5">{{ selectedBusinessType.icon }}</span>{{ selectedBusinessType.name }}
+                  <span v-if="activeBusinessType.icon" class="mr-1.5">{{ activeBusinessType.icon }}</span>{{ activeBusinessType.name }}
                 </h2>
                 <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Activa categorías para este negocio · Los hijos heredan automáticamente
                 </p>
               </div>
               <div class="flex items-center gap-3">
-                <span class="text-xs text-slate-400 font-mono">{{ activeTotal }} categorías activas</span>
+                <span class="text-xs text-slate-400 font-mono">{{ selectedCategoryIds.length }} categorías activas</span>
               </div>
             </div>
 
@@ -159,11 +160,12 @@
                   :key="node.id"
                   :node="node"
                   :depth="0"
-                  :business-type-id="selectedBusinessType.id"
-                  :mappings="categoryMappings"
+                  :selected-ids="selectedCategoryIds"
+                  :active-business-type-id="activeBusinessType.id"
                   :search-query="searchQuery"
                   :expand-all-key="expandAllKey"
-                  @toggle-node="onToggleNode"
+                  :saving="savingStep2"
+                  @toggle-node="toggleCategory"
                 />
               </div>
             </div>
@@ -180,15 +182,15 @@
           <ArrowLeft class="w-4 h-4" /> Anterior
         </button>
         <button
-          v-if="selectedBusinessType"
+          v-if="activeBusinessType"
           @click="saveMatrix"
-          :disabled="savingStep2"
+          :disabled="savingStep2 || !activeBusinessType"
           class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors shadow-lg shadow-emerald-900/30"
           :class="savingStep2 ? 'bg-emerald-600/50 text-emerald-200 cursor-not-allowed' : 'bg-emerald-600 text-white hover:bg-emerald-500'"
         >
           <RefreshCw v-if="savingStep2" class="w-4 h-4 animate-spin" />
           <Save v-else class="w-4 h-4" />
-          {{ savingStep2 ? 'Guardando...' : 'Guardar Matriz de ' + (selectedBusinessType.icon || '') + ' ' + selectedBusinessType.name }}
+          {{ savingStep2 ? 'Guardando...' : 'Guardar Matriz' }}
         </button>
       </div>
     </div>
@@ -223,148 +225,121 @@ import CategoryTreeSelect from './CategoryTreeSelect.vue';
 import CategoryAttributeManager from './CategoryAttributeManager.vue';
 import BusinessCategoryRow from './BusinessCategoryRow.vue';
 
-// ─────────────────────────────────────────────
-// Types
-// ─────────────────────────────────────────────
+// ── Types ──
 interface BusinessType {
   id: number;
   name: string;
   code: string;
   icon?: string;
   description?: string;
-  is_active?: boolean;
+  category_ids: number[];
 }
 
-interface CategoryMapping {
-  category_id: number;
-  business_type_id: number;
-  active: boolean;
+interface CategoryNode {
+  id: number;
+  name: string;
+  code: string;
+  icon?: string;
+  children?: CategoryNode[];
 }
 
-// ─────────────────────────────────────────────
-// Composables
-// ─────────────────────────────────────────────
+// ── Composables ──
 const { fetchApi } = useApi();
 const { success: notifySuccess, error: notifyError } = useNotify();
 
-// ─────────────────────────────────────────────
-// State
-// ─────────────────────────────────────────────
+// ── State ──
 const savingStep1 = ref(false);
 const loading = ref(true);
 const step = ref(1);
 
 const businessTypes = ref<BusinessType[]>([]);
-const categoryTree = ref<any[]>([]);
-const selectedBusinessType = ref<BusinessType | null>(null);
+const categoryTree = ref<CategoryNode[]>([]);
+const activeBusinessType = ref<BusinessType | null>(null);
+const selectedCategoryIds = ref<number[]>([]);
 const selectedCategoryId = ref<number | null>(null);
 const showModal = ref(false);
 const modalTitle = ref('');
 const modalDescription = ref('');
 
-const categoryMappings = ref<CategoryMapping[]>([]);
 const searchQuery = ref('');
 const expandAllKey = ref(0);
 
 function expandAll() { expandAllKey.value = expandAllKey.value === 1 ? 0 : 1; }
 function collapseAll() { expandAllKey.value = expandAllKey.value === 2 ? 0 : 2; }
 
-// ─────────────────────────────────────────────
-// Computed
-// ─────────────────────────────────────────────
-const activeTotal = computed(() => {
-  if (!selectedBusinessType.value) return 0;
-  function countActive(tree: any[]): number {
-    let c = 0;
-    for (const node of tree) {
-      const dm = categoryMappings.value.find(m => m.category_id === node.id && m.business_type_id === selectedBusinessType.value!.id);
-      if (dm?.active) c++;
-      if (node.children) c += countActive(node.children);
-    }
-    return c;
-  }
-  return countActive(categoryTree.value);
-});
+// ── Hydrate checkboxes when user picks a BusinessType ──
+function selectBusinessType(type: BusinessType) {
+  activeBusinessType.value = type;
+  selectedCategoryIds.value = [...(type.category_ids ?? [])];
+}
 
-function onToggleNode(nodeId: number, active: boolean) {
-  if (!selectedBusinessType.value) return;
-  const mapping = categoryMappings.value.find(
-    m => m.category_id === nodeId && m.business_type_id === selectedBusinessType.value!.id
-  );
-  if (mapping) {
-    mapping.active = active;
+// ── Tree helpers ──
+function collectDescendantIds(node: CategoryNode): number[] {
+  const ids = [node.id];
+  if (node.children) {
+    for (const child of node.children) {
+      ids.push(...collectDescendantIds(child));
+    }
+  }
+  return ids;
+}
+
+function toggleCategory(nodeId: number) {
+  const idx = selectedCategoryIds.value.indexOf(nodeId);
+  if (idx !== -1) {
+    selectedCategoryIds.value = selectedCategoryIds.value.filter(id => id !== nodeId);
   } else {
-    categoryMappings.value.push({
-      category_id: nodeId,
-      business_type_id: selectedBusinessType.value!.id,
-      active,
-    });
+    selectedCategoryIds.value.push(nodeId);
   }
 }
 
-// ─────────────────────────────────────────────
-// Filtered tree for search
-// ─────────────────────────────────────────────
+// ── Active total (flat count for header) ──
+const activeTotal = computed(() => selectedCategoryIds.value.length);
+
+// ── Filtered tree for search ──
 const filteredTree = computed(() => {
   const q = searchQuery.value.toLowerCase().trim();
   if (!q) return categoryTree.value;
-  function filter(nodes: any[]): any[] {
-    return nodes.reduce((acc: any[], n: any) => {
+  function filter(nodes: CategoryNode[]): CategoryNode[] {
+    return nodes.reduce((acc: CategoryNode[], n) => {
       const match = n.name.toLowerCase().includes(q) || n.code.toLowerCase().includes(q);
       const filteredChildren = n.children ? filter(n.children) : [];
       if (match || filteredChildren.length) {
         acc.push({ ...n, children: filteredChildren });
       }
       return acc;
-    }, []);
+    }, [] as CategoryNode[]);
   }
   return filter(categoryTree.value);
 });
 
-// ─────────────────────────────────────────────
-// Save Step 1
-// ─────────────────────────────────────────────
+// ── Save Step 1 ──
 async function saveStep1() {
-  // Attributes are now saved directly via CategoryAttributeManager endpoints.
-  // This function just navigates to Step 2.
   step.value = 2;
 }
 
-// ─────────────────────────────────────────────
-// Save Step 2 — business-type-to-category mappings
-// ─────────────────────────────────────────────
+// ── Save Step 2 — business-type-to-category matrix ──
 const savingStep2 = ref(false);
 
 async function saveMatrix() {
-  if (!selectedBusinessType.value || savingStep2.value) return;
+  if (!activeBusinessType.value || savingStep2.value) return;
   savingStep2.value = true;
 
   try {
-    const activeMappings = categoryMappings.value.filter(
-      m => m.business_type_id === selectedBusinessType.value!.id && m.active
-    );
-    const activeIds = new Set(activeMappings.map(m => m.category_id));
-
-    // Map category IDs to names from the tree (fallback: use IDs)
-    function flatNames(tree: any[]): string[] {
-      const names: string[] = [];
-      for (const n of tree) {
-        if (activeIds.has(n.id)) names.push(n.name);
-        if (n.children) names.push(...flatNames(n.children));
-      }
-      return names;
-    }
-    const names = flatNames(categoryTree.value);
-
-    await fetchApi(`/api/v1/industry-blueprints/${selectedBusinessType.value.id}/`, {
-      method: 'PATCH',
-      data: { default_categories: names },
+    await fetchApi(`/api/v1/business-types/${activeBusinessType.value.id}/matrix/`, {
+      method: 'PUT',
+      data: { category_ids: selectedCategoryIds.value },
     });
 
-    notifySuccess(`Matriz de ${selectedBusinessType.value.name} guardada correctamente`);
+    // Sync local cache so re-selecting the same BT shows correct state
+    const bt = businessTypes.value.find(b => b.id === activeBusinessType.value!.id);
+    if (bt) {
+      bt.category_ids = [...selectedCategoryIds.value];
+    }
+
+    notifySuccess(`Matriz de ${activeBusinessType.value.name} guardada correctamente`);
   } catch (e: any) {
     notifyError(e?.response?.data?.error || e?.message || 'Error al guardar matriz');
-    console.error(e);
   } finally {
     savingStep2.value = false;
   }
@@ -378,45 +353,20 @@ async function loadCategoryTree() {
   } catch {
     categoryTree.value = [];
   }
-  // Fallback: if catalog API returned nothing, tree stays empty (shown as "No hay categorías")
 }
 
 async function loadData() {
   try {
-    const bpRes = await fetchApi<any>('/api/v1/industry-blueprints/?page=1&page_size=100');
+    const bpRes = await fetchApi<any>('/api/v1/business-types/?page=1&page_size=100');
     const bpList: any[] = bpRes?.results || bpRes || [];
-    businessTypes.value = bpList
-      .filter((b: any) => b.is_active !== false)
-      .map((b: any) => ({
-        id: b.id, name: b.name, code: b.code,
-        icon: b.icon || '', description: b.description || '',
-      }));
-
-    // Build initial categoryMappings from IndustryBlueprint.default_categories
-    bpList.forEach((bp: any) => {
-      const savedNames: string[] = bp?.default_categories || [];
-      if (!savedNames.length) return;
-      savedNames.forEach((name: string) => {
-        function findInTree(tree: any[]): any {
-          for (const n of tree) {
-            if (n.name.toLowerCase() === name.toLowerCase()) return n;
-            if (n.children) {
-              const found = findInTree(n.children);
-              if (found) return found;
-            }
-          }
-          return null;
-        }
-        const cat = findInTree(categoryTree.value);
-        if (cat) {
-          categoryMappings.value.push({
-            category_id: cat.id,
-            business_type_id: bp.id,
-            active: true,
-          });
-        }
-      });
-    });
+    businessTypes.value = bpList.map((b: any) => ({
+      id: b.id,
+      name: b.name,
+      code: b.code,
+      icon: b.icon || '',
+      description: b.description || '',
+      category_ids: b.category_ids ?? [],
+    }));
   } catch (e) {
     console.error('Error loading data', e);
   }

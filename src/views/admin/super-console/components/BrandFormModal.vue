@@ -188,19 +188,19 @@ function removeLogo() {
   form.value.logo_url = '';
 }
 
-async function uploadLogo(brandId: string): Promise<string | null> {
-  if (!logoFile.value) return form.value.logo_url || null;
+async function uploadLogo(brandId: string): Promise<{ url: string; path: string } | null> {
+  if (!logoFile.value) return { url: form.value.logo_url, path: '' };
   uploading.value = true;
   try {
     const fd = new FormData();
     fd.append('image', logoFile.value);
     fd.append('brand_id', brandId);
-    const res = await fetchApi<{ url: string }>('/api/v1/catalog/brands/upload-logo/', {
+    const res = await fetchApi<{ url: string; path: string }>('/api/v1/catalog/brands/upload-logo/', {
       method: 'POST',
       data: fd,
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    return res?.url || null;
+    return res || null;
   } catch {
     notifyError('Error al subir logo');
     return null;
@@ -209,27 +209,33 @@ async function uploadLogo(brandId: string): Promise<string | null> {
   }
 }
 
-watch(() => props.editing, (ed) => {
-  if (ed) {
-    form.value = { name: ed.name || '', slug: ed.slug || '', logo_url: ed.logo_url || '', description: ed.description || '', is_active: ed.is_active ?? true };
-    selectedCategoryIds.value = (ed.category_ids || ed.smart_categories || []).map((c: any) => typeof c === 'object' ? c.id : c);
-    logoPreview.value = ed.logo_url || '';
-    logoFile.value = null;
-  } else {
-    form.value = { name: '', slug: '', logo_url: '', description: '', is_active: true };
-    selectedCategoryIds.value = [];
-    logoPreview.value = '';
-    logoFile.value = null;
-  }
-}, { immediate: true });
+function fillForm(ed: any) {
+  form.value = { name: ed.name || '', slug: ed.slug || '', logo_url: ed.logo || '', description: ed.description || '', is_active: ed.is_active ?? true };
+  selectedCategoryIds.value = (ed.category_ids || ed.smart_categories || []).map((c: any) => typeof c === 'object' ? c.id : c);
+  logoPreview.value = ed.logo || '';
+  logoFile.value = null;
+}
+
+function resetForm() {
+  form.value = { name: '', slug: '', logo_url: '', description: '', is_active: true };
+  selectedCategoryIds.value = [];
+  logoPreview.value = '';
+  logoFile.value = null;
+  uploading.value = false;
+}
+
+watch(() => props.visible, (v) => {
+  if (v && !props.editing) resetForm();
+  if (v && props.editing) fillForm(props.editing);
+});
 
 async function save() {
-  const logoUrl = await uploadLogo(props.editing?.id || form.value.slug || Date.now().toString());
+  const logoResult = await uploadLogo(props.editing?.id || form.value.slug || Date.now().toString());
   emit('save', {
     name: form.value.name.trim(),
     slug: form.value.slug.trim(),
     description: form.value.description.trim(),
-    logo_url: logoUrl || '',
+    logo_path: logoResult?.path || '',
     category_ids: selectedCategoryIds.value,
   });
 }

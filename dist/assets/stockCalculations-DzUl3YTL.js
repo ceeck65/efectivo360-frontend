@@ -1,0 +1,2 @@
+function e(e,t=2){let n=10**t;return Math.round(e*n+(e>=0?1e-4:-1e-4))/n}function t(e,t,n){let r=e||0;return n?r*(t||1):r}function n(e,t){return(e||0)*(t||0)}function r(e,t,n){let r=(e||0)+(t||0),i=n||1;return i<=0||r<=0?0:r/i}function i(e,t,n,r){let i=e+n;return i<=0?r||t||0:(e*t+n*r)/i}function a(e,t){return e<=0||t<=0?0:e*(1+t/100)}function o(e,t){if(e<=0||t<=0)return 0;let n=1-t/100;return n<=.01?0:e/n}function s(t,n){return t<=0||!n?0:e(t*n,2)}export{a,n as i,r as n,s as o,o as r,i as s,t};
+//# sourceMappingURL=stockCalculations-DzUl3YTL.js.map

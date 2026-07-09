@@ -61,7 +61,7 @@ onMounted(async () => {
 // Fetch blueprints
 const fetchBlueprints = async () => {
   try {
-    const response = await fetchApi<{ results: BlueprintOption[] }>('/api/v1/industry-blueprints/');
+    const response = await fetchApi<{ results: BlueprintOption[] }>('/api/v1/business-types/');
     blueprints.value = Array.isArray(response) ? response : response.results || [];
   } catch (error) {
     console.error('Failed to fetch blueprints:', error);

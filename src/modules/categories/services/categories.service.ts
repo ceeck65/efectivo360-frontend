@@ -15,7 +15,7 @@ import type {
 } from '../types';
 
 const BASE_URL = '/api/v1/global/categorias';
-const BLUEPRINTS_URL = '/api/v1/industry-blueprints';
+const BLUEPRINTS_URL = '/api/v1/business-types';
 
 // =============================================================================
 // CATEGORIES

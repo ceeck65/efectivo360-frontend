@@ -23,6 +23,17 @@
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           BCV: <span class="text-blue-50">Bs.{{ formatVES(tasaBCV) }}</span>
         </div>
+        <div v-if="!esIlimitado"
+          class="flex items-center gap-1.5 text-[10px] font-bold text-white/80 bg-white/10 backdrop-blur-md border border-white/20 px-2.5 py-1 rounded-xl shadow-sm whitespace-nowrap">
+          <Ticket class="w-3 h-3 text-blue-300" />
+          <span>{{ ticketsDisponibles.toLocaleString() }} ventas disponibles</span>
+          <span v-if="sinVencimiento" class="text-[9px] text-white/50 font-normal">· Sin vencimiento</span>
+        </div>
+        <div v-else
+          class="flex items-center gap-1.5 text-[10px] font-bold text-emerald-300 bg-emerald-500/15 backdrop-blur-md border border-emerald-400/25 px-2.5 py-1 rounded-xl shadow-sm whitespace-nowrap">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          Full Ilimitado
+        </div>
         <div class="flex items-center gap-1.5 text-[10px] font-bold text-white/80 bg-white/10 backdrop-blur-md border border-white/20 px-2.5 py-1 rounded-xl shadow-sm"
           :class="isOnline ? '' : '!bg-rose-500/20 !border-rose-400/40 !text-rose-200'">
           <Wifi v-if="isOnline" class="w-3 h-3 text-emerald-300" />
@@ -31,10 +42,10 @@
         </div>
         <div class="hidden sm:flex items-center gap-2 text-xs text-white/70 bg-white/10 px-3.5 py-1.5 rounded-full backdrop-blur-sm">
           <div class="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          <span>Abierta</span>
+          <span>{{ cajaStore.turnoActivo?.terminal_name || 'Caja' }}</span>
           <span class="text-white/30 mx-0.5">|</span>
           <User class="w-3 h-3" />
-          <span>{{ operatorName }}</span>
+          <span>{{ authStore.user?.full_name || authStore.user?.username || 'Usuario' }}</span>
         </div>
       </div>
     </header>
@@ -129,19 +140,39 @@
             <button v-if="searchQuery" @click="searchQuery = ''"
               class="text-[10px] font-bold text-slate-400 hover:text-rose-500 transition-colors uppercase tracking-wide">Borrar búsqueda</button>
           </div>
+          <div class="flex items-center gap-1 bg-slate-100 rounded-lg p-0.5 border border-slate-200">
+            <button @click="currentLayout = 'modern'"
+              class="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all"
+              :class="currentLayout === 'modern' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'">
+              <LayoutGrid class="w-3 h-3" />
+              <span class="hidden sm:inline">Grid</span>
+            </button>
+            <button @click="currentLayout = 'traditional'"
+              class="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all"
+              :class="currentLayout === 'traditional' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'">
+              <List class="w-3 h-3" />
+              <span class="hidden sm:inline">Lista</span>
+            </button>
+          </div>
           <span v-if="lastScanned" class="text-slate-400 font-mono text-[10px]">
             Último: {{ lastScanned }}
           </span>
         </div>
 
-        <!-- Product grid -->
+        <!-- Product grid / list -->
         <div class="flex-1 overflow-y-auto px-4 sm:px-6 py-4 bg-[#f6f8fa]">
-          <div v-if="filteredProducts.length === 0" class="flex flex-col items-center justify-center h-full text-sm text-slate-400 gap-1">
+          <div v-if="dataLoading && filteredProducts.length === 0" class="flex flex-col items-center justify-center h-full text-sm text-slate-400 gap-2">
+            <div class="w-8 h-8 border-2 border-blue-300 border-t-blue-600 rounded-full animate-spin" />
+            <span>Cargando productos...</span>
+          </div>
+          <div v-else-if="filteredProducts.length === 0" class="flex flex-col items-center justify-center h-full text-sm text-slate-400 gap-1">
             <PackageSearch class="w-10 h-10 text-slate-200" />
             <span v-if="searchQuery">Sin resultados para "<span class="font-medium text-slate-500">{{ searchQuery }}</span>"</span>
             <span v-else>No hay productos disponibles</span>
           </div>
-          <div v-else class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+
+          <!-- ═══════ MODERN LAYOUT (Grid) ═══════ -->
+          <div v-else-if="currentLayout === 'modern'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             <button v-for="p in filteredProducts" :key="p.id" @click="addItem(p)"
               class="bg-white border border-slate-300 rounded-xl p-2.5 flex gap-2.5 shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer group relative overflow-hidden text-left">
               <div class="w-12 h-12 rounded-lg bg-slate-50 border border-slate-200 flex-shrink-0 flex items-center justify-center overflow-hidden relative">
@@ -153,8 +184,7 @@
               <div class="flex flex-col justify-between flex-1 min-w-0">
                 <div>
                   <h4 class="text-[11px] font-bold text-slate-800 truncate leading-tight group-hover:text-blue-600 transition-colors">{{ p.name }}</h4>
-                  <p v-if="p.attrs" class="text-[9px] text-slate-400 truncate mt-0.5">{{ Object.values(p.attrs).join(' · ') }}</p>
-                  <p v-else class="text-[9px] text-slate-400 truncate mt-0.5">General</p>
+                  <p class="text-[9px] text-slate-400 truncate mt-0.5">Stock: {{ p.stock ?? 0 }} uds</p>
                 </div>
                 <div class="flex justify-between items-baseline mt-0.5">
                   <span class="text-xs font-black text-slate-900">${{ formatUSD(p.price_usd) }}</span>
@@ -162,6 +192,52 @@
                 </div>
               </div>
             </button>
+          </div>
+
+          <!-- ═══════ TRADITIONAL LAYOUT (Table) ═══════ -->
+          <div v-else class="overflow-x-auto">
+            <table class="w-full text-xs border-collapse">
+              <thead>
+                <tr class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                  <th class="text-left py-2 px-2 w-24">Código</th>
+                  <th class="text-left py-2 px-2">Producto</th>
+                  <th class="text-left py-2 px-2 w-20">Categoría</th>
+                  <th class="text-center py-2 px-2 w-16">Stock</th>
+                  <th class="text-right py-2 px-2 w-20">Precio USD</th>
+                  <th class="text-right py-2 px-2 w-24">Precio Bs</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="p in filteredProducts" :key="p.id" @click="addItem(p)"
+                  class="border-b border-slate-100 hover:bg-blue-50/60 cursor-pointer transition-colors group">
+                  <td class="py-1.5 px-2 font-mono text-[10px] text-slate-400 truncate max-w-[6rem]">
+                    {{ p.barcode || p.id.slice(0, 8) || '—' }}
+                  </td>
+                  <td class="py-1.5 px-2 font-semibold text-slate-800 truncate max-w-[12rem] group-hover:text-blue-600 transition-colors">
+                    {{ p.name }}
+                  </td>
+                  <td class="py-1.5 px-2 text-slate-500 truncate max-w-[6rem]">
+                    {{ categories.find(c => c.id === p.category_id)?.name || '—' }}
+                  </td>
+                  <td class="py-1.5 px-2 text-center">
+                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
+                      :class="(p.stock ?? 0) === 0
+                        ? 'bg-red-100 text-red-700'
+                        : (p.stock ?? 0) <= 5
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-emerald-100 text-emerald-700'">
+                      {{ p.stock ?? 0 }}
+                    </span>
+                  </td>
+                  <td class="py-1.5 px-2 text-right font-semibold text-slate-900">
+                    ${{ formatUSD(p.price_usd) }}
+                  </td>
+                  <td class="py-1.5 px-2 text-right font-mono text-slate-500">
+                    Bs.{{ formatVES(p.price_usd * tasaBCV) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -181,8 +257,9 @@
               <span class="text-xl group-hover:scale-110 transition-transform">⚙️</span>
               <span class="text-[10px] font-black tracking-wider text-slate-600 uppercase">Ajustes</span>
             </button>
-            <button class="flex-1 h-full bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-md group">
-              <span class="text-xl group-hover:scale-110 transition-transform">📊</span>
+            <button @click="showCierreCaja = true"
+              class="flex-1 h-full bg-white hover:bg-rose-50 border border-slate-300 hover:border-rose-300 text-slate-800 hover:text-rose-600 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-md group">
+              <span class="text-xl group-hover:scale-110 transition-transform">🔒</span>
               <span class="text-[10px] font-black tracking-wider text-slate-600 uppercase">Cierre Caja</span>
             </button>
           </div>
@@ -208,7 +285,6 @@
               </div>
 
               <div class="flex-1 overflow-y-auto py-2">
-                <!-- "Todas" option -->
                 <button @click="filterByCategory(null)"
                   class="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
                   :class="selectedCategoryId === null ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'">
@@ -223,9 +299,8 @@
 
                 <div class="h-px bg-slate-100 mx-4 my-1" />
 
-                <!-- Category tree -->
                 <div v-for="cat in categories" :key="cat.id">
-                  <button @click="toggleExpandCategory(cat.id)"
+                  <button @click="filterByCategory(cat.id)"
                     class="w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors"
                     :class="selectedCategoryId === cat.id ? 'bg-blue-50 text-blue-700' : 'text-slate-700 hover:bg-slate-50'">
                     <div class="w-8 h-8 rounded-lg flex items-center justify-center text-lg"
@@ -234,24 +309,9 @@
                     </div>
                     <div class="flex-1 min-w-0">
                       <span class="text-sm font-semibold">{{ cat.name }}</span>
-                      <span v-if="cat.children?.length" class="text-[10px] text-slate-400 ml-1.5">{{ cat.children.length }} sub</span>
                     </div>
                     <span class="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full mr-1">{{ productCountForCategory(cat) }}</span>
-                    <ChevronDown v-if="cat.children?.length"
-                      class="w-4 h-4 text-slate-400 transition-transform duration-200"
-                      :class="expandedCategories.has(cat.id) ? 'rotate-0' : '-rotate-90'" />
                   </button>
-
-                  <!-- Subcategories -->
-                  <div v-if="cat.children?.length && expandedCategories.has(cat.id)"
-                    class="ml-4 border-l-2 border-slate-100">
-                    <button v-for="sub in cat.children" :key="sub.id" @click="filterByCategory(sub.id)"
-                      class="w-full flex items-center gap-2.5 pl-5 pr-4 py-2 text-left transition-colors text-sm"
-                      :class="selectedCategoryId === sub.id ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600 hover:bg-slate-50'">
-                      <div class="w-1.5 h-1.5 rounded-full" :class="selectedCategoryId === sub.id ? 'bg-blue-500' : 'bg-slate-300'" />
-                      <span>{{ sub.name }}</span>
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>
@@ -285,7 +345,7 @@
             Agregue productos desde el catálogo
           </div>
           <div v-else class="flex-1 overflow-y-auto space-y-2 pr-0.5">
-            <div v-for="(item, i) in cart" :key="item.id + (item.attrs ? JSON.stringify(item.attrs) : '')"
+            <div v-for="(item, i) in cart" :key="item.id + item.pricingMode + (item.attrs ? JSON.stringify(item.attrs) : '')"
               class="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex items-center justify-between hover:border-slate-300 transition-all text-slate-800">
               <div class="flex items-center gap-2 min-w-0 flex-1">
                 <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center font-black text-slate-400 text-xs border border-slate-200">
@@ -293,25 +353,41 @@
                 </div>
                 <div class="min-w-0 flex-1">
                   <h4 class="text-xs font-bold text-slate-800 truncate leading-tight">{{ item.name }}</h4>
-                  <span class="text-[10px] text-slate-400 font-bold block mt-0.5">${{ formatUSD(item.price_usd) }}</span>
+                  <div class="flex items-center gap-1.5 mt-0.5">
+                    <span class="text-[10px] text-slate-400 font-bold">${{ formatUSD(item.unitPrice) }}</span>
+                    <span class="text-[9px] text-slate-300">·</span>
+                    <span class="text-[9px] text-slate-400 font-medium">Bs.{{ formatVES(item.unitPrice * tasaBCV) }}</span>
+                  </div>
                 </div>
               </div>
-              <div class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200/80 mx-2">
-                <button @click="qtyDown(i)"
-                  class="w-5 h-5 flex items-center justify-center text-xs font-black bg-white hover:bg-slate-200 text-slate-600 rounded-md border border-slate-300 shadow-sm transition-all active:scale-90">−</button>
-                <span class="w-6 text-center text-xs font-black text-slate-800">{{ item.qty }}</span>
-                <button @click="qtyUp(i)"
-                  class="w-5 h-5 flex items-center justify-center text-xs font-black bg-white hover:bg-slate-200 text-slate-600 rounded-md border border-slate-300 shadow-sm transition-all active:scale-90">+</button>
-              </div>
-              <div class="flex items-center gap-2 pl-1">
-                <span class="text-xs font-black text-slate-800">${{ formatUSD(item.price_usd * item.qty) }}</span>
-                <button @click="removeItem(i)"
-                  class="text-slate-300 hover:text-rose-500 transition-colors text-xs p-1">
-                  <Trash2 class="w-3.5 h-3.5" />
+              <div class="flex items-center gap-1.5">
+                <!-- Mayor/Detal Toggle -->
+                <button v-if="item.conversionFactor !== 1 || item.altUnitLabel"
+                  @click="togglePricingMode(i)"
+                  class="shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider transition-all"
+                  :class="item.pricingMode === 'wholesale'
+                    ? 'bg-blue-100 border-blue-300 text-blue-700'
+                    : 'bg-emerald-100 border-emerald-300 text-emerald-700'"
+                  :title="'Cambiar a ' + item.altUnitLabel">
+                  {{ item.unitLabel }}
+                </button>
+                <div class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200/80">
+                  <button @click="qtyDown(i)"
+                    class="w-5 h-5 flex items-center justify-center text-xs font-black bg-white hover:bg-slate-200 text-slate-600 rounded-md border border-slate-300 shadow-sm transition-all active:scale-90">−</button>
+                  <span class="w-6 text-center text-xs font-black text-slate-800">{{ item.qty }}</span>
+                  <button @click="qtyUp(i)"
+                    class="w-5 h-5 flex items-center justify-center text-xs font-black bg-white hover:bg-slate-200 text-slate-600 rounded-md border border-slate-300 shadow-sm transition-all active:scale-90">+</button>
+                </div>
+                <div class="flex items-center gap-2 pl-1">
+                  <span class="text-xs font-black text-slate-800">${{ formatUSD(item.unitPrice * item.qty) }}</span>
+                  <button @click="removeItem(i)"
+                    class="text-slate-300 hover:text-rose-500 transition-colors text-xs p-1">
+                    <Trash2 class="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
           </div>
+        </div>
         </div>
 
         <!-- Hold / Resume buttons -->
@@ -340,12 +416,17 @@
               <PauseCircle class="w-3.5 h-3.5" />
               Pausar
             </button>
-            <button @click="openCheckout" :disabled="cart.length === 0"
+            <button v-if="canCharge || cart.length === 0" @click="openCheckout" :disabled="cart.length === 0"
               class="flex-1 h-12 rounded-xl text-sm font-black text-white transition-all active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 uppercase tracking-wider"
               :class="cart.length === 0
                 ? 'bg-slate-400/50 cursor-not-allowed'
                 : 'bg-gradient-to-r from-emerald-400 to-emerald-500 hover:from-emerald-500 hover:to-emerald-600 shadow-emerald-500/30'">
               ⚡ Cobrar
+            </button>
+            <button v-else @click="showTopUp = true"
+              class="flex-1 h-12 rounded-xl text-sm font-black text-white transition-all active:scale-[0.98] shadow-lg flex items-center justify-center gap-2 uppercase tracking-wider bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 shadow-amber-500/30">
+              <Ticket class="w-4 h-4" />
+              Recargar Tickets
             </button>
           </div>
         </div>
@@ -377,22 +458,33 @@
             </button>
           </div>
           <div class="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
-            <div v-for="(item, i) in cart" :key="item.id + (item.attrs ? JSON.stringify(item.attrs) : '')"
+            <div v-for="(item, i) in cart" :key="'mob-' + item.id + item.pricingMode + (item.attrs ? JSON.stringify(item.attrs) : '')"
               class="bg-slate-50 rounded-xl p-3 flex items-center justify-between">
               <div class="flex-1 min-w-0 pr-2">
                 <h4 class="text-sm font-bold text-slate-800 truncate">{{ item.name }}</h4>
-                <p v-if="item.attrs" class="text-[10px] text-slate-400 mt-0.5">
-                  {{ Object.values(item.attrs).join(' · ') }}
-                </p>
+                <div class="flex items-center gap-1.5 mt-0.5">
+                  <span class="text-[11px] text-slate-400 font-semibold">${{ formatUSD(item.unitPrice) }}</span>
+                  <span class="text-[9px] text-slate-300">·</span>
+                  <span class="text-[10px] text-slate-400">Bs.{{ formatVES(item.unitPrice * tasaBCV) }}</span>
+                </div>
               </div>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-1.5">
+                <button v-if="item.conversionFactor !== 1 || item.altUnitLabel"
+                  @click="togglePricingMode(i)"
+                  class="shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider transition-all"
+                  :class="item.pricingMode === 'wholesale'
+                    ? 'bg-blue-100 border-blue-300 text-blue-700'
+                    : 'bg-emerald-100 border-emerald-300 text-emerald-700'"
+                  :title="'Cambiar a ' + item.altUnitLabel">
+                  {{ item.unitLabel }}
+                </button>
                 <div class="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white">
                   <button @click="qtyDown(i)" class="px-2 py-0.5 text-slate-500 hover:bg-slate-100 text-sm font-bold">−</button>
                   <span class="px-2.5 text-sm font-bold text-slate-700">{{ item.qty }}</span>
                   <button @click="qtyUp(i)" class="px-2 py-0.5 text-slate-500 hover:bg-slate-100 text-sm font-bold">+</button>
                 </div>
                 <div class="text-right min-w-[68px]">
-                  <p class="text-sm font-bold text-slate-800">${{ formatUSD(item.price_usd * item.qty) }}</p>
+                  <p class="text-sm font-bold text-slate-800">${{ formatUSD(item.unitPrice * item.qty) }}</p>
                 </div>
                 <button @click="removeItem(i)" class="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 transition-colors">
                   <Trash2 class="w-3.5 h-3.5" />
@@ -415,10 +507,17 @@
                 <PauseCircle class="w-4 h-4" />
                 Pausar
               </button>
-              <button @click="showMobileCart = false; openCheckout()"
-                class="flex-1 h-12 rounded-xl text-sm font-black text-white bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 shadow-lg shadow-emerald-500/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+              <button v-if="canCharge || cart.length === 0" @click="showMobileCart = false; openCheckout()"
+                :disabled="cart.length === 0"
+                class="flex-1 h-12 rounded-xl text-sm font-black text-white bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                :class="cart.length === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:from-emerald-400 hover:to-emerald-500'">
                 <CreditCard class="w-4 h-4" />
                 COBRAR — ${{ formatUSD(totalUSD) }}
+              </button>
+              <button v-else @click="showTopUp = true; showMobileCart = false"
+                class="flex-1 h-12 rounded-xl text-sm font-black text-white bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg shadow-amber-500/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+                <Ticket class="w-4 h-4" />
+                Recargar Tickets
               </button>
             </div>
           </div>
@@ -464,6 +563,19 @@
       @confirm="onCheckoutConfirm"
       @close="showCheckout = false"
     />
+
+    <!-- ═══════ TOP-UP MODAL ═══════ -->
+    <TransactionTopUpModal
+      v-if="showTopUp"
+      @close="showTopUp = false"
+      @confirm="onTopUpConfirm"
+    />
+
+    <!-- ═══════ CIERRE CAJA MODAL ═══════ -->
+    <CierreCaja
+      v-if="showCierreCaja"
+      @close="showCierreCaja = false"
+    />
   </div>
 </template>
 
@@ -472,19 +584,41 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import {
   Search, X, User, ShoppingBag, Trash2,
   CreditCard, PackageSearch, PauseCircle, PlayCircle, Wifi, WifiOff,
-  ScanBarcode, ScanLine,
-  ChevronDown, ListTree,
+  ScanBarcode, ScanLine, LayoutGrid, List,
+  ListTree, Ticket,
 } from 'lucide-vue-next';
 import BarcodeScanner from '@/components/shared/BarcodeScanner.vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
+import { useCajaStore } from '@/stores/caja';
+import { useForexRate } from '@/composables/useForexRate';
+import { useInventory } from '@/modules/inventory/composables/useInventory';
+import { useTenantMetadata } from '@/composables/useTenantMetadata';
 import RifInput from '@/components/shared/RifInput.vue';
 import PhoneInput from '@/components/shared/PhoneInput.vue';
 import CheckoutModal from './CheckoutModal.vue';
+import TransactionTopUpModal from '@/components/modals/TransactionTopUpModal.vue';
+import CierreCaja from './CierreCaja.vue';
 
 const authStore = useAuthStore();
+const cajaStore = useCajaStore();
 const tenantLogo = computed(() => authStore.user?.tenant_logo || null);
 const tenantCommercialName = computed(() => authStore.user?.tenant_commercial_name || authStore.user?.tenant_name || '');
+
+const {
+  ticketsDisponibles, esIlimitado, sinVencimiento,
+  canCharge, consumirTicket, persistTickets,
+} = useTenantMetadata();
+const showTopUp = ref(false);
+
+const { rateValue: tasaBCV, fetchForexRate } = useForexRate();
+const {
+  products: inventoryProducts,
+  categories: inventoryCategories,
+  loadProducts,
+  loadCategories,
+  loading: invLoading,
+} = useInventory();
 
 const emit = defineEmits<{ close: [] }>();
 const router = useRouter();
@@ -494,21 +628,38 @@ function handleClose() {
 }
 
 interface CartItem {
-  id: number;
+  id: string;
   name: string;
   price_usd: number;
   qty: number;
   stock?: number;
+  barcode?: string;
   attrs?: Record<string, string>;
+  /** Modo de venta: 'retail' (unidad/detal) o 'wholesale' (bulto/mayor) */
+  pricingMode: 'retail' | 'wholesale';
+  /** Precio por unidad o por bulto según pricingMode */
+  unitPrice: number;
+  /** Unidades que contiene cada bulto (1 si es detal) */
+  conversionFactor: number;
+  /** Etiqueta de la unidad actual ('Unidad' | 'Bulto') */
+  unitLabel: string;
+  /** Etiqueta alternativa */
+  altUnitLabel: string;
 }
 
 interface Product {
-  id: number;
+  id: string;
   name: string;
   price_usd: number;
   stock?: number;
-  attrs?: Record<string, string>;
-  category_id?: number;
+  barcode?: string;
+  category_id?: string;
+  /** Precio por bulto (mayor), si aplica */
+  wholesalePrice?: number;
+  /** Unidades por bulto (ej: 24) */
+  wholesaleQty?: number;
+  /** Nombre del empaque mayor (ej: 'Bulto', 'Caja') */
+  wholesaleLabel?: string;
 }
 
 interface Customer {
@@ -517,22 +668,21 @@ interface Customer {
   rif: string;
   phone?: string;
   email?: string;
+  isWholesale?: boolean;
 }
 
 interface Category {
-  id: number;
+  id: string;
   name: string;
   icon?: string;
   children?: Category[];
 }
 
-const tasaBCV = ref(549.37);
-const operatorName = ref('Mario');
 const searchQuery = ref('');
 const searchInputRef = ref<HTMLInputElement | null>(null);
-const selectedCategoryId = ref<number | null>(null);
+const selectedCategoryId = ref<string | null>(null);
 const showCategorySidebar = ref(false);
-const expandedCategories = ref<Set<number>>(new Set());
+
 const selectedCustomer = ref<Customer | null>(null);
 const showCustomerModal = ref(false);
 const newCustomerRif = ref('');
@@ -545,6 +695,9 @@ const scanning = ref(false);
 const lastScanned = ref<string | null>(null);
 
 function toggleScanner() { scanning.value = !scanning.value; }
+
+// Layout toggle
+const currentLayout = ref<'modern' | 'traditional'>('modern');
 
 // Hold / Resume
 const heldSales = ref<{ id: number; items: CartItem[]; timestamp: string; total: number }[]>([]);
@@ -579,30 +732,79 @@ const updateOnlineStatus = () => { isOnline.value = navigator.onLine; };
 const mobileTab = ref<'products' | 'cart' | 'payment'>('products');
 const showCheckout = ref(false);
 const showMobileCart = ref(false);
+const showCierreCaja = ref(false);
 const cart = ref<CartItem[]>([]);
-const categories = ref<Category[]>([]);
-const products = ref<Product[]>([]);
+
+const categories = computed<Category[]>(() =>
+  inventoryCategories.value.map((c, i) => ({
+    id: c.id,
+    name: c.name,
+    icon: c.icon || ['📦', '👟', '🛒', '🥤', '🧀', '🥩', '🧃', '🍞', '🧴', '📚'][i % 10],
+  }))
+);
+
+const products = computed<Product[]>(() =>
+  inventoryProducts.value.map(p => {
+    const retailPrice = ((p.salePrice as number) || 0) / 100;
+    const stock = p.currentStock as number;
+    const hasWholesale = stock >= 10 && retailPrice > 0.5;
+    return {
+      id: p.id,
+      name: p.name,
+      price_usd: retailPrice,
+      stock,
+      barcode: p.barcode as string | undefined,
+      category_id: p.categoryId as string,
+      wholesalePrice: hasWholesale ? retailPrice * 12 : undefined,
+      wholesaleQty: hasWholesale ? 12 : undefined,
+      wholesaleLabel: hasWholesale ? 'Bulto' : undefined,
+    };
+  })
+);
 
 const filteredProducts = computed(() => {
   let list = products.value;
   if (selectedCategoryId.value) list = list.filter((p) => p.category_id === selectedCategoryId.value);
   const q = searchQuery.value.toLowerCase().trim();
-  if (q) list = list.filter((p) => p.name.toLowerCase().includes(q) || String(p.id).includes(q));
+  if (q) list = list.filter((p) => p.name.toLowerCase().includes(q) || String(p.barcode ?? '').includes(q) || p.id.includes(q));
   return list;
 });
 
 const cartTotal = computed(() => cart.value.length);
 const itemCount = computed(() => cart.value.reduce((sum, i) => sum + i.qty, 0));
-const subtotalUSD = computed(() => cart.value.reduce((sum, i) => sum + i.price_usd * i.qty, 0));
+const subtotalUSD = computed(() => cart.value.reduce((sum, i) => sum + i.unitPrice * i.qty, 0));
 const totalUSD = computed(() => subtotalUSD.value);
 const totalVES = computed(() => totalUSD.value * tasaBCV.value);
 
 function addItem(p: Product) {
-  const existing = cart.value.find(
-    (i) => i.id === p.id && JSON.stringify(i.attrs || {}) === JSON.stringify(p.attrs || {})
-  );
-  if (existing) existing.qty++;
-  else cart.value.push({ ...p, qty: 1 });
+  const existing = cart.value.find((i) => i.id === p.id && i.pricingMode === (p.wholesaleQty && selectedCustomer.value?.isWholesale ? 'wholesale' : 'retail'));
+  if (existing) {
+    existing.qty++;
+    return;
+  }
+  const useWholesale = !!(p.wholesaleQty && selectedCustomer.value?.isWholesale);
+  cart.value.push({
+    ...p,
+    qty: 1,
+    pricingMode: useWholesale ? 'wholesale' : 'retail',
+    unitPrice: useWholesale ? (p.wholesalePrice ?? p.price_usd) : p.price_usd,
+    conversionFactor: useWholesale ? (p.wholesaleQty ?? 1) : 1,
+    unitLabel: useWholesale ? (p.wholesaleLabel ?? 'Bulto') : 'Unidad',
+    altUnitLabel: useWholesale ? 'Unidad' : (p.wholesaleLabel ?? 'Bulto'),
+  });
+}
+
+function togglePricingMode(index: number) {
+  const item = cart.value[index];
+  const p = products.value.find(x => x.id === item.id);
+  if (!p?.wholesaleQty) return;
+  const isCurrentlyWholesale = item.pricingMode === 'wholesale';
+  item.pricingMode = isCurrentlyWholesale ? 'retail' : 'wholesale';
+  item.unitPrice = isCurrentlyWholesale ? p.price_usd : (p.wholesalePrice ?? p.price_usd);
+  item.conversionFactor = isCurrentlyWholesale ? 1 : p.wholesaleQty;
+  item.unitLabel = isCurrentlyWholesale ? 'Unidad' : (p.wholesaleLabel ?? 'Bulto');
+  item.altUnitLabel = isCurrentlyWholesale ? (p.wholesaleLabel ?? 'Bulto') : 'Unidad';
+  item.price_usd = item.unitPrice;
 }
 
 function removeItem(index: number) { cart.value.splice(index, 1); }
@@ -613,34 +815,31 @@ function qtyDown(index: number) {
   else item.qty--;
 }
 
+const _colorHues = [
+  'bg-blue-50 text-blue-600 border-blue-200 hover:border-blue-300',
+  'bg-amber-50 text-amber-700 border-amber-200 hover:border-amber-300',
+  'bg-cyan-50 text-cyan-600 border-cyan-200 hover:border-cyan-300',
+  'bg-emerald-50 text-emerald-600 border-emerald-200 hover:border-emerald-300',
+  'bg-rose-50 text-rose-600 border-rose-200 hover:border-rose-300',
+  'bg-violet-50 text-violet-600 border-violet-200 hover:border-violet-300',
+  'bg-orange-50 text-orange-600 border-orange-200 hover:border-orange-300',
+  'bg-teal-50 text-teal-600 border-teal-200 hover:border-teal-300',
+];
+
 function categoryPillClass(cat: Category): string {
   const active = selectedCategoryId.value === cat.id;
   if (active) return 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-transparent shadow-md';
-  const hues: Record<number, string> = {
-    1: 'bg-blue-50 text-blue-600 border-blue-200 hover:border-blue-300',
-    2: 'bg-amber-50 text-amber-700 border-amber-200 hover:border-amber-300',
-    3: 'bg-cyan-50 text-cyan-600 border-cyan-200 hover:border-cyan-300',
-    4: 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:border-emerald-300',
-  };
-  return hues[cat.id] || 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300';
+  const idx = inventoryCategories.value.findIndex(c => c.id === cat.id);
+  return _colorHues[idx % _colorHues.length] || 'bg-slate-50 text-slate-600 border-slate-200 hover:border-slate-300';
 }
 
-function toggleExpandCategory(id: number) {
-  const s = new Set(expandedCategories.value);
-  s.has(id) ? s.delete(id) : s.add(id);
-  expandedCategories.value = s;
-}
-
-function filterByCategory(id: number | null) {
+function filterByCategory(id: string | null) {
   selectedCategoryId.value = selectedCategoryId.value === id ? null : id;
   showCategorySidebar.value = false;
 }
 
 function productCountForCategory(cat: Category): number {
-  const ids = cat.children?.length
-    ? [cat.id, ...cat.children.map((c) => c.id)]
-    : [cat.id];
-  return products.value.filter((p) => ids.includes(p.category_id ?? -1)).length;
+  return products.value.filter((p) => p.category_id === cat.id).length;
 }
 
 function saveNewCustomer() {
@@ -662,8 +861,26 @@ function saveNewCustomer() {
 function openCheckout() { if (cart.value.length > 0) showCheckout.value = true; }
 
 function onCheckoutConfirm() {
+  consumirTicket();
+  persistTickets();
+  const payload = {
+    items: cart.value.map(i => ({
+      product_id: i.id,
+      qty: i.qty,
+      unit_price_cents: Math.round(i.unitPrice * 100),
+      pricing_mode: i.pricingMode,
+      conversion_factor: i.conversionFactor,
+    })),
+    currency: 'USD',
+    total_usd: subtotalUSD.value,
+  };
+  console.log('[venta]', payload);
   showCheckout.value = false;
   cart.value = [];
+}
+
+function onTopUpConfirm(_pkg: unknown, _code: string) {
+  showTopUp.value = false;
 }
 
 function formatUSD(n: number): string {
@@ -673,35 +890,16 @@ function formatVES(n: number): string {
   return n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-onMounted(() => {
+const dataLoading = computed(() => invLoading.value.products || invLoading.value.categories);
+
+onMounted(async () => {
   window.addEventListener('online', updateOnlineStatus);
   window.addEventListener('offline', updateOnlineStatus);
-  categories.value = [
-    { id: 1, name: 'Calzado', icon: '👟', children: [
-      { id: 11, name: 'Deportivo' }, { id: 12, name: 'Casual' }, { id: 13, name: 'Formal' },
-    ]},
-    { id: 2, name: 'Víveres', icon: '🛒', children: [
-      { id: 21, name: 'Granos' }, { id: 22, name: 'Carnes' }, { id: 23, name: 'Snacks' },
-    ]},
-    { id: 3, name: 'Bebidas', icon: '🥤', children: [
-      { id: 31, name: 'Agua' }, { id: 32, name: 'Gaseosas' }, { id: 33, name: 'Jugos' },
-    ]},
-    { id: 4, name: 'Lácteos', icon: '🧀', children: [
-      { id: 41, name: 'Leche' }, { id: 42, name: 'Quesos' }, { id: 43, name: 'Yogurt' },
-    ]},
-  ];
-  products.value = [
-    { id: 1, name: 'Zapato Deportivo Air Max', price_usd: 45.00, stock: 12, category_id: 1, attrs: { Talla: '40', Color: 'Negro' } },
-    { id: 2, name: 'Zapato Casual Cuero', price_usd: 38.50, stock: 8, category_id: 1, attrs: { Talla: '42', Color: 'Marrón' } },
-    { id: 3, name: 'Arroz Blanco 1kg', price_usd: 1.20, stock: 200, category_id: 2 },
-    { id: 4, name: 'Harina Pan 1kg', price_usd: 1.80, stock: 150, category_id: 2 },
-    { id: 5, name: 'Agua Mineral 1.5L', price_usd: 0.75, stock: 300, category_id: 3 },
-    { id: 6, name: 'Refresco Cola 2L', price_usd: 1.50, stock: 180, category_id: 3 },
-    { id: 7, name: 'Leche Entera 1L', price_usd: 1.90, stock: 90, category_id: 4 },
-    { id: 8, name: 'Queso Amarillo 500g', price_usd: 3.20, stock: 40, category_id: 4 },
-    { id: 9, name: 'Chuleta Ahumada 500g', price_usd: 2.50, stock: 35, category_id: 2 },
-    { id: 10, name: 'Snacks Papas 150g', price_usd: 0.90, stock: 120, category_id: 2 },
-  ];
+    await Promise.all([
+    loadCategories(),
+    loadProducts(),
+    fetchForexRate(),
+  ]);
 });
 
 onUnmounted(() => {

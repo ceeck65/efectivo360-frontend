@@ -50,7 +50,6 @@ export interface CategoryCreateData {
   nombre: string;
   icon?: string;
   parent_id?: number;
-  industry_blueprint_id?: number;
 }
 
 /**
@@ -59,5 +58,4 @@ export interface CategoryCreateData {
 export interface CategoryUpdateData {
   nombre: string;
   icon?: string;
-  industry_blueprint_id?: number | null;
 }

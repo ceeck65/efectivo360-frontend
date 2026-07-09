@@ -28,6 +28,28 @@
 
         <!-- Body -->
         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+
+          <!-- ════════════════════════════════════════════════ -->
+          <!-- WHOLESALE MODE TOGGLE (visible in both tabs)   -->
+          <!-- ════════════════════════════════════════════════ -->
+          <div class="flex items-center justify-between bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-3 shrink-0">
+            <div>
+              <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Activar Modo Mayorista</p>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Cálculos a gran escala — Distribución Masiva</p>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input v-model="wholesaleEnabled" type="checkbox" class="sr-only peer" />
+              <div class="w-[42px] h-[22px] bg-slate-300 dark:bg-white/[0.12] rounded-full peer peer-checked:bg-indigo-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-[18px] after:w-[18px] after:shadow-sm after:transition-all"></div>
+            </label>
+          </div>
+
+          <!-- ⚠️ WHOLESALE RENTABILITY WARNING BANNER -->
+          <div v-if="wholesaleEnabled"
+            class="border-l-4 border-red-600 bg-red-50 dark:bg-red-500/[0.06] text-red-800 dark:text-red-300 p-4 text-xs leading-relaxed rounded-r-lg">
+            <p class="font-bold mb-1 text-[11px] uppercase tracking-wider">⚠️ ADVERTENCIA DE RENTABILIDAD</p>
+            <p>Este modo está diseñado exclusivamente para Distribución Masiva y Mayoristas. <strong>NO SE RECOMIENDA</strong> activar esta opción para ventas minoristas tradicionales (al detal), ya que el cálculo opera bajo márgenes mínimos de volumen masivo y unidades de carga industrial, lo que comprometería la rentabilidad del negocio detal.</p>
+          </div>
+
           <!-- ================================================================ -->
           <!-- TAB: Información General -->
           <!-- ================================================================ -->
@@ -110,7 +132,7 @@
               <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">SKU <span class="text-red-400">*</span></label>
               <input v-model="form.sku" type="text" placeholder="SKU único"
                 class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors"
-                :class="{'border-red-400 bg-red-50 dark:bg-red-500/[0.04]': errors.sku}" @input="errors.sku = ''" />
+                :class="{'border-red-400 bg-red-50 dark:bg-red-500/[0.04]': errors.sku}" @input="errors.sku = ''" @blur="checkSkuDuplicate" />
               <p v-if="errors.sku" class="text-[11px] text-red-500 mt-1">{{ errors.sku }}</p>
             </div>
 
@@ -215,103 +237,141 @@
               </div>
             </div>
 
-            <!-- Selector de Tipo de Medida (Unidad / Peso / Líquido) -->
+            <!-- Selector de Tipo de Medida (Unidad / Peso / Líquido) / Mayorista -->
             <div class="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] rounded-lg p-4 space-y-3">
               <div class="flex items-center gap-2">
                 <Package class="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Unidad de Medida</span>
-              </div>
-              <div class="grid grid-cols-3 gap-2">
-                <button type="button" @click="form.measurement_type = 'UNIDAD'; form.container_type = 'CAJA'"
-                  class="flex flex-col items-center justify-center h-14 rounded-xl border-2 font-semibold text-xs transition-colors"
-                  :class="form.measurement_type === 'UNIDAD' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/[0.06] text-blue-600 dark:text-blue-400' : 'border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-slate-400 hover:border-slate-300'">
-                  <span class="text-base">📦</span>
-                  <span>Unidad</span>
-                </button>
-                <button type="button" @click="form.measurement_type = 'PESO'; form.container_type = 'SACO'"
-                  class="flex flex-col items-center justify-center h-14 rounded-xl border-2 font-semibold text-xs transition-colors"
-                  :class="form.measurement_type === 'PESO' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/[0.06] text-blue-600 dark:text-blue-400' : 'border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-slate-400 hover:border-slate-300'">
-                  <span class="text-base">⚖️</span>
-                  <span>Peso</span>
-                </button>
-                <button type="button" @click="form.measurement_type = 'LIQUIDO'; form.container_type = 'BIDON'"
-                  class="flex flex-col items-center justify-center h-14 rounded-xl border-2 font-semibold text-xs transition-colors"
-                  :class="form.measurement_type === 'LIQUIDO' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/[0.06] text-blue-600 dark:text-blue-400' : 'border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-slate-400 hover:border-slate-300'">
-                  <span class="text-base">🧪</span>
-                  <span>Líquido</span>
-                </button>
+                <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
+                  {{ wholesaleEnabled ? 'Unidad de Carga Mayorista' : 'Unidad de Medida' }}
+                </span>
               </div>
 
-              <!-- Selector de sub‑tipo de contenedor para PESO -->
-              <div v-if="form.measurement_type === 'UNIDAD'" class="pt-2">
-                <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de empaque</label>
-                <div class="flex gap-1 p-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
-                  <button type="button" @click="form.container_type = 'CAJA'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                    :class="form.container_type === 'CAJA' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Caja</button>
-                  <button type="button" @click="form.container_type = 'BULTO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                    :class="form.container_type === 'BULTO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Bulto</button>
-                  <button type="button" @click="form.container_type = 'PAQUETE'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                    :class="form.container_type === 'PAQUETE' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Paquete</button>
+              <!-- ══════ RETAIL MODE (UNIDAD / PESO / LIQUIDO) ══════ -->
+              <template v-if="!wholesaleEnabled">
+                <div class="grid grid-cols-3 gap-2">
+                  <button type="button" @click="form.measurement_type = 'UNIDAD'; form.container_type = 'CAJA'"
+                    class="flex flex-col items-center justify-center h-14 rounded-xl border-2 font-semibold text-xs transition-colors"
+                    :class="form.measurement_type === 'UNIDAD' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/[0.06] text-blue-600 dark:text-blue-400' : 'border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-slate-400 hover:border-slate-300'">
+                    <span class="text-base">📦</span>
+                    <span>Unidad</span>
+                  </button>
+                  <button type="button" @click="form.measurement_type = 'PESO'; form.container_type = 'SACO'"
+                    class="flex flex-col items-center justify-center h-14 rounded-xl border-2 font-semibold text-xs transition-colors"
+                    :class="form.measurement_type === 'PESO' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/[0.06] text-blue-600 dark:text-blue-400' : 'border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-slate-400 hover:border-slate-300'">
+                    <span class="text-base">⚖️</span>
+                    <span>Peso</span>
+                  </button>
+                  <button type="button" @click="form.measurement_type = 'LIQUIDO'; form.container_type = 'BIDON'"
+                    class="flex flex-col items-center justify-center h-14 rounded-xl border-2 font-semibold text-xs transition-colors"
+                    :class="form.measurement_type === 'LIQUIDO' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/[0.06] text-blue-600 dark:text-blue-400' : 'border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-slate-400 hover:border-slate-300'">
+                    <span class="text-base">🧪</span>
+                    <span>Líquido</span>
+                  </button>
                 </div>
-              </div>
 
-              <div v-if="form.measurement_type === 'PESO'" class="pt-2 space-y-2">
-                <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de empaque</label>
-                <div class="flex gap-1 p-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
-                  <button type="button" @click="form.weight_container = 'SACO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                    :class="form.weight_container === 'SACO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">👜 Saco</button>
-                  <button type="button" @click="form.weight_container = 'CESTA'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                    :class="form.weight_container === 'CESTA' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🧺 Cesta</button>
-                  <button type="button" @click="form.weight_container = 'BUN_CAJA'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                    :class="form.weight_container === 'BUN_CAJA' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Bún / Caja</button>
-                  <button type="button" @click="form.weight_container = 'KG_DIRECTO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                    :class="form.weight_container === 'KG_DIRECTO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">⚖️ Kg directo</button>
+                <!-- Retail sub‑type selectors -->
+                <div v-if="form.measurement_type === 'UNIDAD'" class="pt-2">
+                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de empaque</label>
+                  <div class="flex gap-1 p-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
+                    <button type="button" @click="form.container_type = 'CAJA'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                      :class="form.container_type === 'CAJA' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Caja</button>
+                    <button type="button" @click="form.container_type = 'BULTO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                      :class="form.container_type === 'BULTO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Bulto</button>
+                    <button type="button" @click="form.container_type = 'PAQUETE'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                      :class="form.container_type === 'PAQUETE' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Paquete</button>
+                  </div>
                 </div>
-              </div>
 
-              <div v-if="form.measurement_type === 'LIQUIDO'" class="pt-2 space-y-2">
-                <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de empaque</label>
-                <div class="flex gap-1 p-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
-                  <button type="button" @click="form.liquid_container = 'BIDON'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                    :class="form.liquid_container === 'BIDON' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🛢️ Bidón</button>
-                  <button type="button" @click="form.liquid_container = 'TAMBOR'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                    :class="form.liquid_container === 'TAMBOR' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🥁 Tambor</button>
-                  <button type="button" @click="form.liquid_container = 'GALON'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                    :class="form.liquid_container === 'GALON' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">⛽ Galón</button>
-                  <button type="button" @click="form.liquid_container = 'LT_DIRECTO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                    :class="form.liquid_container === 'LT_DIRECTO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🧪 Litro directo</button>
+                <div v-if="form.measurement_type === 'PESO'" class="pt-2 space-y-2">
+                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de empaque</label>
+                  <div class="flex gap-1 p-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
+                    <button type="button" @click="form.weight_container = 'SACO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                      :class="form.weight_container === 'SACO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">👜 Saco</button>
+                    <button type="button" @click="form.weight_container = 'CESTA'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                      :class="form.weight_container === 'CESTA' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🧺 Cesta</button>
+                    <button type="button" @click="form.weight_container = 'BUN_CAJA'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                      :class="form.weight_container === 'BUN_CAJA' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Bún / Caja</button>
+                    <button type="button" @click="form.weight_container = 'KG_DIRECTO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                      :class="form.weight_container === 'KG_DIRECTO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">⚖️ Kg directo</button>
+                  </div>
                 </div>
-              </div>
 
-              <!-- Campos de cantidad y capacidad (genéricos, labels dinámicos) -->
+                <div v-if="form.measurement_type === 'LIQUIDO'" class="pt-2 space-y-2">
+                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de empaque</label>
+                  <div class="flex gap-1 p-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
+                    <button type="button" @click="form.liquid_container = 'BIDON'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                      :class="form.liquid_container === 'BIDON' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🛢️ Bidón</button>
+                    <button type="button" @click="form.liquid_container = 'TAMBOR'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                      :class="form.liquid_container === 'TAMBOR' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🥁 Tambor</button>
+                    <button type="button" @click="form.liquid_container = 'GALON'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                      :class="form.liquid_container === 'GALON' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">⛽ Galón</button>
+                    <button type="button" @click="form.liquid_container = 'LT_DIRECTO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                      :class="form.liquid_container === 'LT_DIRECTO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🧪 Litro directo</button>
+                  </div>
+                </div>
+              </template>
+
+              <!-- ══════ WHOLESALE MODE ══════ -->
+              <template v-else>
+                <div>
+                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de Unidad Mayorista <span class="text-red-400">*</span></label>
+                  <select v-model="selectedWholesaleUnit"
+                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer">
+                    <option v-for="u in WHOLESALE_UNITS" :key="u.value" :value="u.value">{{ u.label }} — {{ u.desc }}</option>
+                  </select>
+                  <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                    1 {{ wholesaleConfig.label.split(' /')[0] }} = <strong>{{ wholesaleConfig.multiplier }}</strong> {{ wholesaleConfig.subLabel.split(' por')[0].toLowerCase() }}s
+                  </p>
+                </div>
+              </template>
+
+              <!-- Container quantity / capacity fields (shared, labels adapt) -->
               <div class="grid grid-cols-2 gap-3 pt-2">
                 <div>
                   <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                    {{ form.measurement_type === 'PESO'
-                      ? (form.weight_container === 'KG_DIRECTO' ? 'Cantidad de Kg' : 'Cantidad de ' + (form.weight_container === 'SACO' ? 'Sacos' : form.weight_container === 'CESTA' ? 'Cestas' : 'Bún / Cajas'))
-                      : form.measurement_type === 'LIQUIDO'
-                        ? (form.liquid_container === 'LT_DIRECTO' ? 'Cantidad de Litros' : 'Cantidad de ' + (form.liquid_container === 'BIDON' ? 'Bidones' : form.liquid_container === 'TAMBOR' ? 'Tambores' : 'Galones'))
-                        : 'Cantidad de ' + (form.container_type === 'CAJA' ? 'Cajas' : form.container_type === 'BULTO' ? 'Bultos' : 'Paquetes')
-                    }}
+                    <template v-if="wholesaleEnabled">
+                      Cantidad de {{ wholesaleConfig.label.split(' /')[0].toLowerCase() }}s a ingresar
+                    </template>
+                    <template v-else>
+                      {{ form.measurement_type === 'PESO'
+                        ? (form.weight_container === 'KG_DIRECTO' ? 'Cantidad de Kg' : 'Cantidad de ' + (form.weight_container === 'SACO' ? 'Sacos' : form.weight_container === 'CESTA' ? 'Cestas' : 'Bún / Cajas'))
+                        : form.measurement_type === 'LIQUIDO'
+                          ? (form.liquid_container === 'LT_DIRECTO' ? 'Cantidad de Litros' : 'Cantidad de ' + (form.liquid_container === 'BIDON' ? 'Bidones' : form.liquid_container === 'TAMBOR' ? 'Tambores' : 'Galones'))
+                          : 'Cantidad de ' + (form.container_type === 'CAJA' ? 'Cajas' : form.container_type === 'BULTO' ? 'Bultos' : 'Paquetes')
+                      }}
+                    </template>
                   </label>
                   <input v-model.number="form.cantidad_contenedores" type="number" min="1" step="1" placeholder="1"
                     class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
                 </div>
                 <div>
                   <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                    {{ form.measurement_type === 'PESO'
-                      ? (form.weight_container === 'KG_DIRECTO' ? 'Kg por contenedor' : 'Kg por ' + (form.weight_container === 'SACO' ? 'Saco' : form.weight_container === 'CESTA' ? 'Cesta' : 'Bún / Caja'))
-                      : form.measurement_type === 'LIQUIDO'
-                        ? (form.liquid_container === 'LT_DIRECTO' ? 'Litros por contenedor' : 'Litros por ' + (form.liquid_container === 'BIDON' ? 'Bidón' : form.liquid_container === 'TAMBOR' ? 'Tambor' : 'Galón'))
-                        : 'Unidades por ' + (form.container_type === 'CAJA' ? 'Caja' : form.container_type === 'BULTO' ? 'Bulto' : 'Paquete')
-                    }}
+                    <template v-if="wholesaleEnabled">
+                      {{ wholesaleConfig.subLabel }}
+                    </template>
+                    <template v-else>
+                      {{ form.measurement_type === 'PESO'
+                        ? (form.weight_container === 'KG_DIRECTO' ? 'Kg por contenedor' : 'Kg por ' + (form.weight_container === 'SACO' ? 'Saco' : form.weight_container === 'CESTA' ? 'Cesta' : 'Bún / Caja'))
+                        : form.measurement_type === 'LIQUIDO'
+                          ? (form.liquid_container === 'LT_DIRECTO' ? 'Litros por contenedor' : 'Litros por ' + (form.liquid_container === 'BIDON' ? 'Bidón' : form.liquid_container === 'TAMBOR' ? 'Tambor' : 'Galón'))
+                          : 'Unidades por ' + (form.container_type === 'CAJA' ? 'Caja' : form.container_type === 'BULTO' ? 'Bulto' : 'Paquete')
+                      }}
+                    </template>
                   </label>
                   <input v-model.number="form.capacidad_por_contenedor" type="number" min="0.1" step="0.1" placeholder="1"
                     class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
                 </div>
               </div>
 
-              <!-- Stock total calculado en lenguaje humano -->
+              <!-- Wholesale multiplier breakdown -->
+              <div v-if="wholesaleEnabled" class="bg-indigo-50 dark:bg-indigo-500/[0.06] border border-indigo-200 dark:border-indigo-500/20 rounded-xl px-4 py-2.5 text-xs text-indigo-700 dark:text-indigo-300 leading-relaxed">
+                🧮 <strong>{{ form.cantidad_contenedores || 0 }} {{ wholesaleConfig.label.split(' /')[0].toLowerCase() }}s</strong>
+                × {{ wholesaleConfig.multiplier }} {{ wholesaleConfig.subLabel.split(' por')[0].toLowerCase() }}/unidad
+                = <strong>{{ effectiveContainers }}</strong> {{ wholesaleConfig.subLabel.split(' por')[0].toLowerCase() }}s
+                → {{ calculatedStockTotal }} uds. finales
+              </div>
+
+              <!-- Stock total calculado -->
               <div class="bg-blue-50 dark:bg-blue-500/[0.06] border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
                 <div class="flex items-center justify-between">
                   <span class="text-[10px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Stock Total Calculado</span>
@@ -325,13 +385,16 @@
                           : 'Unidades'
                       }}
                     </span>
-                    <span class="text-[10px] text-blue-500 dark:text-blue-400 ml-1">
+                    <span v-if="!wholesaleEnabled" class="text-[10px] text-blue-500 dark:text-blue-400 ml-1">
                       ({{ form.cantidad_contenedores }} {{ form.measurement_type === 'PESO'
                         ? (form.weight_container === 'KG_DIRECTO' ? 'Kg' : '× ' + form.capacidad_por_contenedor + ' Kg/' + (form.weight_container === 'SACO' ? 'saco' : form.weight_container === 'CESTA' ? 'cesta' : 'bún'))
                         : form.measurement_type === 'LIQUIDO'
                           ? (form.liquid_container === 'LT_DIRECTO' ? 'Litros' : '× ' + form.capacidad_por_contenedor + ' L/' + (form.liquid_container === 'BIDON' ? 'bidón' : form.liquid_container === 'TAMBOR' ? 'tambor' : 'galón'))
                           : '× ' + form.capacidad_por_contenedor + ' uds/' + (form.container_type === 'CAJA' ? 'caja' : form.container_type === 'BULTO' ? 'bulto' : 'paquete')
                       }})
+                    </span>
+                    <span v-else class="text-[10px] text-indigo-500 dark:text-indigo-400 ml-1">
+                      ({{ effectiveContainers }} {{ wholesaleConfig.subLabel.split(' por')[0].toLowerCase() }}s × {{ form.capacidad_por_contenedor }} uds)
                     </span>
                   </span>
                 </div>
@@ -364,7 +427,12 @@
               <div class="p-3 bg-blue-50/50 dark:bg-blue-500/[0.04] border border-blue-200 dark:border-blue-500/20 rounded-lg text-xs text-blue-800 dark:text-blue-300 flex items-center justify-between">
                 <span>Distribución de costos para:</span>
                 <span class="font-bold bg-blue-100 dark:bg-blue-500/[0.12] px-2.5 py-1 rounded-md text-sm text-blue-700 dark:text-blue-300">
-                  {{ form.cantidad_contenedores }} {{ containerLabel }}{{ form.cantidad_contenedores !== 1 ? 's' : '' }}
+                  <template v-if="wholesaleEnabled">
+                    {{ effectiveContainers }} {{ wholesaleConfig.subLabel.split(' por')[0].toLowerCase() }}s
+                  </template>
+                  <template v-else>
+                    {{ form.cantidad_contenedores }} {{ containerLabel }}{{ form.cantidad_contenedores !== 1 ? 's' : '' }}
+                  </template>
                   <span class="text-[10px] opacity-70">({{ form.capacidad_por_contenedor }}
                     {{ form.measurement_type === 'PESO' ? 'Kg' : form.measurement_type === 'LIQUIDO' ? 'L' : 'uds' }} c/u)</span>
                 </span>
@@ -411,9 +479,9 @@
                   </span>
                 </div>
                 <p class="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">
-                  ({{ form.cantidad_contenedores }} × <template v-if="selectedInvoiceCurrency === 'VES'">Bs. {{ fmt(UIFields.costo_ingresado_usuario) }} / {{ fmt(dekaRate) }} = </template>${{ fmt(finalCostoBultoUSD) }}
+                  ({{ wholesaleEnabled ? effectiveContainers : form.cantidad_contenedores }} × <template v-if="selectedInvoiceCurrency === 'VES'">Bs. {{ fmt(UIFields.costo_ingresado_usuario) }} / {{ fmt(dekaRate) }} = </template>${{ fmt(finalCostoBultoUSD) }}
                   <template v-if="finalFleteUSD > 0"> + ${{ fmt(finalFleteUSD) }} flete</template>)
-                  / {{ form.cantidad_contenedores * form.capacidad_por_contenedor }}
+                  / {{ calculatedStockTotal }}
                   {{ form.measurement_type === 'PESO' ? 'Kg' : form.measurement_type === 'LIQUIDO' ? 'L' : 'uds' }}
                   = <strong>${{ fmt(bulkUnitCost) }}</strong>
                 </p>
@@ -483,22 +551,35 @@
                 </div>
               </div>
 
-              <!-- Suggested Prices -->
+              <!-- Suggested Prices (dual: Traditional + Financial) -->
               <div class="bg-blue-50 dark:bg-blue-500/[0.06] border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
-                <div class="flex items-center gap-2 mb-2">
+                <div class="flex items-center gap-2 mb-3">
                   <BadgeDollarSign class="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   <span class="text-xs font-semibold text-blue-800 dark:text-blue-300">Precios Sugeridos</span>
+                  <span class="text-[10px] text-blue-500 dark:text-blue-400 ml-auto">Tasa BCV: {{ rateValue > 0 ? fmtVES(rateValue) : 'Cargando...' }}</span>
                 </div>
-                <div class="grid grid-cols-2 gap-3">
-                  <div>
-                    <span class="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">USD</span>
-                    <p class="text-lg font-mono font-bold text-blue-900 dark:text-blue-200">{{ fmtUSD(suggestedPriceUsdNum) }}</p>
+                <div class="space-y-2">
+                  <!-- Traditional -->
+                  <div class="flex items-center justify-between bg-white dark:bg-white/[0.04] rounded-lg px-3 py-2 border border-amber-200 dark:border-amber-500/20">
+                    <div>
+                      <span class="text-[11px] font-semibold text-amber-700 dark:text-amber-400">Tradicional</span>
+                      <span class="text-[9px] text-amber-500 dark:text-amber-500 ml-1">(suma)</span>
+                    </div>
+                    <div class="text-right">
+                      <span class="text-sm font-mono font-bold text-slate-900 dark:text-white">{{ fmtUSD(suggestedTraditionalNum) }}</span>
+                      <span v-if="suggestedTraditionalVES !== fmtVES(0)" class="text-[10px] text-slate-500 dark:text-slate-400 ml-2">{{ suggestedTraditionalVES }}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span class="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">VES</span>
-                    <p class="text-lg font-mono font-bold text-blue-900 dark:text-blue-200">{{ suggestedPriceVes }}</p>
-                    <p v-if="rateValue > 0" class="text-[10px] text-blue-500 dark:text-blue-400">Tasa BCV: {{ fmtVES(rateValue) }}</p>
-                    <p v-else class="text-[10px] text-amber-500 dark:text-amber-400">Cargando tasa BCV...</p>
+                  <!-- Financial -->
+                  <div class="flex items-center justify-between bg-white dark:bg-white/[0.04] rounded-lg px-3 py-2 border border-emerald-200 dark:border-emerald-500/20">
+                    <div>
+                      <span class="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">Financiero</span>
+                      <span class="text-[9px] text-emerald-500 dark:text-emerald-500 ml-1">(protección)</span>
+                    </div>
+                    <div class="text-right">
+                      <span class="text-sm font-mono font-bold text-slate-900 dark:text-white">{{ fmtUSD(suggestedFinancialNum) }}</span>
+                      <span v-if="suggestedFinancialVES !== fmtVES(0)" class="text-[10px] text-slate-500 dark:text-slate-400 ml-2">{{ suggestedFinancialVES }}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -699,6 +780,40 @@
       </div>
     </div>
   </Teleport>
+
+  <!-- SKU Duplicate Modal -->
+  <Teleport to="body">
+    <div v-if="skuDuplicate" class="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="skuDuplicate = null" />
+      <div class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">
+            <AlertTriangle class="w-5 h-5 text-amber-600 dark:text-amber-400" />
+          </div>
+          <div>
+            <h3 class="text-base font-semibold text-slate-900 dark:text-white">Producto ya registrado</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Este SKU ya existe en tu tienda.</p>
+          </div>
+        </div>
+        <p class="text-sm text-slate-600 dark:text-slate-300">
+          <strong>{{ skuDuplicate?.product_name }}</strong> (SKU: {{ skuDuplicate?.sku }})
+        </p>
+        <p class="text-sm text-slate-500 dark:text-slate-400">
+          ¿Deseas ir a editarlo o ver sus detalles?
+        </p>
+        <div class="flex justify-end gap-2 pt-2">
+          <button @click="skuDuplicate = null" type="button"
+            class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors">
+            Cancelar
+          </button>
+          <button @click="goToDuplicateProduct" type="button"
+            class="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 transition-colors shadow-sm">
+            Ir a editar
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -708,10 +823,17 @@ import {
   Percent, DollarSign, Package, PackagePlus, BadgeDollarSign, AlertTriangle, Info,
   ImagePlus, CheckCircle2, Trash2, Camera,
 } from 'lucide-vue-next';
+import { useRouter } from 'vue-router';
 import { useApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
 import { useForexRate } from '@/composables/useForexRate';
 import { useAuthStore } from '@/stores/auth';
+import {
+  calcTraditionalPrice,
+  calcFinancialPrice,
+  calcVES,
+  calcEffectiveContainers,
+} from '@/composables/stockCalculations';
 import BarcodeScanner from '@/components/shared/BarcodeScanner.vue';
 import ProductImageStudio from '@/views/admin/super-console/components/ProductImageStudio.vue';
 import CategoryAsyncSelect from './CategoryAsyncSelect.vue';
@@ -766,6 +888,32 @@ const { fetchApi, apiClient } = useApi();
 const { success: notifySuccess, error: notifyError } = useNotify();
 const { rateValue, fetchForexRate } = useForexRate();
 const authStore = useAuthStore();
+const router = useRouter();
+
+const skuDuplicate = ref<{ product_id: string; product_name: string; sku: string } | null>(null);
+
+function checkSkuDuplicate() {
+  const sku = form.sku?.trim();
+  if (!sku) return;
+  apiClient.get('/api/v1/products/', { params: { sku, page_size: 1 } })
+    .then(res => {
+      const results = res.data?.results ?? [];
+      if (results.length > 0) {
+        const existing = results[0];
+        skuDuplicate.value = {
+          product_id: existing.id,
+          product_name: existing.name || '',
+          sku: existing.sku || '',
+        };
+      }
+    })
+    .catch(() => {});
+}
+
+function goToDuplicateProduct() {
+  if (!skuDuplicate.value) return;
+  router.push(`/admin/staff/products/${skuDuplicate.value.product_id}/edit`);
+}
 
 // ── BCV rounding & es‑VE formatting helpers ──
 
@@ -841,6 +989,33 @@ const tabs = [
 
 const activeTab = ref('general');
 const submitting = ref(false);
+
+// ── Wholesale Mode ──
+
+const wholesaleEnabled = ref(false);
+
+const WHOLESALE_UNITS = [
+  { value: 'PALLET',     label: 'Paleta / Pallet',            subLabel: 'Bultos por Paleta',         multiplier: 50,  desc: 'Carga unificada' },
+  { value: 'BULTO',      label: 'Bulto / Pack Mayorista',     subLabel: 'Unidades por Bulto',        multiplier: 1,   desc: 'Empaque secundario' },
+  { value: 'TAMBOR',     label: 'Tambor / Cilindro',          subLabel: 'Litros por Tambor',         multiplier: 200, desc: 'Estándar 200L / Líquidos masivos' },
+  { value: 'CONTENEDOR', label: 'Contenedor / TEU',           subLabel: 'Bultos por Contenedor',     multiplier: 1000, desc: 'Importaciones masivas' },
+  { value: 'TONELADA',   label: 'Tonelada Métrica',           subLabel: 'Kg por Tonelada',           multiplier: 1000, desc: 'Granel sólido' },
+  { value: 'IBC',        label: 'Tanque / Cúbico IBC',        subLabel: 'Litros por IBC',            multiplier: 1000, desc: 'Estándar 1000L' },
+];
+
+const selectedWholesaleUnit = ref('BULTO');
+
+const wholesaleConfig = computed(() =>
+  WHOLESALE_UNITS.find(u => u.value === selectedWholesaleUnit.value) ?? WHOLESALE_UNITS[1],
+);
+
+const effectiveContainers = computed(() => {
+  return calcEffectiveContainers(
+    form.cantidad_contenedores || 0,
+    wholesaleConfig.value.multiplier,
+    wholesaleEnabled.value,
+  );
+});
 
 // Scanner
 const scanning = ref(false);
@@ -1055,6 +1230,7 @@ watch(selectedInvoiceCurrency, (cur) => {
 });
 
 const containerLabel = computed(() => {
+  if (wholesaleEnabled.value) return wholesaleConfig.value.label.split(' /')[0];
   if (form.measurement_type === 'PESO') {
     if (form.weight_container === 'SACO') return 'Saco';
     if (form.weight_container === 'CESTA') return 'Cesta';
@@ -1140,6 +1316,8 @@ function saveDraft() {
     logisticsEnabled: logisticsEnabled.value,
     logistics: { ...logistics },
     fiscalModuleEnabled: fiscalModuleEnabled.value,
+    wholesaleEnabled: wholesaleEnabled.value,
+    selectedWholesaleUnit: selectedWholesaleUnit.value,
   };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -1159,6 +1337,8 @@ function restoreDraft() {
     if (data.logistics) Object.assign(logistics, data.logistics);
     if (data.logisticsEnabled !== undefined) logisticsEnabled.value = data.logisticsEnabled;
     if (data.fiscalModuleEnabled !== undefined) fiscalModuleEnabled.value = data.fiscalModuleEnabled;
+    if (data.wholesaleEnabled !== undefined) wholesaleEnabled.value = data.wholesaleEnabled;
+    if (data.selectedWholesaleUnit) selectedWholesaleUnit.value = data.selectedWholesaleUnit;
   } catch {
     clearDraft();
   }
@@ -1189,15 +1369,15 @@ const showFiscalWarning = computed(() => {
 const isContinuousUnit = computed(() => form.measurement_type === 'PESO' || form.measurement_type === 'LIQUIDO');
 
 const bulkUnitCost = computed(() => {
-  const totalCosto = form.cantidad_contenedores * finalCostoBultoUSD.value;
+  const totalCosto = effectiveContainers.value * finalCostoBultoUSD.value;
   const inversionTotal = totalCosto + finalFleteUSD.value;
-  const stockTotal = form.cantidad_contenedores * form.capacidad_por_contenedor;
+  const stockTotal = calculatedStockTotal.value;
   if (stockTotal <= 0) return 0;
   return bcvRound(inversionTotal / stockTotal, 4);
 });
 
 const calculatedStockTotal = computed(() => {
-  return form.cantidad_contenedores * form.capacidad_por_contenedor;
+  return effectiveContainers.value * form.capacidad_por_contenedor;
 });
 
 watch([finalCostoBultoUSD, finalFleteUSD], () => {
@@ -1213,6 +1393,14 @@ watch([finalCostoBultoUSD, finalFleteUSD], () => {
 
 watch(calculatedStockTotal, (val) => {
   form.initial_physical_stock = val;
+});
+
+watch(wholesaleEnabled, (on) => {
+  form.cantidad_contenedores = 1;
+  form.capacidad_por_contenedor = 1;
+  if (!on) {
+    form.measurement_type = 'UNIDAD';
+  }
 });
 
 watch(() => form.measurement_type, () => {
@@ -1286,19 +1474,34 @@ const suggestedPriceUsdNum = computed(() => {
   const cost = effectiveCostUsd.value;
   const margin = form.profit_margin || 0;
   if (cost <= 0 || margin <= 0) return 0;
-  let raw: number;
-  if (form.margin_type === 'FINANCIAL') {
-    const divisor = 1 - margin / 100;
-    raw = divisor <= 0.01 ? 0 : cost / divisor;
-  } else {
-    raw = cost * (1 + margin / 100);
-  }
-  return bcvRound(raw, 2);
+  return form.margin_type === 'FINANCIAL'
+    ? calcFinancialPrice(cost, margin)
+    : calcTraditionalPrice(cost, margin);
 });
 
-const suggestedPriceVes = computed(() => {
-  if (suggestedPriceUsdNum.value > 0 && rateValue.value > 0) {
-    return fmtVES(bcvRound(suggestedPriceUsdNum.value * rateValue.value, 2));
+// Dual suggested prices for the comparison display (always both)
+const suggestedTraditionalNum = computed(() => {
+  const cost = effectiveCostUsd.value;
+  if (cost <= 0) return 0;
+  return calcTraditionalPrice(cost, form.profit_margin || 0);
+});
+
+const suggestedFinancialNum = computed(() => {
+  const cost = effectiveCostUsd.value;
+  if (cost <= 0) return 0;
+  return calcFinancialPrice(cost, form.profit_margin || 0);
+});
+
+const suggestedTraditionalVES = computed(() => {
+  if (suggestedTraditionalNum.value > 0 && rateValue.value > 0) {
+    return fmtVES(calcVES(suggestedTraditionalNum.value, rateValue.value));
+  }
+  return fmtVES(0);
+});
+
+const suggestedFinancialVES = computed(() => {
+  if (suggestedFinancialNum.value > 0 && rateValue.value > 0) {
+    return fmtVES(calcVES(suggestedFinancialNum.value, rateValue.value));
   }
   return fmtVES(0);
 });
@@ -1381,10 +1584,18 @@ async function handleSubmit() {
     }
 
     // Logistics fields — generic container payload (backend normalizes via cross-fallback)
-    formData.append('cantidad_contenedores', String(form.cantidad_contenedores));
+    formData.append('cantidad_contenedores', String(effectiveContainers.value));
     formData.append('capacidad_por_contenedor', String(form.capacidad_por_contenedor));
     formData.append('costo_bulto_total_usd', String(finalCostoBultoUSD.value));
     formData.append('costo_flete_usd', String(finalFleteUSD.value));
+    formData.append('wholesale_enabled', String(wholesaleEnabled.value));
+    if (wholesaleEnabled.value) {
+      formData.append('wholesale_unit', selectedWholesaleUnit.value);
+      formData.append('wholesale_multiplier', String(wholesaleConfig.value.multiplier));
+      formData.append('sale_type', 'MAYORISTA');
+    } else {
+      formData.append('sale_type', 'UNIDAD');
+    }
 
     // Image: prefer native File/Blob from ImageStudio, fallback to URL string
     if (selectedImageFile.value instanceof Blob) {
@@ -1477,6 +1688,8 @@ function resetForm() {
   showBrandImageStudio.value = false;
   showImageStudio.value = false;
   selectedImageFile.value = null;
+  wholesaleEnabled.value = false;
+  selectedWholesaleUnit.value = 'BULTO';
   isNewProductGlobal.value = false;
   isCheckingBarcode.value = false;
   scanning.value = false;

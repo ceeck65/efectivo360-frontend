@@ -198,7 +198,7 @@ function toggleExpand(id: number) {
 onMounted(async () => {
   try {
     const info = await fetchApi<any>('/api/v1/tenants/settings/info/');
-    primaryBlueprint.value = info?.primary_business_type || null;
+    primaryBlueprint.value = info?.business_type || null;
 
     if (primaryBlueprint.value && props.tenantId) {
       await Promise.all([loadCategories(), loadExtensions()]);
