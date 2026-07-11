@@ -200,13 +200,13 @@
       <h3 class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Configuración de Tienda</h3>
       <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Tipo de IVA</label>
-          <select v-model="form.iva_type"
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Tipo de IVA *</label>
+          <select v-model="form.tax_rate_id"
             class="w-full h-10 px-3.5 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-            <option value="GENERAL">General 16%</option>
-            <option value="REDUCED">Reducido 8%</option>
-            <option value="EXEMPT">Exento</option>
-            <option value="ADDITIONAL">Adicional</option>
+            <option :value="null">Seleccionar...</option>
+            <option v-for="tr in taxRates" :key="tr.id" :value="tr.id">
+              {{ tr.name }} ({{ tr.rate_percentage }}%)
+            </option>
           </select>
         </div>
         <div>
@@ -219,13 +219,84 @@
           </select>
         </div>
         <div>
-          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Tipo de Inventario</label>
-          <select v-model="form.inventory_type"
+          <label class="block text-xs font-semibold text-slate-600 mb-1.5">Tipo de Producto *</label>
+          <select v-model="form.product_type_id"
             class="w-full h-10 px-3.5 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-            <option value="PHYSICAL">Físico</option>
-            <option value="SERVICE">Servicio</option>
-            <option value="COMBO">Combo</option>
+            <option :value="null">Seleccionar...</option>
+            <option v-for="pt in productTypes" :key="pt.id" :value="pt.id">
+              {{ pt.name }}
+            </option>
           </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── Dynamic Attributes ─── -->
+    <div v-if="isLoadingAttributes" class="bg-white border border-slate-200 shadow-sm rounded-xl p-6 space-y-4">
+      <h3 class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Atributos</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div v-for="i in 4" :key="i" class="animate-pulse space-y-2">
+          <div class="h-3 w-24 bg-slate-200 rounded" />
+          <div class="h-10 bg-slate-200 rounded-lg" />
+        </div>
+      </div>
+    </div>
+    <div v-else-if="dynamicAttributes.length > 0" class="bg-white border border-slate-200 shadow-sm rounded-xl p-6 space-y-4">
+      <h3 class="text-xs font-semibold text-slate-600 uppercase tracking-wider">Atributos</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div v-for="attr in dynamicAttributes" :key="attr.id">
+          <label class="block text-sm font-medium text-slate-700 mb-1.5">
+            {{ attr.label }}
+            <span v-if="attr.unit" class="text-xs text-slate-400 font-normal ml-1">({{ attr.unit }})</span>
+          </label>
+
+          <!-- select -->
+          <select
+            v-if="attr.attr_type === 'select'"
+            v-model="form.attributes[attr.id]"
+            class="w-full h-10 px-3.5 text-sm border border-slate-300 rounded-lg bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Seleccionar...</option>
+            <option v-for="opt in attr.options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+          </select>
+
+          <!-- number / decimal -->
+          <div
+            v-else-if="attr.attr_type === 'number' || attr.attr_type === 'decimal'"
+            class="relative"
+          >
+            <input
+              v-model="form.attributes[attr.id]"
+              type="number" step="any" min="0"
+              placeholder="0"
+              class="w-full h-10 px-3.5 pr-10 text-sm border border-slate-300 rounded-lg bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+            />
+            <span v-if="attr.unit" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">{{ attr.unit }}</span>
+          </div>
+
+          <!-- boolean -->
+          <label
+            v-else-if="attr.attr_type === 'boolean'"
+            class="inline-flex items-center gap-3 cursor-pointer"
+          >
+            <input
+              v-model="form.attributes[attr.id]"
+              type="checkbox"
+              true-value="true"
+              false-value=""
+              class="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span class="text-sm text-slate-600">{{ form.attributes[attr.id] ? 'Sí' : 'No' }}</span>
+          </label>
+
+          <!-- string (default) -->
+          <input
+            v-else
+            v-model="form.attributes[attr.id]"
+            type="text"
+            placeholder="Valor"
+            class="w-full h-10 px-3.5 text-sm border border-slate-300 rounded-lg bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          />
         </div>
       </div>
     </div>
@@ -249,8 +320,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useApi } from '@/composables/useApi';
+
+interface TaxRateOption { id: string; name: string; code: string; rate_percentage: number; }
+interface ProductTypeOption { id: string; name: string; code: string; }
 
 const emit = defineEmits<{
   (e: 'cancel'): void;
@@ -276,6 +350,24 @@ const submitting = ref(false);
 const exchangeRate = ref(0);
 const selectedImage = ref<File | null>(null);
 
+const taxRates = ref<TaxRateOption[]>([]);
+const productTypes = ref<ProductTypeOption[]>([]);
+const loadingMeta = ref(true);
+
+onMounted(async () => {
+  const [trRes, ptRes] = await Promise.all([
+    fetchApi('/api/v1/catalog/tax-rates/').catch(() => ({ results: [] })),
+    fetchApi('/api/v1/products/product-types/').catch(() => ({ results: [] })),
+  ]);
+  taxRates.value = ((trRes as any)?.results ?? []).map((r: any) => ({
+    id: r.id, name: r.name, code: r.code, rate_percentage: r.rate_percentage,
+  }));
+  productTypes.value = ((ptRes as any)?.results ?? []).map((r: any) => ({
+    id: r.id, name: r.name, code: r.code,
+  }));
+  loadingMeta.value = false;
+});
+
 // ── Form ──
 const form = reactive({
   name: '',
@@ -284,13 +376,49 @@ const form = reactive({
   description: '',
   brand_id: null as string | null,
   category_id: null as string | null,
-  iva_type: 'GENERAL',
+  tax_rate_id: null as string | null,
+  product_type_id: null as string | null,
   sale_type: 'UNIT',
-  inventory_type: 'PHYSICAL',
   is_igtf_applicable: false,
   is_fractionable: false,
   requires_weight: false,
   behavior_type: 'STANDARD',
+  attributes: {} as Record<string, string>,
+});
+
+interface DynamicAttribute {
+  id: string;
+  label: string;
+  attr_type: string;
+  unit?: string;
+  options?: { value: string; label: string }[];
+}
+
+const dynamicAttributes = ref<DynamicAttribute[]>([]);
+const isLoadingAttributes = ref(false);
+
+watch(() => form.category_id, async (newCategoryId) => {
+  if (!newCategoryId) {
+    dynamicAttributes.value = [];
+    form.attributes = {};
+    return;
+  }
+  isLoadingAttributes.value = true;
+  try {
+    const res = await fetchApi<any>(`/api/v1/catalog/smart-categories/${newCategoryId}/attributes/`);
+    const data = Array.isArray(res) ? res : [];
+    dynamicAttributes.value = data;
+    const initial: Record<string, string> = {};
+    for (const attr of data) {
+      initial[attr.id] = form.attributes[attr.id] || '';
+    }
+    form.attributes = initial;
+  } catch {
+    dynamicAttributes.value = [];
+    form.attributes = {};
+  } finally {
+    isLoadingAttributes.value = false;
+  }
 });
 
 // ── Presentations Matrix ──
@@ -327,6 +455,7 @@ const presentations = reactive<PresentationRow[]>([
 // ── Computed ──
 const isValid = computed(() => {
   return form.name.trim() && form.sku.trim() && form.category_id
+    && form.tax_rate_id && form.product_type_id
     && presentations.every(p => p.name.trim());
 });
 
@@ -405,9 +534,9 @@ async function handleSubmit() {
     formData.append('exchange_rate', String(exchangeRate.value));
     formData.append('tenant_base_currency', props.baseCurrency);
 
-    formData.append('iva_type', form.iva_type);
+    if (form.tax_rate_id) formData.append('tax_rate_id', form.tax_rate_id);
+    if (form.product_type_id) formData.append('product_type_id', form.product_type_id);
     formData.append('sale_type', form.sale_type);
-    formData.append('inventory_type', form.inventory_type);
     formData.append('behavior_type', form.behavior_type);
     formData.append('is_igtf_applicable', String(form.is_igtf_applicable));
     formData.append('is_fractionable', String(form.is_fractionable));
@@ -415,6 +544,11 @@ async function handleSubmit() {
 
     if (selectedImage.value) {
       formData.append('image', selectedImage.value);
+    }
+
+    const attrKeys = Object.keys(form.attributes).filter(k => form.attributes[k]);
+    if (attrKeys.length > 0) {
+      formData.append('attributes', JSON.stringify(form.attributes));
     }
 
     formData.append('presentations', JSON.stringify(presentations));

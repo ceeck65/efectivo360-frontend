@@ -198,12 +198,34 @@ export type ProductCategoryListResponse = PaginatedResponse<ProductCategoryEntit
 export type StockMovementListResponse = PaginatedResponse<StockMovement>;
 export type InventorySummaryResponse = { data: InventorySummary };
 
+/** Tax rate (IVA) fetched from /api/v1/catalog/tax-rates/ */
+export interface TaxRate {
+  id: string;
+  code: string;
+  name: string;
+  rate_percentage: number;
+  is_active: boolean;
+}
+
+/** Product type fetched from /api/v1/products/product-types/ */
+export interface ProductType {
+  id: string;
+  code: string;
+  name: string;
+  requires_stock: boolean;
+  has_variants: boolean;
+  is_bundle: boolean;
+  is_active: boolean;
+}
+
 /** DTOs para operaciones CRUD */
 export interface CreateProductDTO {
   sku: string;
   name: string;
   description?: string;
   categoryId: ULID;
+  taxRateId: ULID;
+  productTypeId: ULID;
   unitOfMeasure: UnitOfMeasure;
   salePrice: number;
   costPrice: number;

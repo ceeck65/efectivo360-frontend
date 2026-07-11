@@ -92,6 +92,8 @@ export interface DualSearchProduct {
   description?: string;
   iva_type?: string;
   tax_rate?: string;
+  tax_rate_id?: string;
+  product_type_id?: string;
   is_igtf_applicable?: boolean;
   unit_display?: string;
   presentacion_display?: string;
@@ -163,6 +165,8 @@ const debouncedSearch = useDebounceFn(async (term: string) => {
         description: item.description ?? '',
         iva_type: item.iva_type ?? 'GENERAL',
         tax_rate: item.tax_rate ?? '',
+        tax_rate_id: item.tax_rate_id ?? item.tax_rate ?? null,
+        product_type_id: item.product_type_id ?? null,
         is_igtf_applicable: item.is_igtf_applicable ?? false,
         unit_display: item.unit_display ?? '',
         presentacion_display: item.presentacion_display ?? '',

@@ -28,14 +28,14 @@
           </div>
           <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-3">
             <button v-for="bp in filtered" :key="bp.id" type="button"
-              @click="selectedId = bp.id"
+              @click="selectedId = bp.ulid"
               class="relative flex flex-col items-start text-left p-4 rounded-xl border transition-all duration-150"
-              :class="selectedId === bp.id
+              :class="selectedId === bp.ulid
                 ? 'border-blue-500 bg-blue-50/40 ring-1 ring-blue-500/20'
                 : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm'">
               <div class="absolute top-3 right-3 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors"
-                :class="selectedId === bp.id ? 'border-blue-500 bg-blue-500' : 'border-slate-300'">
-                <Check v-if="selectedId === bp.id" class="w-3 h-3 text-white" />
+                :class="selectedId === bp.ulid ? 'border-blue-500 bg-blue-500' : 'border-slate-300'">
+                <Check v-if="selectedId === bp.ulid" class="w-3 h-3 text-white" />
               </div>
               <div class="w-10 h-10 rounded-lg flex items-center justify-center mb-2 text-xl bg-slate-100">
                 <span v-if="bp.icon">{{ bp.icon }}</span>
@@ -74,6 +74,7 @@ import { useNotify } from '@/composables/useNotify';
 
 interface BusinessType {
   id: string;
+  ulid: string;
   name: string;
   code: string;
   icon: string;

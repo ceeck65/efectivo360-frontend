@@ -214,7 +214,7 @@ interface CatalogProduct {
   sale_type: string;
   current_stock: number;
   is_active: boolean;
-  global_product_id: number | null;
+  global_product_id: string | null;
 }
 
 const router = useRouter();
@@ -235,28 +235,30 @@ const saving = ref(false);
 
 // ── Normalizer ──
 
+function extractPrice(prices: any[], currency: string, field: string): number {
+  const entry = prices?.find((p: any) => p?.currency_code === currency);
+  return parseFloat(entry?.[field] ?? 0);
+}
+
 function normalizeProduct(api: any): CatalogProduct {
-  const priceUsd = parseFloat(api.base_price_usd ?? api.price_data?.current_prices?.usd ?? 0);
-  const priceVes = parseFloat(api.base_price_ves ?? api.price_data?.current_prices?.ves ?? 0);
-  const costUsd = parseFloat(api.cost_price_usd ?? 0);
-  const margin = parseFloat(api.porcentaje_ganancia ?? 0);
-  const stock = api.current_stock ?? 0;
+  const pres = api.presentations?.find((p: any) => p.is_default || p.is_base_unit) ?? api.presentations?.[0];
+  const prices = pres?.prices ?? [];
   return {
     id: api.id,
-    name: api.name || '',
-    sku: api.sku || '',
-    barcode: api.barcode || null,
-    category: api.category || '',
+    name: api.effective_name || api.global_product?.official_name || '',
+    sku: api.effective_sku || api.global_product?.sku || '',
+    barcode: pres?.barcode || api.barcode || null,
+    category: api.global_product?.smart_category?.name || api.category || '',
     image_url: api.image || api.image_url || null,
-    price_usd: priceUsd,
-    price_ves: priceVes,
-    cost_price_usd: costUsd,
-    profit_margin: margin,
+    price_usd: extractPrice(prices, 'USD', 'retail_price'),
+    price_ves: extractPrice(prices, 'VES', 'retail_price'),
+    cost_price_usd: extractPrice(prices, 'USD', 'cost'),
+    profit_margin: extractPrice(prices, 'USD', 'profit_margin'),
     margin_type: 'FINANCIAL',
     inventory_type: api.inventory_type || 'SIMPLE',
     sale_type: api.sale_type || 'UNIDAD',
-    current_stock: stock,
-    is_active: stock > 0,
+    current_stock: api.current_stock ?? 0,
+    is_active: api.is_active ?? (api.current_stock ?? 0) > 0,
     global_product_id: api.global_product?.id ?? null,
   };
 }

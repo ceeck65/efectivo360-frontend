@@ -466,26 +466,26 @@
             </div>
           </div>
 
-          <!-- IVA -->
+          <!-- IVA / Tipo de Producto -->
           <div class="grid grid-cols-2 gap-3 pt-2">
             <div>
               <label class="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Tipo de IVA</label>
-              <select v-model="form.iva_type"
+              <select v-model="form.tax_rate_id"
                 class="w-full h-9 px-3 text-sm border border-slate-300 rounded-lg bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                <option value="GENERAL">IVA General 16%</option>
-                <option value="REDUCED">IVA Reducido 8%</option>
-                <option value="AMPLIADO">IVA Ampliado 22%</option>
-                <option value="EXENTO">Exento</option>
+                <option :value="null">Seleccionar...</option>
+                <option v-for="tr in taxRates" :key="tr.id" :value="tr.id">
+                  {{ tr.name }} ({{ tr.rate_percentage }}%)
+                </option>
               </select>
             </div>
             <div>
-              <label class="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Tipo de Inventario</label>
-              <select v-model="form.inventory_type"
+              <label class="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Tipo de Producto</label>
+              <select v-model="form.product_type_id"
                 class="w-full h-9 px-3 text-sm border border-slate-300 rounded-lg bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500">
-                <option value="SIMPLE">Simple</option>
-                <option value="COMPOUND">Compuesto</option>
-                <option value="KARDEX">Kardex</option>
-                <option value="NONE">Sin Stock</option>
+                <option :value="null">Seleccionar...</option>
+                <option v-for="pt in productTypes" :key="pt.id" :value="pt.id">
+                  {{ pt.name }}
+                </option>
               </select>
             </div>
           </div>
@@ -924,6 +924,20 @@ async function submitStockAdjustment() {
   }
 }
 
+const taxRates = ref<{ id: string; name: string; code: string; rate_percentage: number }[]>([]);
+const productTypes = ref<{ id: string; name: string; code: string }[]>([]);
+
+function fetchTaxProductData() {
+  Promise.all([
+    fetchApi('/api/v1/catalog/tax-rates/').then((r: any) => {
+      taxRates.value = (r?.results ?? []).map((t: any) => ({ id: t.id, name: t.name, code: t.code, rate_percentage: t.rate_percentage }));
+    }).catch(() => {}),
+    fetchApi('/api/v1/products/product-types/').then((r: any) => {
+      productTypes.value = (r?.results ?? []).map((t: any) => ({ id: t.id, name: t.name, code: t.code }));
+    }).catch(() => {}),
+  ]);
+}
+
 // ── Form ──
 
 const form = reactive({
@@ -948,6 +962,8 @@ const form = reactive({
   price_ves: 0,
   iva_type: 'GENERAL',
   inventory_type: 'SIMPLE',
+  tax_rate_id: null as string | null,
+  product_type_id: null as string | null,
   sale_type: 'UNIDAD',
   units_per_package: 1,
   initial_physical_stock: 0,
@@ -1116,6 +1132,8 @@ function applyInitialData(data: Record<string, any>) {
   form.profit_margin = parseFloat(data.porcentaje_ganancia ?? 30);
   form.iva_type = data.tax_type ?? 'GENERAL';
   form.inventory_type = data.inventory_type ?? 'SIMPLE';
+  form.tax_rate_id = data.tax_rate_id ?? null;
+  form.product_type_id = data.product_type_id ?? null;
   form.sale_type = data.sale_type ?? 'UNIDAD';
   form.measurement_type = data.sale_type === 'PESO' ? 'PESO' : data.sale_type === 'LIQUIDO' ? 'LIQUIDO' : 'UNIDAD';
   form.units_per_package = data.unidades_por_paquete ?? 1;
@@ -1158,6 +1176,8 @@ async function handleSave() {
       margin_type: form.margin_type,
       tax_type: form.iva_type,
       inventory_type: form.inventory_type,
+      tax_rate_id: form.tax_rate_id,
+      product_type_id: form.product_type_id,
       sale_type: wholesaleEnabled.value ? 'MAYORISTA' : form.sale_type,
       unidades_por_paquete: form.units_per_package,
       cantidad_contenedores: form.cantidad_contenedores,
@@ -1219,6 +1239,7 @@ function resetForm() {
   form.profit_margin = 30; form.margin_type = 'FINANCIAL';
   form.price_usd = 0; form.price_ves = 0;
   form.iva_type = 'GENERAL'; form.inventory_type = 'SIMPLE';
+  form.tax_rate_id = null; form.product_type_id = null;
   form.sale_type = 'UNIDAD'; form.units_per_package = 1;
   form.initial_physical_stock = 0; form.initial_cost_price = 0;
   errors.name = ''; errors.sku = '';
@@ -1250,6 +1271,7 @@ onMounted(async () => {
     }
   }
   fetchForexRate();
+  fetchTaxProductData();
 });
 </script>
 

@@ -154,7 +154,6 @@ interface ProductItem {
   category?: string;
   inventory_type: 'KARDEX' | 'SIMPLE' | 'NONE';
   current_stock?: number;
-  base_unit_stock?: number;
 }
 
 const search = ref('');
@@ -184,7 +183,6 @@ function openAudit(p: ProductItem) {
 }
 
 function openAdjustmentDrawer(p: ProductItem) {
-  // TODO: levantar AdjustmentDrawer siguiendo el patrón de KardexAuditDrawer
   console.log('Adjustment for', p.name, p.id);
   openMenuId.value = null;
 }
@@ -192,6 +190,19 @@ function openAdjustmentDrawer(p: ProductItem) {
 function formatStock(val: number | undefined | null): string {
   if (val == null) return '0';
   return Number(val.toFixed(2)).toLocaleString('es', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+/** Normalise a stock‑API item into a ProductItem for the table */
+function normaliseStockItem(item: any): ProductItem {
+  const prod = item.product ?? {};
+  return {
+    id: item.id,
+    name: prod.effective_name ?? prod.global_product?.official_name ?? '',
+    sku: prod.effective_sku ?? prod.global_product?.sku ?? '',
+    category: prod.global_product?.smart_category?.name ?? '',
+    inventory_type: 'SIMPLE',
+    current_stock: item.quantity ?? 0,
+  };
 }
 
 const filteredProducts = computed(() => {
@@ -213,19 +224,12 @@ onMounted(async () => {
   loading.value = true;
   try {
     const params: Record<string, string | number> = { page_size: 1000 };
-    const res = await apiClient.get('/api/products/', { params });
+    const res = await apiClient.get('/stocks/', { params });
     const data = res.data;
     const items = Array.isArray(data?.results) ? data.results : (Array.isArray(data) ? data : []);
-    products.value = items.map((item: any) => ({
-      id: item.id,
-      name: item.name ?? item.nombre ?? '',
-      sku: item.sku ?? '',
-      category: item.category ?? '',
-      inventory_type: item.inventory_type ?? 'SIMPLE',
-      current_stock: item.current_stock ?? item.base_unit_stock ?? 0,
-    }));
+    products.value = items.map(normaliseStockItem);
   } catch (e) {
-    console.error('Error loading products', e);
+    console.error('Error loading stock', e);
   } finally {
     loading.value = false;
   }

@@ -199,10 +199,16 @@ async function loadCategoryAttrs() {
   if (!props.categoryId) return;
   loadingAttrs.value = true;
   try {
-    const res = await fetchApi<any>(`/api/v1/catalog/categories/${props.categoryId}/attributes/`);
+    const res = await fetchApi<any>(`/api/v1/catalog/smart-categories/${props.categoryId}/attributes/`);
     const all = Array.isArray(res) ? res : [];
-    inheritedAttrs.value = all.filter((a: any) => a.inherited_from !== 'self');
-    ownAttrs.value = all.filter((a: any) => a.inherited_from === 'self');
+    const mapped = all.map((a: any) => ({
+      key: a.id,
+      name: a.label,
+      type: a.attr_type,
+      inherited_from: 'self',
+    }));
+    inheritedAttrs.value = mapped.filter((a: any) => a.inherited_from !== 'self');
+    ownAttrs.value = mapped.filter((a: any) => a.inherited_from === 'self');
   } catch {
     inheritedAttrs.value = [];
     ownAttrs.value = [];
@@ -213,13 +219,9 @@ async function assignAttribute(attr: MasterAttr) {
   if (isAssignedOrInherited(attr.id)) return;
   busyKeys.value.add(attr.id);
   try {
-    await fetchApi(`/api/v1/catalog/categories/${props.categoryId}/assign-attribute/`, {
+    await fetchApi(`/api/v1/catalog/smart-categories/${props.categoryId}/assign-attribute/`, {
       method: 'POST',
-      data: {
-        key: attr.id,
-        name: attr.label,
-        type: attr.attr_type === 'decimal' ? 'number' : attr.attr_type,
-      },
+      data: { id: attr.id },
     });
     await loadCategoryAttrs();
     emit('attributesChanged');
@@ -231,9 +233,9 @@ async function assignAttribute(attr: MasterAttr) {
 async function removeAttribute(key: string) {
   busyKeys.value.add(key);
   try {
-    await fetchApi(`/api/v1/catalog/categories/${props.categoryId}/remove-attribute/`, {
+    await fetchApi(`/api/v1/catalog/smart-categories/${props.categoryId}/unassign-attribute/`, {
       method: 'POST',
-      data: { key },
+      data: { id: key },
     });
     await loadCategoryAttrs();
     emit('attributesChanged');

@@ -16,6 +16,8 @@ import type {
   CreateProductDTO,
   UpdateProductDTO,
   CreateStockMovementDTO,
+  TaxRate,
+  ProductType,
 } from '../types';
 
 const PRODUCTS_URL = '/api/products';
@@ -168,6 +170,40 @@ export const InventoryService = {
       previous: body.previous ?? null,
       results,
     };
+  },
+
+  // ==================== TAX RATES & PRODUCT TYPES ====================
+
+  async getTaxRates(): Promise<TaxRate[]> {
+    const response = await httpClient.get<any>(`/api/v1/catalog/tax-rates/`, {
+      params: { ...tenantParam() },
+    });
+    const body = response.data;
+    const results = body?.results ?? body ?? [];
+    return results.map((r: any) => ({
+      id: r.id ?? '',
+      code: r.code ?? '',
+      name: r.name ?? '',
+      rate_percentage: Number(r.rate_percentage ?? 0),
+      is_active: r.is_active ?? true,
+    }));
+  },
+
+  async getProductTypes(): Promise<ProductType[]> {
+    const response = await httpClient.get<any>(`/api/v1/products/product-types/`, {
+      params: { ...tenantParam() },
+    });
+    const body = response.data;
+    const results = body?.results ?? body ?? [];
+    return results.map((r: any) => ({
+      id: r.id ?? '',
+      code: r.code ?? '',
+      name: r.name ?? '',
+      requires_stock: r.requires_stock ?? true,
+      has_variants: r.has_variants ?? false,
+      is_bundle: r.is_bundle ?? false,
+      is_active: r.is_active ?? true,
+    }));
   },
 
   // ==================== MOVIMIENTOS DE STOCK ====================

@@ -232,11 +232,11 @@ interface BusinessType {
   code: string;
   icon?: string;
   description?: string;
-  category_ids: number[];
+  category_ids: string[];
 }
 
 interface CategoryNode {
-  id: number;
+  id: string;
   name: string;
   code: string;
   icon?: string;
@@ -255,8 +255,8 @@ const step = ref(1);
 const businessTypes = ref<BusinessType[]>([]);
 const categoryTree = ref<CategoryNode[]>([]);
 const activeBusinessType = ref<BusinessType | null>(null);
-const selectedCategoryIds = ref<number[]>([]);
-const selectedCategoryId = ref<number | null>(null);
+const selectedCategoryIds = ref<string[]>([]);
+const selectedCategoryId = ref<string | null>(null);
 const showModal = ref(false);
 const modalTitle = ref('');
 const modalDescription = ref('');
@@ -274,7 +274,7 @@ function selectBusinessType(type: BusinessType) {
 }
 
 // ── Tree helpers ──
-function collectDescendantIds(node: CategoryNode): number[] {
+function collectDescendantIds(node: CategoryNode): string[] {
   const ids = [node.id];
   if (node.children) {
     for (const child of node.children) {
@@ -284,7 +284,7 @@ function collectDescendantIds(node: CategoryNode): number[] {
   return ids;
 }
 
-function toggleCategory(nodeId: number) {
+function toggleCategory(nodeId: string) {
   const idx = selectedCategoryIds.value.indexOf(nodeId);
   if (idx !== -1) {
     selectedCategoryIds.value = selectedCategoryIds.value.filter(id => id !== nodeId);

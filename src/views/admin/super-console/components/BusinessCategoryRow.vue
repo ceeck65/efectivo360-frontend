@@ -81,14 +81,14 @@ import { ref, computed, watch } from 'vue';
 import { ChevronRight, Lock } from 'lucide-vue-next';
 
 interface TreeNode {
-  id: number; name: string; code: string; icon?: string;
+  id: string; name: string; code: string; icon?: string;
   is_active?: boolean; children?: TreeNode[];
 }
 
 const props = withDefaults(defineProps<{
   node: TreeNode;
   depth?: number;
-  selectedIds: number[];
+  selectedIds: string[];
   activeBusinessTypeId: number;
   parentOn?: boolean;
   searchQuery?: string;
@@ -101,7 +101,7 @@ const props = withDefaults(defineProps<{
 });
 
 const emit = defineEmits<{
-  toggleNode: [nodeId: number];
+  toggleNode: [nodeId: string];
 }>();
 
 const hasChildren = computed(() => !!(props.node.children?.length));

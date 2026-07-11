@@ -150,6 +150,58 @@
               @create-inline="onBrandCreateInline"
             />
 
+            <!-- ═══ Dynamic Attributes ═══ -->
+            <div v-if="isLoadingAttributes" class="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] rounded-lg p-4 space-y-3">
+              <div class="h-3 w-24 bg-slate-200 dark:bg-white/[0.08] rounded animate-pulse" />
+              <div class="grid grid-cols-2 gap-3">
+                <div v-for="i in 4" :key="i" class="animate-pulse space-y-1.5">
+                  <div class="h-2.5 w-20 bg-slate-200 dark:bg-white/[0.08] rounded" />
+                  <div class="h-9 bg-slate-200 dark:bg-white/[0.08] rounded-lg" />
+                </div>
+              </div>
+            </div>
+            <div v-else-if="dynamicAttributes.length > 0" class="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] rounded-lg p-4 space-y-3">
+              <h3 class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Atributos</h3>
+              <div class="grid grid-cols-2 gap-3">
+                <div v-for="attr in dynamicAttributes" :key="attr.id">
+                  <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1">
+                    {{ attr.label }}
+                    <span v-if="attr.unit" class="text-[10px] text-slate-400 font-normal">({{ attr.unit }})</span>
+                  </label>
+                  <select
+                    v-if="attr.attr_type === 'select'"
+                    v-model="form.attributes[attr.id]"
+                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none"
+                  >
+                    <option value="">Seleccionar...</option>
+                    <option v-for="opt in attr.options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                  </select>
+                  <div v-else-if="attr.attr_type === 'number' || attr.attr_type === 'decimal'" class="relative">
+                    <input
+                      v-model="form.attributes[attr.id]"
+                      type="number" step="any" min="0" placeholder="0"
+                      class="w-full h-9 px-3 pr-8 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors"
+                    />
+                    <span v-if="attr.unit" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">{{ attr.unit }}</span>
+                  </div>
+                  <label v-else-if="attr.attr_type === 'boolean'" class="inline-flex items-center gap-2 cursor-pointer">
+                    <input
+                      v-model="form.attributes[attr.id]"
+                      type="checkbox" true-value="true" false-value=""
+                      class="h-4 w-4 rounded border-slate-300 dark:border-white/[0.12] text-blue-600 focus:ring-blue-500"
+                    />
+                    <span class="text-xs text-slate-600 dark:text-slate-400">{{ form.attributes[attr.id] ? 'Sí' : 'No' }}</span>
+                  </label>
+                  <input
+                    v-else
+                    v-model="form.attributes[attr.id]"
+                    type="text" placeholder="Valor"
+                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors"
+                  />
+                </div>
+              </div>
+            </div>
+
             <!-- IVA Type + Switch Módulo Fiscal + Alerta Preventiva -->
             <div>
               <!-- Switch: Módulo Fiscal -->
@@ -163,14 +215,14 @@
               </label>
 
               <template v-if="fiscalModuleEnabled">
-                <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de IVA</label>
-                <select v-model="form.iva_type"
+                <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de IVA *</label>
+                <select v-model="form.tax_rate_id"
                   class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer"
                   :class="{'border-amber-400 dark:border-amber-500/50': showFiscalWarning}">
-                  <option value="GENERAL">IVA General 16%</option>
-                  <option value="REDUCED">IVA Reducido 8%</option>
-                  <option value="AMPLIADO">IVA Ampliado 22%</option>
-                  <option value="EXENTO">Exento</option>
+                  <option :value="null">Seleccionar...</option>
+                  <option v-for="tr in taxRates" :key="tr.id" :value="tr.id">
+                    {{ tr.name }} ({{ tr.rate_percentage }}%)
+                  </option>
                 </select>
 
                 <p v-if="!fiscalSettings.enable_iva" class="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
@@ -620,12 +672,13 @@
                 <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Logística</span>
               </div>
               <div>
-                <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Estrategia de Inventario</label>
-                <select v-model="form.inventory_type"
+                <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Tipo de Producto *</label>
+                <select v-model="form.product_type_id"
                   class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer">
-                  <option value="KARDEX">Kardex — Control transaccional</option>
-                  <option value="SIMPLE">Simple — Stock directo</option>
-                  <option value="NONE">Servicio — Sin inventario</option>
+                  <option :value="null">Seleccionar...</option>
+                  <option v-for="pt in productTypes" :key="pt.id" :value="pt.id">
+                    {{ pt.name }}
+                  </option>
                 </select>
               </div>
               <div class="grid grid-cols-2 gap-3">
@@ -890,6 +943,21 @@ const { rateValue, fetchForexRate } = useForexRate();
 const authStore = useAuthStore();
 const router = useRouter();
 
+const taxRates = ref<{ id: string; name: string; code: string; rate_percentage: number }[]>([]);
+const productTypes = ref<{ id: string; name: string; code: string }[]>([]);
+
+onMounted(async () => {
+  restoreDraft();
+  await Promise.all([
+    fetchApi('/api/v1/catalog/tax-rates/').then((r: any) => {
+      taxRates.value = (r?.results ?? []).map((t: any) => ({ id: t.id, name: t.name, code: t.code, rate_percentage: t.rate_percentage }));
+    }).catch(() => {}),
+    fetchApi('/api/v1/products/product-types/').then((r: any) => {
+      productTypes.value = (r?.results ?? []).map((t: any) => ({ id: t.id, name: t.name, code: t.code }));
+    }).catch(() => {}),
+  ]);
+});
+
 const skuDuplicate = ref<{ product_id: string; product_name: string; sku: string } | null>(null);
 
 function checkSkuDuplicate() {
@@ -1040,6 +1108,43 @@ watch(() => selectedCategoryId.value, async (newCatId) => {
   await onCategoryChange();
 });
 
+// ── Dynamic Attributes ──
+
+interface DynamicAttribute {
+  id: string;
+  label: string;
+  attr_type: string;
+  unit?: string;
+  options?: { value: string; label: string }[];
+}
+
+const dynamicAttributes = ref<DynamicAttribute[]>([]);
+const isLoadingAttributes = ref(false);
+
+watch(() => selectedCategoryId.value, async (newCategoryId) => {
+  if (!newCategoryId) {
+    dynamicAttributes.value = [];
+    form.attributes = {};
+    return;
+  }
+  isLoadingAttributes.value = true;
+  try {
+    const res = await fetchApi<any>(`/api/v1/catalog/smart-categories/${newCategoryId}/attributes/`);
+    const data = Array.isArray(res) ? res : [];
+    dynamicAttributes.value = data;
+    const initial: Record<string, string> = {};
+    for (const attr of data) {
+      initial[attr.id] = form.attributes[attr.id] || '';
+    }
+    form.attributes = initial;
+  } catch {
+    dynamicAttributes.value = [];
+    form.attributes = {};
+  } finally {
+    isLoadingAttributes.value = false;
+  }
+});
+
 // ── Dual Search Handlers ──
 
 function onSelectLocal(product: DualSearchProduct) {
@@ -1071,7 +1176,8 @@ function onSelectGlobal(product: DualSearchProduct) {
     selectedCategoryName.value = product.category ?? '';
   }
   if (product.image_url) form.image = product.image_url;
-  if (product.iva_type) form.iva_type = product.iva_type;
+  if (product.tax_rate_id) form.tax_rate_id = product.tax_rate_id;
+  if (product.product_type_id) form.product_type_id = product.product_type_id;
 }
 
 function onCreateCustom(term: string) {
@@ -1278,7 +1384,8 @@ const form = reactive({
   liquid_container: 'BIDON',
   cantidad_contenedores: 1,
   capacidad_por_contenedor: 1,
-  iva_type: 'GENERAL',
+  tax_rate_id: null as string | null,
+  product_type_id: null as string | null,
   cost_price_usd: 0,
   cost_price_ves: 0,
   profit_margin: 30,
@@ -1286,11 +1393,11 @@ const form = reactive({
   price_usd: 0,
   price_ves: 0,
   inventory_method: 'AVERAGE',
-  inventory_type: 'SIMPLE',
   default_purchase_unit: 'UNIT',
   units_per_package: 1,
   initial_physical_stock: 0,
   initial_cost_price: 0,
+  attributes: {} as Record<string, string>,
 });
 
 const errors = reactive({
@@ -1354,14 +1461,12 @@ watch([activeTab, logisticsEnabled, logistics, fiscalModuleEnabled], () => {
   saveTimer = setTimeout(saveDraft, 500);
 }, { deep: true });
 
-onMounted(restoreDraft);
-
 // ── Computed: fiscal warning ──
 
 const showFiscalWarning = computed(() => {
-  return fiscalModuleEnabled.value
-    && !fiscalSettings.es_contribuyente_especial
-    && form.iva_type !== 'EXENTO';
+  if (!fiscalModuleEnabled.value || fiscalSettings.es_contribuyente_especial) return false;
+  const sel = taxRates.value.find(t => t.id === form.tax_rate_id);
+  return sel != null && sel.code !== 'EXE';
 });
 
 // ── Computed: continuous (KG / LITER) detection ──
@@ -1545,36 +1650,44 @@ function validate(): boolean {
 
 async function handleSubmit() {
   if (!validate()) return;
-  // Ensure BCV 2‑decimal rounding on all monetary fields before submit
-  form.cost_price_usd = bcvRound(form.cost_price_usd, 2);
-  form.cost_price_ves = bcvRound(form.cost_price_ves, 2);
-  form.price_usd = bcvRound(form.price_usd, 2);
-  form.price_ves = bcvRound(form.price_ves, 2);
-  form.initial_cost_price = bcvRound(form.initial_cost_price, 2);
   submitting.value = true;
   try {
+    const effectiveRate = dekaRate.value > 0 ? dekaRate.value : rateValue.value;
+    const presentationsPayload = [
+      {
+        name: form.default_purchase_unit || 'UNIDAD',
+        units_per_package: form.units_per_package || 1,
+        barcode: form.barcode || '',
+        sku: form.sku,
+        prices: [
+          {
+            currency_code: 'USD',
+            cost_price: bcvRound(form.cost_price_usd, 2),
+            base_price: bcvRound(form.price_usd, 2),
+            profit_margin: form.profit_margin,
+          },
+          {
+            currency_code: 'VES',
+            cost_price: bcvRound(form.cost_price_ves, 2),
+            base_price: bcvRound(form.price_ves, 2),
+            profit_margin: form.profit_margin,
+          },
+        ],
+      },
+    ];
+
     const formData = new FormData();
 
     formData.append('name', form.name);
     formData.append('sku', form.sku);
     formData.append('barcode', form.barcode || '');
-    formData.append('category', selectedCategoryName.value || form.category || '');
     formData.append('description', form.description || '');
-    formData.append('iva_type', fiscalModuleEnabled.value ? form.iva_type : 'EXENTO');
-    formData.append('cost_price_usd', String(form.cost_price_usd || 0));
-    formData.append('cost_price_ves', String(form.cost_price_ves || 0));
-    formData.append('base_price_usd', String(form.price_usd || 0));
-    formData.append('base_price_ves', String(form.price_ves || 0));
-    formData.append('profit_margin', String(form.profit_margin || 0));
-    formData.append('margin_type', form.margin_type);
-    formData.append('inventory_type', form.inventory_type);
-    formData.append('inventory_method', form.inventory_method);
-    formData.append('default_purchase_unit', form.default_purchase_unit);
-    formData.append('units_per_package', String(form.units_per_package || 1));
-    formData.append('initial_stock', String(form.initial_physical_stock || 0));
-    formData.append('initial_cost_price', String(form.initial_cost_price || 0));
+    if (form.tax_rate_id) formData.append('tax_rate_id', form.tax_rate_id);
+    if (form.product_type_id) formData.append('product_type_id', form.product_type_id);
     formData.append('tenant_id', authStore.tenantUlid || '');
-    formData.append('category_id', String(Number(selectedCategoryId.value)));
+    formData.append('category_id', selectedCategoryId.value ?? '');
+    formData.append('exchange_rate', String(effectiveRate));
+    formData.append('tenant_base_currency', 'USD');
     formData.append('is_new_global', String(isNewProductGlobal.value));
     if (form.global_product_id) {
       formData.append('global_product_id', String(form.global_product_id));
@@ -1582,16 +1695,7 @@ async function handleSubmit() {
     if (form.brand) {
       formData.append('brand_id', form.brand);
     }
-
-    // Logistics fields — generic container payload (backend normalizes via cross-fallback)
-    formData.append('cantidad_contenedores', String(effectiveContainers.value));
-    formData.append('capacidad_por_contenedor', String(form.capacidad_por_contenedor));
-    formData.append('costo_bulto_total_usd', String(finalCostoBultoUSD.value));
-    formData.append('costo_flete_usd', String(finalFleteUSD.value));
-    formData.append('wholesale_enabled', String(wholesaleEnabled.value));
     if (wholesaleEnabled.value) {
-      formData.append('wholesale_unit', selectedWholesaleUnit.value);
-      formData.append('wholesale_multiplier', String(wholesaleConfig.value.multiplier));
       formData.append('sale_type', 'MAYORISTA');
     } else {
       formData.append('sale_type', 'UNIDAD');
@@ -1604,7 +1708,16 @@ async function handleSubmit() {
       formData.append('image', form.image);
     }
 
-    await apiClient.post('/api/products/', formData, {
+    // Dynamic attributes
+    const attrKeys = Object.keys(form.attributes).filter(k => form.attributes[k]);
+    if (attrKeys.length > 0) {
+      formData.append('attributes', JSON.stringify(form.attributes));
+    }
+
+    // Serialized presentations matrix
+    formData.append('presentations', JSON.stringify(presentationsPayload));
+
+    await apiClient.post('/api/v1/products/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     notifySuccess('Producto creado exitosamente');
@@ -1642,7 +1755,8 @@ function resetForm() {
   form.liquid_container = 'BIDON';
   form.cantidad_contenedores = 1;
   form.capacidad_por_contenedor = 1;
-  form.iva_type = 'GENERAL';
+  form.tax_rate_id = null;
+  form.product_type_id = null;
   form.cost_price_usd = 0;
   form.cost_price_ves = 0;
   form.profit_margin = 30;
@@ -1650,17 +1764,18 @@ function resetForm() {
   form.price_usd = 0;
   form.price_ves = 0;
   form.inventory_method = 'AVERAGE';
-  form.inventory_type = 'SIMPLE';
   form.default_purchase_unit = 'UNIT';
   form.units_per_package = 1;
   form.initial_physical_stock = 0;
   form.initial_cost_price = 0;
+  form.attributes = {};
   errors.barcode = '';
   errors.name = '';
   errors.sku = '';
   activeTab.value = 'general';
   selectedCategoryId.value = null;
   brands.value = [];
+  dynamicAttributes.value = [];
   logisticsEnabled.value = false;
   logistics.unit = 'BOX';
   logistics.qtyPerPackage = 1;
@@ -1831,7 +1946,8 @@ watch(() => props.visible, async (v) => {
     await Promise.all([loadFiscalSettings(), fetchForexRate()]);
     document.addEventListener('click', onDocumentClick);
     if (!fiscalSettings.enable_iva) {
-      form.iva_type = 'EXENTO';
+      const exe = taxRates.value.find(t => t.code === 'EXE');
+      if (exe) form.tax_rate_id = exe.id;
       fiscalModuleEnabled.value = false;
     }
   } else {

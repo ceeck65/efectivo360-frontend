@@ -121,6 +121,32 @@
               <input v-model="form.unit" type="text" placeholder="ej: kg, mm, horas" class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e]" />
             </div>
           </div>
+          <!-- Options section for select-type attributes -->
+          <div v-if="form.attr_type === 'select'" class="border-t border-slate-200 pt-4 dark:border-white/[0.06]">
+            <label class="block text-sm font-medium text-slate-700 mb-2 dark:text-slate-300">Opciones</label>
+            <div class="flex flex-wrap gap-2 mb-3">
+              <span
+                v-for="(opt, i) in form.options"
+                :key="i"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-slate-100 text-slate-700 rounded-full dark:bg-slate-700 dark:text-slate-300"
+              >
+                {{ opt.label }}
+                <button @click="removeOption(i)" class="text-slate-400 hover:text-red-500" title="Eliminar">&times;</button>
+              </span>
+            </div>
+            <div class="flex gap-2">
+              <input
+                v-model="newOptionLabel"
+                @keydown.enter.prevent="addOption"
+                type="text"
+                placeholder="Nueva opción..."
+                class="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 dark:border-white/[0.06] dark:bg-[#1a1f2e]"
+              />
+              <button @click="addOption" :disabled="!newOptionLabel.trim()" class="px-3 py-2 text-sm font-medium text-white bg-cyan-600 rounded-lg hover:bg-cyan-700 disabled:opacity-50">
+                Agregar
+              </button>
+            </div>
+          </div>
           <div class="flex items-center gap-3">
             <input v-model="form.is_active" type="checkbox" id="attr-active" class="h-4 w-4 rounded border-slate-300 text-cyan-600" />
             <label for="attr-active" class="text-sm text-slate-700 dark:text-slate-300">Activo</label>
@@ -138,12 +164,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { Search, Plus, Edit3, Power, RefreshCw } from 'lucide-vue-next';
 import { SimplePagination } from '@/shared/index.js';
 import { useApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
 import Swal from 'sweetalert2';
+
+interface OptionItem {
+  value: string;
+  label: string;
+}
 
 interface MasterAttribute {
   id: string;
@@ -153,6 +184,7 @@ interface MasterAttribute {
   unit: string;
   is_active: boolean;
   usage_count: number;
+  options?: OptionItem[];
 }
 
 const { fetchApi } = useApi();
@@ -168,12 +200,20 @@ const total = ref(0);
 
 const showModal = ref(false);
 const editingItem = ref<MasterAttribute | null>(null);
+const newOptionLabel = ref('');
 const form = ref({
   id: '',
   label: '',
   attr_type: 'string',
   unit: '',
-  is_active: true
+  is_active: true,
+  options: [] as OptionItem[]
+});
+
+watch(() => form.value.attr_type, (val) => {
+  if (val !== 'select') {
+    form.value.options = [];
+  }
 });
 
 const filteredData = computed(() => {
@@ -198,8 +238,29 @@ async function loadData() {
   }
 }
 
+function slugify(label: string): string {
+  return label
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9_]/g, '');
+}
+
+function addOption() {
+  const label = newOptionLabel.value.trim();
+  if (!label) return;
+  if (form.value.options.some(o => o.label.toLowerCase() === label.toLowerCase())) return;
+  form.value.options.push({ value: slugify(label), label });
+  newOptionLabel.value = '';
+}
+
+function removeOption(index: number) {
+  form.value.options.splice(index, 1);
+}
+
 function openCreate() {
-  form.value = { id: '', label: '', attr_type: 'string', unit: '', is_active: true };
+  form.value = { id: '', label: '', attr_type: 'string', unit: '', is_active: true, options: [] };
   editingItem.value = null;
   showModal.value = true;
 }
@@ -211,7 +272,8 @@ function openEdit(attr: MasterAttribute) {
     label: attr.label,
     attr_type: attr.attr_type,
     unit: attr.unit,
-    is_active: attr.is_active
+    is_active: attr.is_active,
+    options: attr.options ? attr.options.map(o => ({ ...o })) : []
   };
   showModal.value = true;
 }
@@ -229,13 +291,16 @@ async function saveItem() {
 
   saving.value = true;
   try {
-    const payload = {
+    const payload: Record<string, unknown> = {
       id: form.value.id,
       label: form.value.label,
       attr_type: form.value.attr_type,
       unit: form.value.unit,
-      is_active: form.value.is_active
+      is_active: form.value.is_active,
     };
+    if (form.value.attr_type === 'select') {
+      payload.options = form.value.options;
+    }
 
     if (editingItem.value) {
       await fetchApi(`/api/v1/admin/master-attributes/${editingItem.value.id}/`, { method: 'PATCH', data: payload });
