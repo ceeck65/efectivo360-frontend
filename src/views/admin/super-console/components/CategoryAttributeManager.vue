@@ -143,7 +143,7 @@ interface InheritedAttr {
 }
 
 const props = defineProps<{
-  categoryId: number | null;
+  categoryId: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -206,6 +206,7 @@ async function loadCategoryAttrs() {
       name: a.label,
       type: a.attr_type,
       inherited_from: 'self',
+      is_required: a.is_required ?? false,
     }));
     inheritedAttrs.value = mapped.filter((a: any) => a.inherited_from !== 'self');
     ownAttrs.value = mapped.filter((a: any) => a.inherited_from === 'self');

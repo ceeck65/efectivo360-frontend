@@ -68,15 +68,15 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { ChevronDown, Search } from 'lucide-vue-next';
 
 interface TreeNode {
-  id: number; name: string; code: string; icon?: string;
-  parent_id: number | null; parent_name?: string | null;
+  id: string; name: string; code: string; icon?: string;
+  parent_id: string | null; parent_name?: string | null;
   is_active?: boolean;
   children?: TreeNode[];
   _depth?: number;
 }
 
 const props = withDefaults(defineProps<{
-  modelValue?: number | null;
+  modelValue?: string | null;
   placeholder?: string;
   tree?: TreeNode[];
 }>(), {
@@ -84,7 +84,7 @@ const props = withDefaults(defineProps<{
 });
 
 const emit = defineEmits<{
-  'update:modelValue': [id: number | null];
+  'update:modelValue': [id: string | null];
 }>();
 
 const open = ref(false);

@@ -72,8 +72,50 @@ export interface Product extends BaseEntity {
   trackLots: boolean;
   /** Producto con fecha de vencimiento */
   trackExpiry: boolean;
+  /** Nombre efectivo del producto (desde ProductSerializer) */
+  effectiveName?: string;
+  /** SKU efectivo */
+  effectiveSku?: string;
+  /** Stock total incluyendo variantes */
+  totalStock?: number;
+  /** URL de la imagen del producto */
+  imageUrl?: string;
+  /** Precio USD calculado desde presentaciones */
+  priceUsd?: number;
+  /** Unidades por empaque (1 = unidad simple, 20 = bulto, etc.) */
+  unitsPerPackage?: number;
+  /** Precio por bulto calculado como priceUsd * unitsPerPackage */
+  wholesalePrice?: number;
+  /** Indica si el producto tiene variantes */
+  hasVariants?: boolean;
+  /** Variantes del producto */
+  variants?: VariantData[];
+  /** Nombre de la marca */
+  brandName?: string;
+  /** Nombre de la categoría */
+  categoryName?: string;
   /** Index signature para compatibilidad con Record<string, unknown> */
   [key: string]: unknown;
+}
+
+/** Datos de una variante de producto */
+export interface VariantData {
+  /** ULID de la variante */
+  id: string;
+  /** SKU de la variante */
+  sku: string;
+  /** Código de barras */
+  barcode: string;
+  /** Stock disponible */
+  stock: number;
+  /** Precio base USD */
+  price_base: string;
+  /** Nombre para mostrar (atributos combinados) */
+  display_name: string;
+  /** Atributos formateados [{name, value, id}] */
+  formatted_attributes: { name: string; value: string; id: number | null }[];
+  /** Atributos como mapa {masterAttributePk: value} */
+  attribute_values: Record<string, string>;
 }
 
 /** Entidad Categoría de producto */

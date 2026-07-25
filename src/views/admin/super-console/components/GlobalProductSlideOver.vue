@@ -267,7 +267,7 @@ const submitting = ref(false);
 const scanning = ref(false);
 const hasInitialized = ref(false);
 const categoryTree = ref<any[]>([]);
-const selectedCategoryId = ref<number | null>(null);
+const selectedCategoryId = ref<string | null>(null);
 
 const selectedCategoryCode = computed(() => {
   if (!selectedCategoryId.value) return '';
@@ -314,7 +314,7 @@ async function loadTree() {
   } catch { categoryTree.value = []; }
 }
 
-async function fetchCategoryAttributes(categoryId: number) {
+async function fetchCategoryAttributes(categoryId: string) {
   loadingAttributes.value = true; form.base_attributes = {}; attributeFields.value = [];
   try {
     const data = await fetchApi<any>(`/api/v1/catalog/categories/${categoryId}/attributes/`);

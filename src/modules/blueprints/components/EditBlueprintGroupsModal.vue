@@ -35,7 +35,6 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
 import type { Blueprint } from '../types';
 import { X } from 'lucide-vue-next';
 
@@ -46,7 +45,7 @@ interface Props {
 
 defineProps<Props>();
 
-const emit = defineEmits<{
+defineEmits<{
   close: [];
   updated: [];
 }>();

@@ -50,6 +50,7 @@
               <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Nombre</th>
               <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Correo Electrónico</th>
               <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Rol</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Cajas Asignadas</th>
               <th class="text-right px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Acciones</th>
             </tr>
           </thead>
@@ -70,12 +71,34 @@
                   {{ roleLabel(member.role) }}
                 </span>
               </td>
+              <td class="px-4 py-3">
+                <div v-if="member.role === 'ADMIN'" class="flex flex-wrap gap-1">
+                  <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                    Todas
+                  </span>
+                </div>
+                <div v-else-if="member.assigned_registers?.length" class="flex flex-wrap gap-1">
+                  <span v-for="reg in member.assigned_registers" :key="reg.id"
+                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                    <Monitor class="w-3 h-3 mr-1" />
+                    {{ reg.name }}
+                  </span>
+                </div>
+                <span v-else class="text-xs text-slate-400">—</span>
+              </td>
               <td class="px-4 py-3 text-right">
-                <button @click="confirmRemove(member)"
-                  class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                  title="Eliminar de la tienda">
-                  <Trash2 class="w-4 h-4" />
-                </button>
+                <div class="flex items-center justify-end gap-1">
+                  <button @click="openEditModal(member)"
+                    class="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                    title="Editar miembro">
+                    <Pencil class="w-4 h-4" />
+                  </button>
+                  <button @click="confirmRemove(member)"
+                    class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                    title="Eliminar de la tienda">
+                    <Trash2 class="w-4 h-4" />
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -267,6 +290,87 @@
       </div>
     </Teleport>
 
+    <!-- ============ MODAL: Edit Member ============ -->
+    <Teleport to="body">
+      <div v-if="showEditModal" class="fixed inset-0 z-[200] flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeEditModal" />
+        <div class="relative w-full max-w-lg max-h-[90vh] bg-white rounded-2xl shadow-xl border border-slate-200 flex flex-col overflow-hidden">
+          <div class="shrink-0 px-6 py-4 border-b border-slate-200">
+            <h2 class="text-base font-semibold text-slate-800">Editar Miembro</h2>
+            <p class="text-xs text-slate-500 mt-0.5">Actualiza los datos, rol y asignación de cajas</p>
+          </div>
+          <div class="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+            <div>
+              <label class="block text-xs font-medium text-slate-700 mb-1.5">Nombre Completo</label>
+              <input v-model="editForm.full_name" type="text" placeholder="Ej: María Pérez"
+                class="w-full h-10 px-3 text-sm border border-slate-300 rounded-xl bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-shadow" />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-slate-700 mb-1.5">Correo Electrónico</label>
+              <input v-model="editForm.email" type="email" placeholder="Ej: maria@ejemplo.com"
+                class="w-full h-10 px-3 text-sm border border-slate-300 rounded-xl bg-white text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-shadow" />
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-700 mb-2">Rol</label>
+              <div class="grid grid-cols-3 gap-2.5">
+                <button v-for="role in roleOptions" :key="role.value" type="button"
+                  @click="editForm.role = role.value"
+                  class="relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-150"
+                  :class="editForm.role === role.value
+                    ? role.selectedBorder
+                    : 'border-slate-200 bg-white hover:border-slate-300'">
+                  <div v-html="role.icon" class="w-8 h-8" />
+                  <span class="text-xs font-medium text-slate-700">{{ role.label }}</span>
+                  <div v-if="editForm.role === role.value"
+                    class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full flex items-center justify-center"
+                    :class="role.checkBg">
+                    <Check class="w-3 h-3 text-white" />
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-700 mb-2">
+                Asignación de Cajas <span class="text-slate-400 font-normal">(opcional)</span>
+              </label>
+              <div v-if="fetchingEditRegisters" class="flex items-center gap-2 text-xs text-slate-400 py-2">
+                <Loader2 class="w-3.5 h-3.5 animate-spin" />
+                Cargando cajas...
+              </div>
+              <div v-else-if="editRegisters.length === 0" class="text-xs text-slate-400 py-2">
+                No hay cajas disponibles
+              </div>
+              <div v-else class="flex flex-wrap gap-2">
+                <button v-for="reg in editRegisters" :key="reg.id" type="button"
+                  @click="toggleEditRegister(reg.id)"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all"
+                  :class="editSelectedRegisters.has(reg.id)
+                    ? 'bg-blue-50 text-blue-700 border-blue-200'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'">
+                  <Check v-if="editSelectedRegisters.has(reg.id)" class="w-3 h-3" />
+                  <Monitor class="w-3.5 h-3.5" />
+                  {{ reg.name }}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="shrink-0 px-6 py-4 border-t border-slate-200 flex items-center justify-end gap-3">
+            <button @click="closeEditModal"
+              class="px-4 py-2 text-sm font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+              Cancelar
+            </button>
+            <button @click="submitEdit" :disabled="!isEditFormValid || savingEdit"
+              class="px-5 py-2 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-500 disabled:opacity-40 rounded-xl flex items-center gap-2 transition-colors shadow-sm">
+              <Loader2 v-if="savingEdit" class="w-4 h-4 animate-spin" />
+              {{ savingEdit ? 'Guardando...' : 'Guardar Cambios' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <!-- ============ MODAL: Nueva Caja ============ -->
     <Teleport to="body">
       <div v-if="showAddCajaModal" class="fixed inset-0 z-[200] flex items-center justify-center p-4">
@@ -301,7 +405,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
-import { Plus, Loader2, Users, Check, CheckCircle, Trash2, Copy, Monitor } from 'lucide-vue-next';
+import { Plus, Loader2, Users, Check, CheckCircle, Trash2, Copy, Monitor, Pencil } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
 import { useAlert } from '@/composables/useAlert';
 import { useNotify } from '@/composables/useNotify';
@@ -314,6 +418,15 @@ interface TeamMember {
   last_name: string;
   role: 'ADMIN' | 'SUPERVISOR' | 'CAJERO';
   is_active: boolean;
+  assigned_registers: { id: number; name: string }[];
+}
+
+interface TerminalAssignmentData {
+  id: string;
+  terminal: string;
+  terminal_name: string;
+  operator: number;
+  shift_type: string;
 }
 
 interface CashRegisterOption {
@@ -373,6 +486,20 @@ const registers = ref<CashRegisterOption[]>([]);
 const fetchingRegisters = ref(false);
 const selectedRegisters = ref(new Set<string>());
 
+// --- Edit Member ---
+const showEditModal = ref(false);
+const savingEdit = ref(false);
+const editingMember = ref<TeamMember | null>(null);
+const editForm = reactive({
+  full_name: '',
+  email: '',
+  role: 'CAJERO' as 'ADMIN' | 'SUPERVISOR' | 'CAJERO',
+});
+const editRegisters = ref<CashRegisterOption[]>([]);
+const fetchingEditRegisters = ref(false);
+const editSelectedRegisters = ref(new Set<string>());
+const editExistingAssignments = ref<Map<string, string>>(new Map()); // terminal ulid -> assignment ulid
+
 // --- Cajas ---
 const cajas = ref<CashRegisterItem[]>([]);
 const fetchingCajas = ref(true);
@@ -427,11 +554,26 @@ function roleLabel(role: string): string {
   return labels[role] || role;
 }
 
+const isEditFormValid = computed(() =>
+  editForm.full_name.trim().length > 0
+  && editForm.email.trim().length > 0
+  && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editForm.email)
+  && editForm.role
+);
+
 function toggleRegister(id: string) {
   if (selectedRegisters.value.has(id)) {
     selectedRegisters.value.delete(id);
   } else {
     selectedRegisters.value.add(id);
+  }
+}
+
+function toggleEditRegister(id: string) {
+  if (editSelectedRegisters.value.has(id)) {
+    editSelectedRegisters.value.delete(id);
+  } else {
+    editSelectedRegisters.value.add(id);
   }
 }
 
@@ -490,6 +632,83 @@ function openAddModal() {
 function closeAddModal() {
   showAddModal.value = false;
   formStep.value = 'form';
+}
+
+// --- Edit Member ---
+async function openEditModal(member: TeamMember) {
+  editingMember.value = member;
+  editForm.full_name = `${member.first_name} ${member.last_name}`;
+  editForm.email = member.email;
+  editForm.role = member.role;
+  editSelectedRegisters.value = new Set();
+  editExistingAssignments.value = new Map();
+  showEditModal.value = true;
+
+  fetchingEditRegisters.value = true;
+  try {
+    const res = await fetchApi<any>('/api/v1/pos-terminals/', { method: 'GET' });
+    editRegisters.value = Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
+  } catch {
+    editRegisters.value = [];
+  } finally {
+    fetchingEditRegisters.value = false;
+  }
+
+  await fetchMemberAssignments(member.user_id);
+}
+
+async function fetchMemberAssignments(userId: number) {
+  try {
+    const res = await fetchApi<any>(`/api/v1/terminal-assignments/?operator=${userId}`, { method: 'GET' });
+    const assignments: TerminalAssignmentData[] = Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
+    for (const a of assignments) {
+      editSelectedRegisters.value.add(a.terminal);
+      editExistingAssignments.value.set(a.terminal, a.id);
+    }
+  } catch {
+    // no assignments
+  }
+}
+
+function closeEditModal() {
+  showEditModal.value = false;
+  editingMember.value = null;
+}
+
+async function submitEdit() {
+  if (!isEditFormValid.value || !editingMember.value) return;
+  savingEdit.value = true;
+  const member = editingMember.value;
+  try {
+    const parts = editForm.full_name.trim().split(' ');
+    const firstName = parts[0];
+    const lastName = parts.slice(1).join(' ') || firstName;
+
+    const payload: Record<string, any> = {
+      first_name: firstName,
+      last_name: lastName,
+      email: editForm.email.trim(),
+      role: editForm.role,
+    };
+    if (editSelectedRegisters.value.size > 0) {
+      payload.terminals = Array.from(editSelectedRegisters.value);
+    } else {
+      payload.terminals = [];
+    }
+
+    await fetchApi(`/api/v1/team/manage/${member.id}/`, {
+      method: 'PATCH',
+      data: payload,
+    });
+
+    success('Miembro actualizado exitosamente');
+    closeEditModal();
+    await fetchMembers();
+  } catch (e: any) {
+    notifyError(e?.message || 'Error al actualizar miembro');
+  } finally {
+    savingEdit.value = false;
+  }
 }
 
 async function submitMember() {

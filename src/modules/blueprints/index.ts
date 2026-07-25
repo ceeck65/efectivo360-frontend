@@ -31,8 +31,6 @@ export {
   createBlueprint,
   updateBlueprint,
   deleteBlueprint,
-  fetchSchemaGroups,
-  updateSchemaGroups,
 } from './services/blueprints.service';
 
 // =============================================================================

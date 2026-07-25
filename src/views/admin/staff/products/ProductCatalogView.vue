@@ -50,6 +50,7 @@
         <table class="w-full text-sm">
           <thead class="bg-slate-50 border-b border-slate-200">
             <tr>
+              <th class="w-8 px-2 py-3"></th>
               <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Producto</th>
               <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">SKU</th>
               <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase hidden md:table-cell">Categoría</th>
@@ -63,9 +64,16 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            <tr v-for="p in filteredProducts" :key="p.id"
-              @click="navigateToEdit(p)"
+            <template v-for="p in filteredProducts" :key="p.id">
+            <tr @click="navigateToEdit(p)"
               class="hover:bg-slate-50/50 transition-colors cursor-pointer">
+              <td class="px-2 py-3 text-center" @click.stop>
+                <button v-if="p.variants?.length" @click="toggleExpand(p.id)"
+                  class="p-0.5 rounded hover:bg-slate-200 transition-colors cursor-pointer">
+                  <ChevronRight v-if="!expandedRows.has(p.id)" class="w-4 h-4 text-slate-400" />
+                  <ChevronDown v-else class="w-4 h-4 text-slate-600" />
+                </button>
+              </td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-3">
                   <div class="w-9 h-9 rounded-lg overflow-hidden shrink-0 flex items-center justify-center ring-1 ring-slate-200 relative"
@@ -152,15 +160,65 @@
 
               <!-- STOCK / ESTADO -->
               <td class="px-4 py-3 text-center">
-                <span class="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded"
-                  :class="val(p, 'is_active') ? 'text-emerald-700 bg-emerald-50' : 'text-slate-400 bg-slate-50'">
-                  <span class="w-1.5 h-1.5 rounded-full" :class="val(p, 'is_active') ? 'bg-emerald-500' : 'bg-slate-300'" />
-                  {{ val(p, 'is_active') ? 'Activo' : 'Sin stock' }}
-                </span>
+                <div class="flex flex-col items-center">
+                  <span
+                    class="text-sm font-bold"
+                    :class="(p.current_stock || 0) > 0 ? 'text-slate-800' : 'text-rose-600'"
+                  >
+                    {{ Number(p.current_stock || 0).toLocaleString('es-VE') }}
+                  </span>
+                  <span class="text-[10px] uppercase tracking-wider" :class="(p.current_stock || 0) > 0 ? 'text-slate-400' : 'text-rose-400'">
+                    {{ (p.current_stock || 0) > 0 ? 'uds' : 'agotado' }}
+                  </span>
+                </div>
               </td>
             </tr>
+            <tr v-if="expandedRows.has(p.id) && p.variants?.length" class="border-b border-slate-100">
+              <td colspan="11" class="p-0">
+                <table class="w-full text-xs bg-slate-50/50">
+                  <thead>
+                    <tr class="text-slate-400 uppercase tracking-wider text-[10px]">
+                      <th class="text-left px-4 py-2 pl-12 font-semibold">Variante</th>
+                      <th class="text-left px-4 py-2 font-semibold">SKU</th>
+                      <th class="text-left px-4 py-2 font-semibold">Atributos</th>
+                      <th class="text-right px-4 py-2 font-semibold">Precio USD</th>
+                      <th class="text-right px-4 py-2 font-semibold">Stock</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="v in p.variants" :key="v.id" class="hover:bg-slate-100/50">
+                      <td class="px-4 py-2 pl-12 text-slate-700 font-medium">
+                        <div class="flex items-center gap-2">
+                          <span class="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0"></span>
+                          {{ v.display_name || v.sku || 'N/A' }}
+                        </div>
+                      </td>
+                      <td class="px-4 py-2">
+                        <span class="font-mono text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                          {{ v.sku || 'N/A' }}
+                        </span>
+                      </td>
+                      <td class="px-4 py-2">
+                        <div v-if="v.formatted_attributes?.length" class="flex flex-wrap gap-1">
+                          <span v-for="(attr, i) in v.formatted_attributes" :key="i"
+                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                            <span class="text-slate-400 mr-1 font-normal">{{ attr.name }}:</span> {{ attr.value }}
+                          </span>
+                        </div>
+                        <span v-else class="text-slate-400">—</span>
+                      </td>
+                      <td class="px-4 py-2 text-right font-mono text-slate-700">${{ Number(v.price_base).toFixed(2) }}</td>
+                      <td class="px-4 py-2 text-right font-semibold" :class="v.stock > 0 ? 'text-slate-800' : 'text-rose-500'">
+                        {{ Number(v.stock).toLocaleString('es-VE') }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+            </template>
             <tr v-if="filteredProducts.length === 0">
-              <td colspan="10" class="px-4 py-14 text-center">
+              <td colspan="11" class="px-4 py-14 text-center">
                 <Package class="w-8 h-8 mx-auto text-slate-300 mb-2" />
                 <p class="text-sm text-slate-400">No hay productos</p>
                 <button @click="showDrawer = true"
@@ -194,9 +252,18 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
-import { Plus, Search, Package, Loader2, Save } from 'lucide-vue-next';
+import { Plus, Search, Package, Loader2, Save, ChevronRight, ChevronDown } from 'lucide-vue-next';
 import { useApi } from '@/composables/useApi';
 import ProductCreateDrawer from './ProductCreateDrawer.vue';
+
+interface VariantItem {
+  id: string;
+  sku: string;
+  barcode: string;
+  stock: number;
+  price_base: string;
+  attribute_values: Record<string, string>;
+}
 
 interface CatalogProduct {
   id: string;
@@ -215,6 +282,7 @@ interface CatalogProduct {
   current_stock: number;
   is_active: boolean;
   global_product_id: string | null;
+  variants?: VariantItem[];
 }
 
 const router = useRouter();
@@ -226,6 +294,14 @@ const search = ref('');
 const filterStatus = ref('');
 
 const imageErrors = ref<Set<string>>(new Set());
+const expandedRows = ref<Set<string>>(new Set());
+
+function toggleExpand(id: string) {
+  const s = new Set(expandedRows.value);
+  if (s.has(id)) s.delete(id);
+  else s.add(id);
+  expandedRows.value = s;
+}
 
 // Inline editing state
 const editingKey = ref<string | null>(null);
@@ -257,9 +333,10 @@ function normalizeProduct(api: any): CatalogProduct {
     margin_type: 'FINANCIAL',
     inventory_type: api.inventory_type || 'SIMPLE',
     sale_type: api.sale_type || 'UNIDAD',
-    current_stock: api.current_stock ?? 0,
-    is_active: api.is_active ?? (api.current_stock ?? 0) > 0,
+    current_stock: api.total_stock ?? api.current_stock ?? 0,
+    is_active: api.is_active ?? (api.total_stock ?? 0) > 0,
     global_product_id: api.global_product?.id ?? null,
+    variants: api.variants || [],
   };
 }
 

@@ -76,7 +76,8 @@
           <div class="relative max-w-lg">
             <Search class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input ref="searchInputRef" v-model="searchQuery" type="text" placeholder="Buscar producto o escanear código de barras..."
-              class="w-full h-10 pl-10 pr-20 text-sm border border-slate-200 rounded-xl bg-white text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 shadow-sm transition-shadow" />
+              class="w-full h-10 pl-10 pr-20 text-sm border border-slate-200 rounded-xl bg-white text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 shadow-sm transition-shadow"
+              @keydown.enter="handleSearchEnter" />
             <div class="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
               <button @click="toggleScanner"
                 class="w-7 h-7 rounded-lg flex items-center justify-center transition-all"
@@ -145,13 +146,13 @@
               class="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all"
               :class="currentLayout === 'modern' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'">
               <LayoutGrid class="w-3 h-3" />
-              <span class="hidden sm:inline">Grid</span>
+              <span class="hidden sm:inline">Moderno</span>
             </button>
             <button @click="currentLayout = 'traditional'"
               class="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold transition-all"
               :class="currentLayout === 'traditional' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-400 hover:text-slate-600'">
               <List class="w-3 h-3" />
-              <span class="hidden sm:inline">Lista</span>
+              <span class="hidden sm:inline">Clásico</span>
             </button>
           </div>
           <span v-if="lastScanned" class="text-slate-400 font-mono text-[10px]">
@@ -174,22 +175,33 @@
           <!-- ═══════ MODERN LAYOUT (Grid) ═══════ -->
           <div v-else-if="currentLayout === 'modern'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             <button v-for="p in filteredProducts" :key="p.id" @click="addItem(p)"
-              class="bg-white border border-slate-300 rounded-xl p-2.5 flex gap-2.5 shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer group relative overflow-hidden text-left">
-              <div class="w-12 h-12 rounded-lg bg-slate-50 border border-slate-200 flex-shrink-0 flex items-center justify-center overflow-hidden relative">
-                <div class="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-400">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              class="bg-white border border-slate-300 rounded-xl p-2.5 flex gap-2.5 shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer group relative overflow-hidden text-left"
+              :class="{ 'opacity-60': p.stock <= 0 }">
+              <div class="w-16 h-16 rounded-lg bg-slate-50 border border-slate-200 flex-shrink-0 flex items-center justify-center overflow-hidden relative">
+                <img v-if="p.image" :src="p.image" :alt="p.name"
+                  class="w-full h-full object-cover" @error="($event.target as HTMLImageElement).style.display='none'" />
+                <div v-if="!p.image" class="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-400">
+                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                 </div>
-                <span class="absolute top-0 left-0 bg-slate-900/80 text-white text-[8px] font-bold px-1 rounded-br-md leading-tight">{{ p.stock ?? '—' }}</span>
+                <span v-if="p.stock <= 0"
+                  class="absolute inset-0 bg-white/60 flex items-center justify-center text-[9px] font-black text-rose-600 uppercase tracking-wider">Agotado</span>
               </div>
               <div class="flex flex-col justify-between flex-1 min-w-0">
                 <div>
                   <h4 class="text-[11px] font-bold text-slate-800 truncate leading-tight group-hover:text-blue-600 transition-colors">{{ p.name }}</h4>
-                  <p class="text-[9px] text-slate-400 truncate mt-0.5">Stock: {{ p.stock ?? 0 }} uds</p>
+                  <p class="text-[9px] text-slate-400 truncate mt-0.5">
+                    <span v-if="p.hasVariants && p.variants.length" class="text-blue-500 font-semibold">{{ p.variants.length }} variantes</span>
+                    <span v-else>
+                      <span v-if="p.unitsPerPackage > 1" class="text-[8px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-1 py-0.5 rounded mr-1">{{ p.unitsPerPackage }} uds/Bulto</span>
+                      {{ formatStockBreakdown(p.totalStock, p.unitsPerPackage) }}
+                    </span>
+                  </p>
                 </div>
                 <div class="flex justify-between items-baseline mt-0.5">
                   <span class="text-xs font-black text-slate-900">${{ formatUSD(p.price_usd) }}</span>
                   <span class="text-[9px] font-medium text-slate-400 font-mono">Bs.{{ formatVES(p.price_usd * tasaBCV) }}</span>
                 </div>
+                <span v-if="p.hasVariants" class="absolute top-1 right-1 bg-blue-500 text-white text-[7px] font-bold px-1 py-0.5 rounded leading-tight">VAR</span>
               </div>
             </button>
           </div>
@@ -199,6 +211,7 @@
             <table class="w-full text-xs border-collapse">
               <thead>
                 <tr class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                  <th class="text-left py-2 px-2 w-8"></th>
                   <th class="text-left py-2 px-2 w-24">Código</th>
                   <th class="text-left py-2 px-2">Producto</th>
                   <th class="text-left py-2 px-2 w-20">Categoría</th>
@@ -209,24 +222,35 @@
               </thead>
               <tbody>
                 <tr v-for="p in filteredProducts" :key="p.id" @click="addItem(p)"
-                  class="border-b border-slate-100 hover:bg-blue-50/60 cursor-pointer transition-colors group">
+                  class="border-b border-slate-100 hover:bg-blue-50/60 cursor-pointer transition-colors group"
+                  :class="{ 'opacity-60': p.stock <= 0 }">
+                  <td class="py-1.5 px-2">
+                    <div class="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 overflow-hidden flex-shrink-0">
+                      <img v-if="p.image" :src="p.image" :alt="p.name"
+                        class="w-full h-full object-cover" @error="($event.target as HTMLImageElement).style.display='none'" />
+                      <div v-else class="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-300">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                      </div>
+                    </div>
+                  </td>
                   <td class="py-1.5 px-2 font-mono text-[10px] text-slate-400 truncate max-w-[6rem]">
-                    {{ p.barcode || p.id.slice(0, 8) || '—' }}
+                    {{ p.sku || p.barcode || '—' }}
                   </td>
                   <td class="py-1.5 px-2 font-semibold text-slate-800 truncate max-w-[12rem] group-hover:text-blue-600 transition-colors">
-                    {{ p.name }}
+                    <div class="flex items-center gap-1.5">
+                      <span>{{ p.name }}</span>
+                      <span v-if="p.hasVariants" class="shrink-0 text-[8px] font-bold text-blue-600 bg-blue-100 px-1 py-0.5 rounded leading-tight">VAR</span>
+                    </div>
                   </td>
                   <td class="py-1.5 px-2 text-slate-500 truncate max-w-[6rem]">
-                    {{ categories.find(c => c.id === p.category_id)?.name || '—' }}
+                    {{ p.categoryName || categories.find(c => c.id === p.category_id)?.name || '—' }}
                   </td>
                   <td class="py-1.5 px-2 text-center">
-                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold"
-                      :class="(p.stock ?? 0) === 0
-                        ? 'bg-red-100 text-red-700'
-                        : (p.stock ?? 0) <= 5
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-emerald-100 text-emerald-700'">
-                      {{ p.stock ?? 0 }}
+                    <span v-if="p.hasVariants" class="text-[10px] text-blue-600 font-semibold">{{ p.variants.length }} vars.</span>
+                    <span v-else class="text-[10px] font-semibold"
+                      :class="p.stock === 0 ? 'text-rose-600' : 'text-emerald-600'">
+                      <span v-if="p.unitsPerPackage > 1" class="text-[8px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-1 py-0.5 rounded mr-1">{{ p.unitsPerPackage }} uds/Bulto</span>
+                      {{ formatStockBreakdown(p.totalStock, p.unitsPerPackage) }}
                     </span>
                   </td>
                   <td class="py-1.5 px-2 text-right font-semibold text-slate-900">
@@ -345,38 +369,44 @@
             Agregue productos desde el catálogo
           </div>
           <div v-else class="flex-1 overflow-y-auto space-y-2 pr-0.5">
-            <div v-for="(item, i) in cart" :key="item.id + item.pricingMode + (item.attrs ? JSON.stringify(item.attrs) : '')"
+            <div v-for="(item, i) in cart" :key="item.id + item.mode + (item.attrs ? JSON.stringify(item.attrs) : '')"
               class="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex items-center justify-between hover:border-slate-300 transition-all text-slate-800">
-              <div class="flex items-center gap-2 min-w-0 flex-1">
-                <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center font-black text-slate-400 text-xs border border-slate-200">
-                  {{ item.name.charAt(0).toUpperCase() }}
+              <div class="flex items-center gap-2.5 min-w-0 flex-1">
+                <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 border border-slate-200">
+                  <img v-if="item.image" :src="item.image" :alt="item.name" class="w-full h-full object-cover"
+                    @error="($event.target as HTMLImageElement).style.display='none'" />
+                  <div v-else class="w-full h-full flex items-center justify-center text-slate-300">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  </div>
                 </div>
                 <div class="min-w-0 flex-1">
                   <h4 class="text-xs font-bold text-slate-800 truncate leading-tight">{{ item.name }}</h4>
-                  <div class="flex items-center gap-1.5 mt-0.5">
+                  <span v-if="item.variantLabel" class="text-[10px] text-slate-500 font-medium truncate block leading-tight">{{ item.variantLabel }}</span>
+                  <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <button v-if="item.unitsPerPackage > 1"
+                      @click="togglePricingMode(i)"
+                      class="text-[10px] px-1.5 py-0.5 font-semibold rounded border uppercase tracking-wider leading-tight cursor-pointer transition-all"
+                      :class="item.mode === 'BULTO'
+                        ? 'bg-violet-100/60 text-violet-700 border-violet-200/50'
+                        : 'bg-emerald-100/60 text-emerald-700 border-emerald-200/50'"
+                      :title="'Cambiar a ' + (item.mode === 'BULTO' ? 'Unidad' : 'Bulto')">
+                      {{ item.mode === 'BULTO' ? `BULTO (${item.unitsPerPackage} UDS)` : 'UNIDAD' }}
+                    </button>
                     <span class="text-[10px] text-slate-400 font-bold">${{ formatUSD(item.unitPrice) }}</span>
                     <span class="text-[9px] text-slate-300">·</span>
                     <span class="text-[9px] text-slate-400 font-medium">Bs.{{ formatVES(item.unitPrice * tasaBCV) }}</span>
                   </div>
                 </div>
               </div>
-              <div class="flex items-center gap-1.5">
-                <!-- Mayor/Detal Toggle -->
-                <button v-if="item.conversionFactor !== 1 || item.altUnitLabel"
-                  @click="togglePricingMode(i)"
-                  class="shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider transition-all"
-                  :class="item.pricingMode === 'wholesale'
-                    ? 'bg-blue-100 border-blue-300 text-blue-700'
-                    : 'bg-emerald-100 border-emerald-300 text-emerald-700'"
-                  :title="'Cambiar a ' + item.altUnitLabel">
-                  {{ item.unitLabel }}
-                </button>
+              <div class="flex items-center gap-1.5 shrink-0">
                 <div class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200/80">
                   <button @click="qtyDown(i)"
                     class="w-5 h-5 flex items-center justify-center text-xs font-black bg-white hover:bg-slate-200 text-slate-600 rounded-md border border-slate-300 shadow-sm transition-all active:scale-90">−</button>
                   <span class="w-6 text-center text-xs font-black text-slate-800">{{ item.qty }}</span>
-                  <button @click="qtyUp(i)"
-                    class="w-5 h-5 flex items-center justify-center text-xs font-black bg-white hover:bg-slate-200 text-slate-600 rounded-md border border-slate-300 shadow-sm transition-all active:scale-90">+</button>
+                  <button @click="qtyUp(i)" :disabled="item.qty >= item.maxStock"
+                    class="w-5 h-5 flex items-center justify-center text-xs font-black bg-white text-slate-600 rounded-md border border-slate-300 shadow-sm transition-all"
+                    :class="item.qty >= item.maxStock ? 'opacity-40 cursor-not-allowed' : 'hover:bg-slate-200 active:scale-90'">+</button>
+                  <span v-if="item.qty >= item.maxStock && item.maxStock > 0" class="text-[8px] text-amber-600 font-semibold ml-1">Máx</span>
                 </div>
                 <div class="flex items-center gap-2 pl-1">
                   <span class="text-xs font-black text-slate-800">${{ formatUSD(item.unitPrice * item.qty) }}</span>
@@ -458,37 +488,45 @@
             </button>
           </div>
           <div class="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
-            <div v-for="(item, i) in cart" :key="'mob-' + item.id + item.pricingMode + (item.attrs ? JSON.stringify(item.attrs) : '')"
-              class="bg-slate-50 rounded-xl p-3 flex items-center justify-between">
-              <div class="flex-1 min-w-0 pr-2">
+            <div v-for="(item, i) in cart" :key="'mob-' + item.id + item.mode + (item.attrs ? JSON.stringify(item.attrs) : '')"
+              class="bg-slate-50 rounded-xl p-3 flex items-start gap-3">
+              <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 border border-slate-200 mt-0.5">
+                <img v-if="item.image" :src="item.image" :alt="item.name" class="w-full h-full object-cover"
+                  @error="($event.target as HTMLImageElement).style.display='none'" />
+                <div v-else class="w-full h-full flex items-center justify-center text-slate-300">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                </div>
+              </div>
+              <div class="flex-1 min-w-0">
                 <h4 class="text-sm font-bold text-slate-800 truncate">{{ item.name }}</h4>
-                <div class="flex items-center gap-1.5 mt-0.5">
+                <span v-if="item.variantLabel" class="text-[11px] text-slate-500 font-medium truncate block leading-tight">{{ item.variantLabel }}</span>
+                <div class="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                  <button v-if="item.unitsPerPackage > 1"
+                    @click="togglePricingMode(i)"
+                    class="text-[10px] px-1.5 py-0.5 font-semibold rounded border uppercase tracking-wider leading-tight cursor-pointer transition-all"
+                    :class="item.mode === 'BULTO'
+                      ? 'bg-violet-100/60 text-violet-700 border-violet-200/50'
+                      : 'bg-emerald-100/60 text-emerald-700 border-emerald-200/50'"
+                    :title="'Cambiar a ' + (item.mode === 'BULTO' ? 'Unidad' : 'Bulto')">
+                    {{ item.mode === 'BULTO' ? `BULTO (${item.unitsPerPackage} UDS)` : 'UNIDAD' }}
+                  </button>
                   <span class="text-[11px] text-slate-400 font-semibold">${{ formatUSD(item.unitPrice) }}</span>
                   <span class="text-[9px] text-slate-300">·</span>
                   <span class="text-[10px] text-slate-400">Bs.{{ formatVES(item.unitPrice * tasaBCV) }}</span>
                 </div>
-              </div>
-              <div class="flex items-center gap-1.5">
-                <button v-if="item.conversionFactor !== 1 || item.altUnitLabel"
-                  @click="togglePricingMode(i)"
-                  class="shrink-0 rounded-md border px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider transition-all"
-                  :class="item.pricingMode === 'wholesale'
-                    ? 'bg-blue-100 border-blue-300 text-blue-700'
-                    : 'bg-emerald-100 border-emerald-300 text-emerald-700'"
-                  :title="'Cambiar a ' + item.altUnitLabel">
-                  {{ item.unitLabel }}
-                </button>
-                <div class="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white">
-                  <button @click="qtyDown(i)" class="px-2 py-0.5 text-slate-500 hover:bg-slate-100 text-sm font-bold">−</button>
-                  <span class="px-2.5 text-sm font-bold text-slate-700">{{ item.qty }}</span>
-                  <button @click="qtyUp(i)" class="px-2 py-0.5 text-slate-500 hover:bg-slate-100 text-sm font-bold">+</button>
+                <div class="flex items-center gap-2 mt-2">
+                  <div class="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white">
+                    <button @click="qtyDown(i)" class="px-2 py-0.5 text-slate-500 hover:bg-slate-100 text-sm font-bold">−</button>
+                    <span class="px-2.5 text-sm font-bold text-slate-700">{{ item.qty }}</span>
+                    <button @click="qtyUp(i)" :disabled="item.qty >= item.maxStock"
+                      class="px-2 py-0.5 text-sm font-bold transition-all"
+                      :class="item.qty >= item.maxStock ? 'text-slate-300 cursor-not-allowed' : 'text-slate-500 hover:bg-slate-100'">+</button>
+                  </div>
+                  <span class="text-sm font-bold text-slate-800">${{ formatUSD(item.unitPrice * item.qty) }}</span>
+                  <button @click="removeItem(i)" class="ml-auto p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 transition-colors">
+                    <Trash2 class="w-3.5 h-3.5" />
+                  </button>
                 </div>
-                <div class="text-right min-w-[68px]">
-                  <p class="text-sm font-bold text-slate-800">${{ formatUSD(item.unitPrice * item.qty) }}</p>
-                </div>
-                <button @click="removeItem(i)" class="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 transition-colors">
-                  <Trash2 class="w-3.5 h-3.5" />
-                </button>
               </div>
             </div>
           </div>
@@ -576,6 +614,15 @@
       v-if="showCierreCaja"
       @close="showCierreCaja = false"
     />
+
+    <!-- ═══════ VARIANT SELECTOR MODAL ═══════ -->
+    <VariantSelectorModal
+      v-if="showVariantModal && selectedVariantProduct"
+      :product="selectedVariantProduct"
+      :variants="selectedVariantProduct.variants"
+      @select="onVariantSelected"
+      @close="showVariantModal = false"
+    />
   </div>
 </template>
 
@@ -599,6 +646,8 @@ import PhoneInput from '@/components/shared/PhoneInput.vue';
 import CheckoutModal from './CheckoutModal.vue';
 import TransactionTopUpModal from '@/components/modals/TransactionTopUpModal.vue';
 import CierreCaja from './CierreCaja.vue';
+import VariantSelectorModal from './VariantSelectorModal.vue';
+import { toast } from 'vue3-toastify';
 
 const authStore = useAuthStore();
 const cajaStore = useCajaStore();
@@ -629,37 +678,62 @@ function handleClose() {
 
 interface CartItem {
   id: string;
+  productId: string;
+  variantId?: string;
   name: string;
+  variantLabel?: string;
   price_usd: number;
   qty: number;
   stock?: number;
   barcode?: string;
+  image?: string;
   attrs?: Record<string, string>;
-  /** Modo de venta: 'retail' (unidad/detal) o 'wholesale' (bulto/mayor) */
-  pricingMode: 'retail' | 'wholesale';
-  /** Precio por unidad o por bulto según pricingMode */
+  maxStock: number;
+  maxVariantStock?: number;
+  unitsPerPackage: number;
+  mode: 'UNIDAD' | 'BULTO';
   unitPrice: number;
-  /** Unidades que contiene cada bulto (1 si es detal) */
   conversionFactor: number;
-  /** Etiqueta de la unidad actual ('Unidad' | 'Bulto') */
   unitLabel: string;
-  /** Etiqueta alternativa */
   altUnitLabel: string;
+}
+
+function getItemAtomicUnits(item: CartItem): number {
+  return item.mode === 'BULTO' ? (item.unitsPerPackage || 1) : 1;
+}
+
+function getCartVariantConsumption(variantId: string): number {
+  return cart.value
+    .filter(item => item.variantId === variantId)
+    .reduce((sum, item) => sum + item.qty, 0);
+}
+
+interface VariantData {
+  id: string;
+  sku: string;
+  barcode: string;
+  stock: number;
+  price_base: string;
+  display_name: string;
+  formatted_attributes: { name: string; value: string; id: number | null }[];
+  attribute_values: Record<string, string>;
 }
 
 interface Product {
   id: string;
   name: string;
   price_usd: number;
-  stock?: number;
+  stock: number;
+  totalStock: number;
   barcode?: string;
   category_id?: string;
-  /** Precio por bulto (mayor), si aplica */
-  wholesalePrice?: number;
-  /** Unidades por bulto (ej: 24) */
-  wholesaleQty?: number;
-  /** Nombre del empaque mayor (ej: 'Bulto', 'Caja') */
-  wholesaleLabel?: string;
+  image?: string;
+  sku?: string;
+  brandName?: string;
+  categoryName?: string;
+  hasVariants: boolean;
+  variants: VariantData[];
+  unitsPerPackage: number;
 }
 
 interface Customer {
@@ -735,6 +809,10 @@ const showMobileCart = ref(false);
 const showCierreCaja = ref(false);
 const cart = ref<CartItem[]>([]);
 
+// Variant selector
+const showVariantModal = ref(false);
+const selectedVariantProduct = ref<Product | null>(null);
+
 const categories = computed<Category[]>(() =>
   inventoryCategories.value.map((c, i) => ({
     id: c.id,
@@ -745,19 +823,34 @@ const categories = computed<Category[]>(() =>
 
 const products = computed<Product[]>(() =>
   inventoryProducts.value.map(p => {
-    const retailPrice = ((p.salePrice as number) || 0) / 100;
-    const stock = p.currentStock as number;
-    const hasWholesale = stock >= 10 && retailPrice > 0.5;
+    const priceUsd = (p.priceUsd ?? ((p.salePrice as number) || 0) / 100);
+    const stock = p.totalStock ?? p.currentStock ?? 0;
+    const unitsPerPackage = p.unitsPerPackage ?? 1;
     return {
       id: p.id,
-      name: p.name,
-      price_usd: retailPrice,
+      name: p.effectiveName || p.name,
+      sku: p.effectiveSku || p.sku,
+      price_usd: priceUsd,
       stock,
-      barcode: p.barcode as string | undefined,
+      totalStock: stock,
+      unitsPerPackage,
+      barcode: p.effectiveSku || p.sku || p.barcode || undefined,
+      image: String(p.imageUrl || p.image || p.image_url || ''),
       category_id: p.categoryId as string,
-      wholesalePrice: hasWholesale ? retailPrice * 12 : undefined,
-      wholesaleQty: hasWholesale ? 12 : undefined,
-      wholesaleLabel: hasWholesale ? 'Bulto' : undefined,
+      brandName: p.brandName || '',
+      categoryName: p.categoryName || '',
+      hasVariants: p.hasVariants ?? false,
+      variants: (p.variants || []).map(v => ({
+        id: v.id,
+        sku: v.sku,
+        barcode: v.barcode,
+        stock: v.stock,
+        price_base: v.price_base,
+        display_name: v.display_name,
+        formatted_attributes: v.formatted_attributes,
+        attribute_values: v.attribute_values,
+      })),
+
     };
   })
 );
@@ -776,39 +869,193 @@ const subtotalUSD = computed(() => cart.value.reduce((sum, i) => sum + i.unitPri
 const totalUSD = computed(() => subtotalUSD.value);
 const totalVES = computed(() => totalUSD.value * tasaBCV.value);
 
-function addItem(p: Product) {
-  const existing = cart.value.find((i) => i.id === p.id && i.pricingMode === (p.wholesaleQty && selectedCustomer.value?.isWholesale ? 'wholesale' : 'retail'));
+function formatStockBreakdown(totalUnits: number, unitsPerPackage: number = 1): string {
+  if (!unitsPerPackage || unitsPerPackage <= 1) {
+    return `${Math.round(totalUnits)} uds`;
+  }
+  const packages = Math.floor(totalUnits / unitsPerPackage);
+  const remainder = totalUnits % unitsPerPackage;
+  if (packages > 0 && remainder > 0) return `${packages} Bulto${packages > 1 ? 's' : ''} + ${Math.round(remainder)} Unid.`;
+  if (packages > 0) return `${packages} Bulto${packages > 1 ? 's' : ''}`;
+  return `${Math.round(remainder)} Unid.`;
+}
+
+function getCartAtomicConsumption(productId: string): number {
+  return cart.value
+    .filter(i => i.productId === productId)
+    .reduce((sum, i) => sum + (i.qty * getItemAtomicUnits(i)), 0);
+}
+
+function addToCart(p: Product, variant?: VariantData) {
+  const productId = p.id;
+  const id = variant ? variant.id : p.id;
+  const name = variant ? `${p.name} · ${variant.display_name}` : p.name;
+  const price = variant ? parseFloat(variant.price_base || '0') : p.price_usd;
+  const maxStock = variant ? variant.stock : p.totalStock;
+  const unitsPerPackage = p.unitsPerPackage || 1;
+
+  if (variant) {
+    const variantConsumed = getCartVariantConsumption(variant.id);
+    if (variantConsumed + 1 > variant.stock) {
+      toast.warning(`Stock máximo alcanzado (${Math.round(variant.stock)} uds disponibles para esta variante)`);
+      return;
+    }
+  } else {
+    const atomicConsumed = getCartAtomicConsumption(productId);
+    const requestedUnits = 1;
+    if (atomicConsumed + requestedUnits > maxStock) {
+      const remaining = maxStock - atomicConsumed;
+      if (remaining <= 0) {
+        toast.warning(`Stock máximo alcanzado (${Math.round(maxStock)} uds disponibles)`);
+      } else {
+        toast.warning(`Stock insuficiente: Quedan ${Math.round(remaining)} unidades disponibles (se requieren ${Math.round(requestedUnits)} para 1 Unidad)`);
+      }
+      return;
+    }
+  }
+
+  const existing = cart.value.find((i) => i.id === id && i.mode === 'UNIDAD');
   if (existing) {
     existing.qty++;
     return;
   }
-  const useWholesale = !!(p.wholesaleQty && selectedCustomer.value?.isWholesale);
+  if (maxStock <= 0) return;
+
+  const variantLabel = variant
+    ? variant.formatted_attributes?.map((a: any) => `${a.name}: ${a.value}`).join(' · ')
+    : undefined;
+
   cart.value.push({
-    ...p,
+    id,
+    productId,
+    variantId: variant?.id,
+    name,
+    variantLabel,
+    price_usd: price,
     qty: 1,
-    pricingMode: useWholesale ? 'wholesale' : 'retail',
-    unitPrice: useWholesale ? (p.wholesalePrice ?? p.price_usd) : p.price_usd,
-    conversionFactor: useWholesale ? (p.wholesaleQty ?? 1) : 1,
-    unitLabel: useWholesale ? (p.wholesaleLabel ?? 'Bulto') : 'Unidad',
-    altUnitLabel: useWholesale ? 'Unidad' : (p.wholesaleLabel ?? 'Bulto'),
+    stock: variant ? variant.stock : p.stock,
+    maxStock,
+    maxVariantStock: variant?.stock,
+    unitsPerPackage,
+    barcode: variant ? variant.sku : p.barcode,
+    image: p.image || '',
+    attrs: variant ? variant.attribute_values : undefined,
+    mode: 'UNIDAD',
+    unitPrice: price,
+    conversionFactor: 1,
+    unitLabel: 'Unidad',
+    altUnitLabel: unitsPerPackage > 1 ? 'Bulto' : '',
   });
+}
+
+function addItem(p: Product) {
+  if (p.stock <= 0 && !p.hasVariants) return;
+  if (p.hasVariants && p.variants.length > 0) {
+    selectedVariantProduct.value = p;
+    showVariantModal.value = true;
+    return;
+  }
+  addToCart(p);
+}
+
+function onVariantSelected(v: VariantData) {
+  if (!selectedVariantProduct.value) return;
+  addToCart(selectedVariantProduct.value, v);
+  showVariantModal.value = false;
+  selectedVariantProduct.value = null;
+}
+
+function handleSearchEnter() {
+  const q = searchQuery.value.trim().toLowerCase();
+  if (!q) return;
+
+  // Try exact match on variant SKU/barcode
+  for (const p of products.value) {
+    if (!p.hasVariants || !p.variants) continue;
+    const match = p.variants.find(v =>
+      v.sku.toLowerCase() === q || v.barcode.toLowerCase() === q
+    );
+    if (match) {
+      if (match.stock <= 0) {
+        toast.warning(`Variante sin stock disponible`);
+        return;
+      }
+      const variantConsumed = getCartVariantConsumption(match.id);
+      if (variantConsumed + 1 > match.stock) {
+        toast.warning(`Stock máximo alcanzado (${Math.round(match.stock)} uds disponibles para esta variante)`);
+        return;
+      }
+      addToCart(p, match);
+      searchQuery.value = '';
+      return;
+    }
+  }
+
+  // Try exact match on parent SKU/barcode
+  const parent = products.value.find(p =>
+    (p.sku && p.sku.toLowerCase() === q) ||
+    (p.barcode && p.barcode.toLowerCase() === q)
+  );
+  if (parent) {
+    addItem(parent);
+    searchQuery.value = '';
+  }
 }
 
 function togglePricingMode(index: number) {
   const item = cart.value[index];
-  const p = products.value.find(x => x.id === item.id);
-  if (!p?.wholesaleQty) return;
-  const isCurrentlyWholesale = item.pricingMode === 'wholesale';
-  item.pricingMode = isCurrentlyWholesale ? 'retail' : 'wholesale';
-  item.unitPrice = isCurrentlyWholesale ? p.price_usd : (p.wholesalePrice ?? p.price_usd);
-  item.conversionFactor = isCurrentlyWholesale ? 1 : p.wholesaleQty;
-  item.unitLabel = isCurrentlyWholesale ? 'Unidad' : (p.wholesaleLabel ?? 'Bulto');
-  item.altUnitLabel = isCurrentlyWholesale ? (p.wholesaleLabel ?? 'Bulto') : 'Unidad';
+  const p = products.value.find(x =>
+    x.id === item.id || x.variants?.some(v => v.id === item.id)
+  );
+  const unitsPerPackage = p?.unitsPerPackage || 1;
+  if (unitsPerPackage <= 1) return;
+
+  const isCurrentlyBulto = item.mode === 'BULTO';
+  const newMode = isCurrentlyBulto ? 'UNIDAD' : 'BULTO';
+  const newUnitPrice = newMode === 'BULTO' ? ((p?.price_usd ?? 0) * unitsPerPackage) : (p?.price_usd ?? item.unitPrice);
+
+  const atomicConsumed = getCartAtomicConsumption(item.productId);
+  const atomicInCart = item.qty * getItemAtomicUnits(item);
+  const atomicWithout = atomicConsumed - atomicInCart;
+  const requestedUnits = newMode === 'BULTO' ? unitsPerPackage : 1;
+  if (atomicWithout + (item.qty * requestedUnits) > item.maxStock) {
+    toast.warning(`No hay suficiente stock para cambiar a ${newMode === 'BULTO' ? 'Bulto' : 'Unidad'}`);
+    return;
+  }
+
+  item.mode = newMode;
+  item.unitPrice = newUnitPrice;
+  item.unitLabel = newMode === 'BULTO' ? 'Bulto' : 'Unidad';
+  item.altUnitLabel = newMode === 'BULTO' ? 'Unidad' : 'Bulto';
+  item.conversionFactor = newMode === 'BULTO' ? unitsPerPackage : 1;
   item.price_usd = item.unitPrice;
 }
 
 function removeItem(index: number) { cart.value.splice(index, 1); }
-function qtyUp(index: number) { cart.value[index].qty++; }
+function qtyUp(index: number) {
+  const item = cart.value[index];
+  if (item.variantId) {
+    const variantConsumed = getCartVariantConsumption(item.variantId);
+    const maxStock = item.maxVariantStock ?? item.maxStock;
+    if (variantConsumed + 1 > maxStock) {
+      toast.warning(`Stock máximo alcanzado (${Math.round(maxStock)} uds disponibles para esta variante)`);
+      return;
+    }
+  } else {
+    const atomicConsumed = getCartAtomicConsumption(item.productId);
+    const requestedUnits = getItemAtomicUnits(item);
+    if (atomicConsumed + requestedUnits > item.maxStock) {
+      const remaining = item.maxStock - atomicConsumed;
+      if (remaining <= 0) {
+        toast.warning(`Stock máximo alcanzado (${Math.round(item.maxStock)} uds disponibles)`);
+      } else {
+        toast.warning(`Stock insuficiente: Quedan ${Math.round(remaining)} unidades disponibles (se requieren ${Math.round(requestedUnits)} para 1 ${item.unitLabel})`);
+      }
+      return;
+    }
+  }
+  item.qty++;
+}
 function qtyDown(index: number) {
   const item = cart.value[index];
   if (item.qty <= 1) removeItem(index);
@@ -868,7 +1115,7 @@ function onCheckoutConfirm() {
       product_id: i.id,
       qty: i.qty,
       unit_price_cents: Math.round(i.unitPrice * 100),
-      pricing_mode: i.pricingMode,
+      pricing_mode: i.mode,
       conversion_factor: i.conversionFactor,
     })),
     currency: 'USD',

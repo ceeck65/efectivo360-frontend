@@ -60,7 +60,7 @@
         <!-- Right: Attribute Manager -->
         <div class="col-span-8">
           <CategoryAttributeManager
-            :key="selectedCategoryId || 0"
+            :key="selectedCategoryId || ''"
             :categoryId="selectedCategoryId"
           />
           <div v-if="!selectedCategoryId" class="flex items-center justify-center h-64 text-sm text-slate-400">
@@ -240,6 +240,7 @@ interface CategoryNode {
   name: string;
   code: string;
   icon?: string;
+  parent_id: string | null;
   children?: CategoryNode[];
 }
 
@@ -273,17 +274,6 @@ function selectBusinessType(type: BusinessType) {
   selectedCategoryIds.value = [...(type.category_ids ?? [])];
 }
 
-// ── Tree helpers ──
-function collectDescendantIds(node: CategoryNode): string[] {
-  const ids = [node.id];
-  if (node.children) {
-    for (const child of node.children) {
-      ids.push(...collectDescendantIds(child));
-    }
-  }
-  return ids;
-}
-
 function toggleCategory(nodeId: string) {
   const idx = selectedCategoryIds.value.indexOf(nodeId);
   if (idx !== -1) {
@@ -292,9 +282,6 @@ function toggleCategory(nodeId: string) {
     selectedCategoryIds.value.push(nodeId);
   }
 }
-
-// ── Active total (flat count for header) ──
-const activeTotal = computed(() => selectedCategoryIds.value.length);
 
 // ── Filtered tree for search ──
 const filteredTree = computed(() => {

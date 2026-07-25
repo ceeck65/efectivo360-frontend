@@ -54,6 +54,7 @@
         <table class="w-full text-sm">
           <thead class="bg-slate-50 border-b border-slate-200">
             <tr>
+              <th class="w-8 px-2 py-3"></th>
               <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Producto</th>
               <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">SKU</th>
               <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Control</th>
@@ -62,13 +63,21 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100">
-            <tr v-for="p in filteredProducts" :key="p.id"
-              class="hover:bg-slate-50/50 transition-colors">
+            <template v-for="p in filteredProducts" :key="p.id">
+            <tr class="hover:bg-slate-50/50 transition-colors">
+              <td class="px-2 py-3 text-center">
+                <button v-if="p.variants?.length" @click="toggleExpand(p.id)"
+                  class="p-0.5 rounded hover:bg-slate-200 transition-colors cursor-pointer">
+                  <ChevronRight v-if="!expandedRows.has(p.id)" class="w-4 h-4 text-slate-400" />
+                  <ChevronDown v-else class="w-4 h-4 text-slate-600" />
+                </button>
+              </td>
               <td class="px-4 py-3">
-                <div class="flex items-center gap-3">
-                  <div class="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
-                    <Package class="w-4 h-4 text-blue-500" />
-                  </div>
+                  <div class="flex items-center gap-3">
+                    <img v-if="p.image" :src="p.image" alt="" class="w-8 h-8 rounded-lg object-cover border border-slate-200 flex-shrink-0" />
+                    <div v-else class="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0">
+                      <Package class="w-4 h-4 text-blue-500" />
+                    </div>
                   <div class="min-w-0">
                     <p class="text-sm font-medium text-slate-800 truncate max-w-[240px]">{{ p.name }}</p>
                     <p v-if="p.category" class="text-[11px] text-slate-400 truncate max-w-[240px]">{{ p.category }}</p>
@@ -122,6 +131,48 @@
                 <span v-else class="text-[11px] text-slate-400">—</span>
               </td>
             </tr>
+            <tr v-if="expandedRows.has(p.id) && p.variants?.length" class="border-b border-slate-100">
+              <td colspan="6" class="p-0">
+                <table class="w-full text-xs bg-slate-50/50">
+                  <thead>
+                    <tr class="text-slate-400 uppercase tracking-wider text-[10px]">
+                      <th class="text-left px-4 py-2 pl-12 font-semibold">Variante</th>
+                      <th class="text-left px-4 py-2 font-semibold">SKU</th>
+                      <th class="text-left px-4 py-2 font-semibold">Atributos</th>
+                      <th class="text-right px-4 py-2 font-semibold">Stock</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="v in p.variants" :key="v.id" class="hover:bg-slate-100/50">
+                      <td class="px-4 py-2 pl-12 text-slate-700 font-medium">
+                        <div class="flex items-center gap-2">
+                          <span class="w-1.5 h-1.5 rounded-full bg-slate-300 shrink-0"></span>
+                          {{ v.display_name || v.sku || 'N/A' }}
+                        </div>
+                      </td>
+                      <td class="px-4 py-2">
+                        <span class="font-mono text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+                          {{ v.sku || 'N/A' }}
+                        </span>
+                      </td>
+                      <td class="px-4 py-2">
+                        <div v-if="v.formatted_attributes?.length" class="flex flex-wrap gap-1">
+                          <span v-for="(attr, i) in v.formatted_attributes" :key="i"
+                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                            <span class="text-slate-400 mr-1 font-normal">{{ attr.name }}:</span> {{ attr.value }}
+                          </span>
+                        </div>
+                        <span v-else class="text-slate-400">—</span>
+                      </td>
+                      <td class="px-4 py-2 text-right font-semibold" :class="v.stock > 0 ? 'text-slate-800' : 'text-rose-500'">
+                        {{ Number(v.stock).toLocaleString('es-VE') }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+            </template>
           </tbody>
         </table>
         <div v-if="filteredProducts.length === 0" class="text-center py-16 text-slate-400">
@@ -143,9 +194,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { apiClient } from '@/composables/useApi';
-import { Package, Loader2, Activity, Inbox, Infinity, Clock, MoreVertical, PackagePlus, Wrench } from 'lucide-vue-next';
+import { Package, Loader2, Activity, Inbox, Infinity, Clock, MoreVertical, PackagePlus, Wrench, ChevronRight, ChevronDown } from 'lucide-vue-next';
 import KardexAuditDrawer from './KardexAuditDrawer.vue';
 import ProductSearchSelect from './ProductSearchSelect.vue';
+
+interface VariantStock {
+  id: string;
+  sku: string;
+  stock: number;
+}
 
 interface ProductItem {
   id: string;
@@ -154,6 +211,8 @@ interface ProductItem {
   category?: string;
   inventory_type: 'KARDEX' | 'SIMPLE' | 'NONE';
   current_stock?: number;
+  image?: string | null;
+  variants?: VariantStock[];
 }
 
 const search = ref('');
@@ -162,6 +221,14 @@ const loading = ref(true);
 const products = ref<ProductItem[]>([]);
 const auditProduct = ref<ProductItem | null>(null);
 const openMenuId = ref<string | null>(null);
+const expandedRows = ref<Set<string>>(new Set());
+
+function toggleExpand(id: string) {
+  const s = new Set(expandedRows.value);
+  if (s.has(id)) s.delete(id);
+  else s.add(id);
+  expandedRows.value = s;
+}
 
 function toggleMenu(id: string) {
   openMenuId.value = openMenuId.value === id ? null : id;
@@ -187,9 +254,11 @@ function openAdjustmentDrawer(p: ProductItem) {
   openMenuId.value = null;
 }
 
-function formatStock(val: number | undefined | null): string {
+function formatStock(val: number | string | undefined | null): string {
   if (val == null) return '0';
-  return Number(val.toFixed(2)).toLocaleString('es', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  const n = Number(val);
+  if (isNaN(n)) return '0';
+  return n.toLocaleString('es', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 /** Normalise a stock‑API item into a ProductItem for the table */
@@ -202,6 +271,8 @@ function normaliseStockItem(item: any): ProductItem {
     category: prod.global_product?.smart_category?.name ?? '',
     inventory_type: 'SIMPLE',
     current_stock: item.quantity ?? 0,
+    image: prod.image ?? null,
+    variants: item.variants || [],
   };
 }
 

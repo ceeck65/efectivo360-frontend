@@ -149,7 +149,8 @@ import { useNotify } from '@/composables/useNotify';
 const { Plus, HelpCircle, Pencil, FolderOpen, Store, Loader2 } = AllIcons;
 
 interface Blueprint {
-  id: number;
+  id: string;
+  ulid: string;
   name: string;
   code: string;
   icon?: string;
@@ -157,7 +158,7 @@ interface Blueprint {
 }
 
 interface CategoryExtension {
-  id: number;
+  id: string;
   name: string;
   code: string;
   icon?: string;
@@ -166,7 +167,7 @@ interface CategoryExtension {
 }
 
 interface CategoryNode {
-  id: number;
+  id: string;
   name: string;
   code: string;
   icon?: string;
@@ -186,10 +187,10 @@ const loadingExtensions = ref(true);
 const primaryBlueprint = ref<Blueprint | null>(null);
 const categoryTree = ref<CategoryNode[]>([]);
 const categoryExtensions = ref<CategoryExtension[]>([]);
-const toggling = ref(new Set<number>());
-const expandedExtensions = ref(new Set<number>());
+const toggling = ref(new Set<string>());
+const expandedExtensions = ref(new Set<string>());
 
-function toggleExpand(id: number) {
+function toggleExpand(id: string) {
   const next = new Set(expandedExtensions.value);
   if (next.has(id)) next.delete(id); else next.add(id);
   expandedExtensions.value = next;
@@ -198,10 +199,10 @@ function toggleExpand(id: number) {
 onMounted(async () => {
   try {
     const info = await fetchApi<any>('/api/v1/tenants/settings/info/');
-    primaryBlueprint.value = info?.business_type || null;
+    primaryBlueprint.value = info?.primary_business_type || null;
 
     if (primaryBlueprint.value && props.tenantId) {
-      await Promise.all([loadCategories(), loadExtensions()]);
+      await Promise.all([loadCategories(primaryBlueprint.value.ulid), loadExtensions()]);
     }
   } catch {
     // silent
@@ -211,10 +212,10 @@ onMounted(async () => {
   }
 });
 
-async function loadCategories() {
+async function loadCategories(btUlid: string) {
   try {
     const data = await fetchApi<CategoryNode[]>(
-      `/api/v1/catalog/categories/?tenant_id=${encodeURIComponent(props.tenantId)}`
+      `/api/v1/business-types/${btUlid}/categories/`
     );
     categoryTree.value = Array.isArray(data) ? data : [];
   } catch {
@@ -238,7 +239,7 @@ async function onBlueprintSelected(bp: Blueprint) {
   primaryBlueprint.value = bp;
   showBlueprintModal.value = false;
   categoryExtensions.value = [];
-  await Promise.all([loadCategories(), loadExtensions()]);
+  await Promise.all([loadCategories(bp.ulid), loadExtensions()]);
 }
 
 async function toggleCategoryRoot(ext: CategoryExtension) {
@@ -250,7 +251,7 @@ async function toggleCategoryRoot(ext: CategoryExtension) {
       data: { category_id: ext.id },
     });
     // Refresh both tree and extensions so is_active stays in sync
-    await Promise.all([loadCategories(), loadExtensions()]);
+    await Promise.all([loadCategories(primaryBlueprint.value!.ulid), loadExtensions()]);
     success(ext.is_active ? 'Categoría adicional desactivada' : 'Categoría adicional activada');
   } catch {
     notifyError('Error al cambiar extensión de categoría');

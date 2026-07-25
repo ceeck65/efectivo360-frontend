@@ -29,228 +29,196 @@
         <!-- Body -->
         <div class="flex-1 overflow-y-auto px-5 py-4 space-y-4">
 
-          <!-- ════════════════════════════════════════════════ -->
-          <!-- WHOLESALE MODE TOGGLE (visible in both tabs)   -->
-          <!-- ════════════════════════════════════════════════ -->
-          <div class="flex items-center justify-between bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-3 shrink-0">
-            <div>
-              <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Activar Modo Mayorista</p>
-              <p class="text-[11px] text-slate-500 dark:text-slate-400">Cálculos a gran escala — Distribución Masiva</p>
-            </div>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input v-model="wholesaleEnabled" type="checkbox" class="sr-only peer" />
-              <div class="w-[42px] h-[22px] bg-slate-300 dark:bg-white/[0.12] rounded-full peer peer-checked:bg-indigo-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-[18px] after:w-[18px] after:shadow-sm after:transition-all"></div>
-            </label>
-          </div>
 
-          <!-- ⚠️ WHOLESALE RENTABILITY WARNING BANNER -->
-          <div v-if="wholesaleEnabled"
-            class="border-l-4 border-red-600 bg-red-50 dark:bg-red-500/[0.06] text-red-800 dark:text-red-300 p-4 text-xs leading-relaxed rounded-r-lg">
-            <p class="font-bold mb-1 text-[11px] uppercase tracking-wider">⚠️ ADVERTENCIA DE RENTABILIDAD</p>
-            <p>Este modo está diseñado exclusivamente para Distribución Masiva y Mayoristas. <strong>NO SE RECOMIENDA</strong> activar esta opción para ventas minoristas tradicionales (al detal), ya que el cálculo opera bajo márgenes mínimos de volumen masivo y unidades de carga industrial, lo que comprometería la rentabilidad del negocio detal.</p>
-          </div>
+          <!-- ════════════════════════════════════════════════ -->
+          <!-- TAB: Información General                        -->
+          <!-- ════════════════════════════════════════════════ -->
+          <div v-show="activeTab === 'general'" class="space-y-4">
 
-          <!-- ================================================================ -->
-          <!-- TAB: Información General -->
-          <!-- ================================================================ -->
-          <div v-show="activeTab === 'general'">
-            <!-- Dual Search: Local Inventory + Global Catalog -->
-            <ProductDualSearch
-              @select-local="onSelectLocal"
-              @select-global="onSelectGlobal"
-              @create-custom="onCreateCustom"
-            />
-            <hr class="border-slate-200 dark:border-white/[0.06]" />
-            <!-- Image -->
-            <div>
-              <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Imagen del Producto</label>
-              <div @click="showImageStudio = true" class="relative flex flex-col items-center justify-center w-full h-40 rounded-xl border-2 border-dashed cursor-pointer transition-colors overflow-hidden"
-                :class="form.image
-                  ? 'border-emerald-300 bg-emerald-50/30 dark:bg-emerald-500/[0.04]'
-                  : 'border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] hover:border-slate-400 dark:hover:border-white/[0.15]'">
-                <img v-if="form.image" :src="form.image" class="max-h-full max-w-full object-contain p-2" alt="Preview" />
-                <div v-else class="flex flex-col items-center gap-2 text-slate-400 dark:text-slate-500">
-                  <ImagePlus class="w-8 h-8" />
-                  <span class="text-xs font-medium">Haz clic para abrir el editor de imagen</span>
-                  <span class="text-[10px]">Recomendado: 400x400px, formato cuadrado</span>
-                </div>
-              </div>
-              <div v-if="form.image" class="flex items-center justify-between mt-2">
-                <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-                  <CheckCircle2 class="w-3.5 h-3.5" /> Imagen cargada
+            <!-- Accordion A: Basic Info (Indigo) -->
+            <div class="border border-indigo-200 dark:border-indigo-500/30 rounded-xl">
+              <button @click="toggleAccordion('basic')"
+                class="w-full flex items-center justify-between px-4 py-3 bg-indigo-50/80 dark:bg-indigo-500/[0.06] hover:bg-indigo-100/80 dark:hover:bg-indigo-500/[0.1] transition-colors text-left">
+                <span class="flex items-center gap-2 text-xs font-semibold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">
+                  <ChevronDown class="w-4 h-4 text-indigo-400 transition-transform" :class="activePanels.basic ? 'rotate-0' : '-rotate-90'" />
+                  <FileText class="w-4 h-4 text-indigo-400" />
+                  Información Básica
                 </span>
-                <button @click.stop="removeImage" type="button" class="text-[11px] text-red-500 hover:text-red-600 font-medium flex items-center gap-1 transition-colors">
-                  <Trash2 class="w-3.5 h-3.5" /> Eliminar
-                </button>
-              </div>
-            </div>
-
-            <!-- Barcode -->
-            <div>
-              <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Código de Barras</label>
-              <div class="flex gap-2">
-                <div class="flex-1 relative">
-                  <input v-model="form.barcode" type="text" placeholder="EAN-13, UPC, etc."
-                    class="w-full h-9 px-3 pr-8 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors"
-                    :class="{'border-red-400 bg-red-50 dark:bg-red-500/[0.04]': errors.barcode}" @input="errors.barcode = ''" @keydown.enter.prevent="lookupBarcode(form.barcode)" @blur="lookupBarcode(form.barcode)" />
-                  <Loader2 v-if="searchingBarcode" class="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-400" />
-                </div>
-                <button type="button" @click="toggleScanner"
-                  class="h-9 px-3 rounded-lg text-sm font-medium border transition-colors flex items-center gap-1.5 shrink-0"
-                  :class="scanning ? 'bg-blue-500/20 border-blue-500/40 text-blue-600 dark:text-blue-400' : 'border-slate-300 dark:border-white/[0.08] text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'">
-                  <ScanBarcode v-if="!scanning" class="w-4 h-4" />
-                  <ScanLine v-else class="w-4 h-4 animate-pulse" />
-                </button>
-              </div>
-              <p v-if="errors.barcode" class="text-[11px] text-red-500 mt-1">{{ errors.barcode }}</p>
-              <div v-if="isCheckingBarcode" class="mt-2 flex items-center gap-2 text-[11px] text-slate-500">
-                <Loader2 class="w-3.5 h-3.5 animate-spin" /> Verificando en catálogo global...
-              </div>
-              <div v-if="isNewProductGlobal" class="mt-2 p-3 bg-blue-50 dark:bg-blue-500/[0.06] border border-blue-200 dark:border-blue-500/20 rounded-lg text-sm text-blue-700 dark:text-blue-300">
-                <span class="font-bold">✨ ¡Producto Nuevo detectado!</span> Este artículo no se encuentra en el catálogo global de Efectivo 360. Se registrará localmente en tu inventario y pasará a nuestra mesa de control para su verificación y aprobación global.
-              </div>
-            </div>
-
-            <BarcodeScanner
-              id="product-create-scanner"
-              :scanning="scanning"
-              @scan="(txt: string) => { form.barcode = txt; lookupBarcode(txt); }"
-              @close="scanning = false"
-            />
-
-            <!-- Name -->
-            <div>
-              <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Nombre <span class="text-red-400">*</span></label>
-              <input v-model="form.name" type="text" placeholder="Nombre del producto"
-                class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors"
-                :class="{'border-red-400 bg-red-50 dark:bg-red-500/[0.04]': errors.name}" @input="errors.name = ''" />
-              <p v-if="errors.name" class="text-[11px] text-red-500 mt-1">{{ errors.name }}</p>
-            </div>
-
-            <!-- SKU -->
-            <div>
-              <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">SKU <span class="text-red-400">*</span></label>
-              <input v-model="form.sku" type="text" placeholder="SKU único"
-                class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors"
-                :class="{'border-red-400 bg-red-50 dark:bg-red-500/[0.04]': errors.sku}" @input="errors.sku = ''" @blur="checkSkuDuplicate" />
-              <p v-if="errors.sku" class="text-[11px] text-red-500 mt-1">{{ errors.sku }}</p>
-            </div>
-
-            <!-- Category async select -->
-            <CategoryAsyncSelect v-model="selectedCategoryId" @select="onCategorySelect" />
-
-            <!-- Brand async select + creatable -->
-            <BrandCreatableSelect
-              :key="selectedCategoryId ?? 'empty-brand-select'"
-              v-model="form.brand"
-              :options="brands"
-              :loading="loadingBrands"
-              :disabled="!selectedCategoryId"
-              placeholder="Buscar o crear marca..."
-              @create-inline="onBrandCreateInline"
-            />
-
-            <!-- ═══ Dynamic Attributes ═══ -->
-            <div v-if="isLoadingAttributes" class="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] rounded-lg p-4 space-y-3">
-              <div class="h-3 w-24 bg-slate-200 dark:bg-white/[0.08] rounded animate-pulse" />
-              <div class="grid grid-cols-2 gap-3">
-                <div v-for="i in 4" :key="i" class="animate-pulse space-y-1.5">
-                  <div class="h-2.5 w-20 bg-slate-200 dark:bg-white/[0.08] rounded" />
-                  <div class="h-9 bg-slate-200 dark:bg-white/[0.08] rounded-lg" />
-                </div>
-              </div>
-            </div>
-            <div v-else-if="dynamicAttributes.length > 0" class="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] rounded-lg p-4 space-y-3">
-              <h3 class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Atributos</h3>
-              <div class="grid grid-cols-2 gap-3">
-                <div v-for="attr in dynamicAttributes" :key="attr.id">
-                  <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1">
-                    {{ attr.label }}
-                    <span v-if="attr.unit" class="text-[10px] text-slate-400 font-normal">({{ attr.unit }})</span>
-                  </label>
-                  <select
-                    v-if="attr.attr_type === 'select'"
-                    v-model="form.attributes[attr.id]"
-                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none"
-                  >
-                    <option value="">Seleccionar...</option>
-                    <option v-for="opt in attr.options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-                  </select>
-                  <div v-else-if="attr.attr_type === 'number' || attr.attr_type === 'decimal'" class="relative">
-                    <input
-                      v-model="form.attributes[attr.id]"
-                      type="number" step="any" min="0" placeholder="0"
-                      class="w-full h-9 px-3 pr-8 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors"
-                    />
-                    <span v-if="attr.unit" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">{{ attr.unit }}</span>
-                  </div>
-                  <label v-else-if="attr.attr_type === 'boolean'" class="inline-flex items-center gap-2 cursor-pointer">
-                    <input
-                      v-model="form.attributes[attr.id]"
-                      type="checkbox" true-value="true" false-value=""
-                      class="h-4 w-4 rounded border-slate-300 dark:border-white/[0.12] text-blue-600 focus:ring-blue-500"
-                    />
-                    <span class="text-xs text-slate-600 dark:text-slate-400">{{ form.attributes[attr.id] ? 'Sí' : 'No' }}</span>
-                  </label>
-                  <input
-                    v-else
-                    v-model="form.attributes[attr.id]"
-                    type="text" placeholder="Valor"
-                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <!-- IVA Type + Switch Módulo Fiscal + Alerta Preventiva -->
-            <div>
-              <!-- Switch: Módulo Fiscal -->
-              <label class="flex items-center gap-3 cursor-pointer select-none mb-2">
-                <div class="relative w-[38px] h-[20px]">
-                  <input type="checkbox" v-model="fiscalModuleEnabled" class="sr-only peer" />
-                  <div class="w-[38px] h-[20px] rounded-full bg-slate-300 dark:bg-white/[0.12] peer-checked:bg-blue-600 transition-colors" />
-                  <div class="absolute top-[2px] left-[2px] w-[16px] h-[16px] rounded-full bg-white shadow-sm peer-checked:translate-x-[18px] transition-transform" />
-                </div>
-                <span class="text-[11px] font-medium text-slate-600 dark:text-slate-400">⚙️ Simular/Activar Módulo Fiscal para este Producto</span>
-              </label>
-
-              <template v-if="fiscalModuleEnabled">
-                <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de IVA *</label>
-                <select v-model="form.tax_rate_id"
-                  class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer"
-                  :class="{'border-amber-400 dark:border-amber-500/50': showFiscalWarning}">
-                  <option :value="null">Seleccionar...</option>
-                  <option v-for="tr in taxRates" :key="tr.id" :value="tr.id">
-                    {{ tr.name }} ({{ tr.rate_percentage }}%)
-                  </option>
-                </select>
-
-                <p v-if="!fiscalSettings.enable_iva" class="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
-                  Módulo fiscal desactivado — se usará Exento por defecto
-                </p>
-
-                <!-- ⚠️ ALERTA FISCAL PREVENTIVA -->
-                <div v-if="showFiscalWarning"
-                  class="mt-2 rounded-lg border border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/[0.06] p-3">
-                  <div class="flex items-start gap-2.5">
-                    <AlertTriangle class="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
-                    <div>
-                      <p class="text-[11px] font-bold text-red-800 dark:text-red-300 uppercase tracking-wider">Advertencia Legal</p>
-                      <p class="text-[10px] leading-relaxed text-red-700 dark:text-red-400 mt-1">
-                        Esta tienda <strong>no está registrada como Contribuyente Especial</strong> en la configuración del negocio.
-                        Activar el módulo fiscal o emitir alícuotas de IVA sin la debida adecuación técnica y máquinas fiscales
-                        autorizadas por el <strong>SENIAT</strong> puede acarrear severas sanciones fiscales, clausuras y multas legales.
-                      </p>
+              </button>
+              <div v-show="activePanels.basic" class="p-4 space-y-4">
+                <!-- Dual Search: Local Inventory + Global Catalog -->
+                <ProductDualSearch
+                  @select-local="onSelectLocal"
+                  @select-global="onSelectGlobal"
+                  @create-custom="onCreateCustom"
+                />
+                <hr class="border-slate-200 dark:border-white/[0.06]" />
+                <!-- Image -->
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Imagen del Producto</label>
+                  <div @click="showImageStudio = true" class="relative flex flex-col items-center justify-center w-full h-40 rounded-xl border-2 border-dashed cursor-pointer transition-colors overflow-hidden"
+                    :class="form.image
+                      ? 'border-emerald-300 bg-emerald-50/30 dark:bg-emerald-500/[0.04]'
+                      : 'border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] hover:border-slate-400 dark:hover:border-white/[0.15]'">
+                    <img v-if="form.image" :src="form.image" class="max-h-full max-w-full object-contain p-2" alt="Preview" />
+                    <div v-else class="flex flex-col items-center gap-2 text-slate-400 dark:text-slate-500">
+                      <ImagePlus class="w-8 h-8" />
+                      <span class="text-xs font-medium">Haz clic para abrir el editor de imagen</span>
+                      <span class="text-[10px]">Recomendado: 400x400px, formato cuadrado</span>
                     </div>
                   </div>
+                  <div v-if="form.image" class="flex items-center justify-between mt-2">
+                    <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                      <CheckCircle2 class="w-3.5 h-3.5" /> Imagen cargada
+                    </span>
+                    <button @click.stop="removeImage" type="button" class="text-[11px] text-red-500 hover:text-red-600 font-medium flex items-center gap-1 transition-colors">
+                      <Trash2 class="w-3.5 h-3.5" /> Eliminar
+                    </button>
+                  </div>
                 </div>
-              </template>
-              <p v-else class="text-[11px] text-slate-400 dark:text-slate-500 italic">
-                El producto se registrará como <strong>EXENTO</strong> de IVA.
-              </p>
+
+                <!-- Barcode -->
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Código de Barras</label>
+                  <div class="flex gap-2">
+                    <div class="flex-1 relative">
+                      <input v-model="form.barcode" type="text" placeholder="EAN-13, UPC, etc."
+                        class="w-full h-9 px-3 pr-8 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors"
+                        :class="{'border-red-400 bg-red-50 dark:bg-red-500/[0.04]': errors.barcode}" @input="errors.barcode = ''" @keydown.enter.prevent="lookupBarcode(form.barcode)" @blur="lookupBarcode(form.barcode)" />
+                      <Loader2 v-if="searchingBarcode" class="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-slate-400" />
+                    </div>
+                    <button type="button" @click="toggleScanner"
+                      class="h-9 px-3 rounded-lg text-sm font-medium border transition-colors flex items-center gap-1.5 shrink-0"
+                      :class="scanning ? 'bg-blue-500/20 border-blue-500/40 text-blue-600 dark:text-blue-400' : 'border-slate-300 dark:border-white/[0.08] text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/[0.04]'">
+                      <ScanBarcode v-if="!scanning" class="w-4 h-4" />
+                      <ScanLine v-else class="w-4 h-4 animate-pulse" />
+                    </button>
+                  </div>
+                  <p v-if="errors.barcode" class="text-[11px] text-red-500 mt-1">{{ errors.barcode }}</p>
+                  <div v-if="isCheckingBarcode" class="mt-2 flex items-center gap-2 text-[11px] text-slate-500">
+                    <Loader2 class="w-3.5 h-3.5 animate-spin" /> Verificando en catálogo global...
+                  </div>
+                  <div v-if="isNewProductGlobal" class="mt-2 p-3 bg-blue-50 dark:bg-blue-500/[0.06] border border-blue-200 dark:border-blue-500/20 rounded-lg text-sm text-blue-700 dark:text-blue-300">
+                    <span class="font-bold">✨ ¡Producto Nuevo detectado!</span> Este artículo no se encuentra en el catálogo global de Efectivo 360. Se registrará localmente en tu inventario y pasará a nuestra mesa de control para su verificación y aprobación global.
+                  </div>
+                </div>
+
+                <BarcodeScanner
+                  id="product-create-scanner"
+                  :scanning="scanning"
+                  @scan="(txt: string) => { form.barcode = txt; lookupBarcode(txt); }"
+                  @close="scanning = false"
+                />
+
+                <!-- Name -->
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Nombre <span class="text-red-400">*</span></label>
+                  <input v-model="form.name" type="text" placeholder="Nombre del producto"
+                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors"
+                    :class="{'border-red-400 bg-red-50 dark:bg-red-500/[0.04]': errors.name}" @input="errors.name = ''" />
+                  <p v-if="errors.name" class="text-[11px] text-red-500 mt-1">{{ errors.name }}</p>
+                </div>
+
+                <!-- SKU -->
+                <div>
+                  <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">SKU <span class="text-red-400">*</span></label>
+                  <input v-model="form.sku" type="text" placeholder="SKU único"
+                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors"
+                    :class="{'border-red-400 bg-red-50 dark:bg-red-500/[0.04]': errors.sku}" @input="errors.sku = ''" @blur="checkSkuDuplicate" />
+                  <p v-if="errors.sku" class="text-[11px] text-red-500 mt-1">{{ errors.sku }}</p>
+                </div>
+              </div>
             </div>
 
-            <!-- Description -->
+            <!-- Accordion B: Classification (Purple) -->
+            <div class="border border-purple-200 dark:border-purple-500/30 rounded-xl">
+              <button @click="toggleAccordion('classification')"
+                class="w-full flex items-center justify-between px-4 py-3 bg-purple-50/80 dark:bg-purple-500/[0.06] hover:bg-purple-100/80 dark:hover:bg-purple-500/[0.1] transition-colors text-left">
+                <span class="flex items-center gap-2 text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wider">
+                  <ChevronDown class="w-4 h-4 text-purple-400 transition-transform" :class="activePanels.classification ? 'rotate-0' : '-rotate-90'" />
+                  <Tag class="w-4 h-4 text-purple-400" />
+                  Clasificación
+                </span>
+              </button>
+              <div v-show="activePanels.classification" class="p-4 space-y-4">
+                <!-- Category async select -->
+                <CategoryAsyncSelect v-model="selectedCategoryId" @select="onCategorySelect" />
+
+                <!-- Brand async select + creatable -->
+                <BrandCreatableSelect
+                  :key="selectedCategoryId ?? 'empty-brand-select'"
+                  v-model="form.brand"
+                  :options="brands"
+                  :loading="loadingBrands"
+                  :disabled="!selectedCategoryId"
+                  placeholder="Buscar o crear marca..."
+                  @create-inline="onBrandCreateInline"
+                />
+              </div>
+            </div>
+
+            <!-- Accordion C: Información Fiscal (Amber) -->
+            <div class="border border-amber-200 dark:border-amber-500/30 rounded-xl">
+              <button @click="toggleAccordion('fiscal')"
+                class="w-full flex items-center justify-between px-4 py-3 bg-amber-50/80 dark:bg-amber-500/[0.06] hover:bg-amber-100/80 dark:hover:bg-amber-500/[0.1] transition-colors text-left">
+                <span class="flex items-center gap-2 text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider">
+                  <ChevronDown class="w-4 h-4 text-amber-400 transition-transform" :class="activePanels.fiscal ? 'rotate-0' : '-rotate-90'" />
+                  <Receipt class="w-4 h-4 text-amber-400" />
+                  Información Fiscal
+                </span>
+              </button>
+              <div v-show="activePanels.fiscal" class="p-4 space-y-4">
+                <!-- IVA Type + Switch Módulo Fiscal + Alerta Preventiva -->
+                <div>
+                  <!-- Switch: Módulo Fiscal -->
+                  <label class="flex items-center gap-3 cursor-pointer select-none mb-2">
+                    <div class="relative w-[38px] h-[20px]">
+                      <input type="checkbox" v-model="fiscalModuleEnabled" class="sr-only peer" />
+                      <div class="w-[38px] h-[20px] rounded-full bg-slate-300 dark:bg-white/[0.12] peer-checked:bg-blue-600 transition-colors" />
+                      <div class="absolute top-[2px] left-[2px] w-[16px] h-[16px] rounded-full bg-white shadow-sm peer-checked:translate-x-[18px] transition-transform" />
+                    </div>
+                    <span class="text-[11px] font-medium text-slate-600 dark:text-slate-400">⚙️ Simular/Activar Módulo Fiscal para este Producto</span>
+                  </label>
+
+                  <!-- ⚠️ ALERTA FISCAL PREVENTIVA -->
+                  <div v-if="showFiscalWarning"
+                    class="rounded-lg border border-red-300 dark:border-red-500/30 bg-red-50 dark:bg-red-500/[0.06] p-3">
+                    <div class="flex items-start gap-2.5">
+                      <AlertTriangle class="w-5 h-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p class="text-[11px] font-bold text-red-800 dark:text-red-300 uppercase tracking-wider">Advertencia Legal</p>
+                        <p class="text-[10px] leading-relaxed text-red-700 dark:text-red-400 mt-1">
+                          Esta tienda <strong>no está registrada como Contribuyente Especial</strong> en la configuración del negocio.
+                          Activar el módulo fiscal o emitir alícuotas de IVA sin la debida adecuación técnica y máquinas fiscales
+                          autorizadas por el <strong>SENIAT</strong> puede acarrear severas sanciones fiscales, clausuras y multas legales.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <template v-if="fiscalModuleEnabled">
+                    <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de IVA *</label>
+                    <select v-model="form.tax_rate_id"
+                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer"
+                      :class="{'border-amber-400 dark:border-amber-500/50': showFiscalWarning}">
+                      <option :value="null">Seleccionar...</option>
+                      <option v-for="tr in taxRates" :key="tr.id" :value="tr.id">
+                        {{ tr.name }} ({{ tr.rate_percentage }}%)
+                      </option>
+                    </select>
+
+                    <p v-if="!fiscalSettings.enable_iva" class="text-[11px] text-amber-600 dark:text-amber-400 mt-1">
+                      Módulo fiscal desactivado — se usará Exento por defecto
+                    </p>
+                  </template>
+                  <p v-else class="text-[11px] text-slate-400 dark:text-slate-500 italic">
+                    El producto se registrará como <strong>EXENTO</strong> de IVA.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Description (always visible below accordions) -->
             <div>
               <label class="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Descripción</label>
               <textarea v-model="form.description" rows="2" placeholder="Descripción opcional..."
@@ -259,472 +227,673 @@
 
           </div>
 
-          <!-- ================================================================ -->
-          <!-- TAB: Precios y Logística -->
-          <!-- ================================================================ -->
-          <div v-show="activeTab === 'pricing'">
-            <!-- Initial Stock Banner -->
-            <div class="bg-amber-50 dark:bg-amber-500/[0.06] border border-amber-200 dark:border-amber-500/20 rounded-lg p-3">
-              <div class="flex items-center gap-2 mb-2">
-                <PackagePlus class="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                <span class="text-xs font-semibold text-amber-800 dark:text-amber-300">Inventario Inicial</span>
-              </div>
-              <p class="text-[11px] text-amber-700 dark:text-amber-400 mb-3">Si registras stock inicial, se creará automáticamente una capa de inventario con el costo indicado.</p>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-1">Stock Físico Inicial</label>
-                  <input v-model.number="form.initial_physical_stock" type="number" min="0" step="0.001" placeholder="0"
-                    class="w-full h-9 px-3 text-sm border border-amber-300 dark:border-amber-500/30 bg-white dark:bg-white/[0.04] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-amber-500/20 focus:border-amber-400 focus:outline-none transition-colors" />
-                  <span class="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 block">{{ isContinuousUnit ? 'Kg / Litros' : 'Unidades' }}</span>
+          <!-- ════════════════════════════════════════════════ -->
+          <!-- TAB: Precios y Logística                        -->
+          <!-- ════════════════════════════════════════════════ -->
+          <div v-show="activeTab === 'pricing'" class="space-y-4">
+
+            <!-- Accordion D: Precios y Logística (Emerald) -->
+            <div class="border border-emerald-200 dark:border-emerald-500/30 rounded-xl">
+              <button @click="toggleAccordion('pricingLogistics')"
+                class="w-full flex items-center justify-between px-4 py-3 bg-emerald-50/80 dark:bg-emerald-500/[0.06] hover:bg-emerald-100/80 dark:hover:bg-emerald-500/[0.1] transition-colors text-left">
+                <span class="flex items-center gap-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">
+                  <ChevronDown class="w-4 h-4 text-emerald-400 transition-transform" :class="activePanels.pricingLogistics ? 'rotate-0' : '-rotate-90'" />
+                  Precios y Logística
+                </span>
+              </button>
+              <div v-show="activePanels.pricingLogistics" class="p-4 space-y-4">
+
+                <!-- WHOLESALE MODE TOGGLE -->
+                <div class="flex items-center justify-between bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] rounded-xl px-4 py-3 shrink-0">
+                  <div>
+                    <p class="text-sm font-medium text-slate-700 dark:text-slate-300">Activar Modo Mayorista</p>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Cálculos a gran escala — Distribución Masiva</p>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input v-model="wholesaleEnabled" type="checkbox" class="sr-only peer" />
+                    <div class="w-[42px] h-[22px] bg-slate-300 dark:bg-white/[0.12] rounded-full peer peer-checked:bg-indigo-500 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-[18px] after:w-[18px] after:shadow-sm after:transition-all"></div>
+                  </label>
                 </div>
-                <div>
-                  <label class="block text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-1">Costo Unit. Inicial USD</label>
-                  <input type="text" inputmode="decimal" placeholder="0,00"
-                    :value="miInitCost.display.value"
-                    @focus="miInitCost.onFocus"
-                    @input="miInitCost.onInput"
-                    @blur="miInitCost.onBlur"
-                    class="w-full h-9 px-3 text-sm border border-amber-300 dark:border-amber-500/30 bg-white dark:bg-white/[0.04] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-amber-500/20 focus:border-amber-400 focus:outline-none transition-colors" />
+
+                <!-- ⚠️ WHOLESALE RENTABILITY WARNING BANNER -->
+                <div v-if="wholesaleEnabled"
+                  class="border-l-4 border-red-600 bg-red-50 dark:bg-red-500/[0.06] text-red-800 dark:text-red-300 p-4 text-xs leading-relaxed rounded-r-lg">
+                  <p class="font-bold mb-1 text-[11px] uppercase tracking-wider">⚠️ ADVERTENCIA DE RENTABILIDAD</p>
+                  <p>Este modo está diseñado exclusivamente para Distribución Masiva y Mayoristas. <strong>NO SE RECOMIENDA</strong> activar esta opción para ventas minoristas tradicionales (al detal), ya que el cálculo opera bajo márgenes mínimos de volumen masivo y unidades de carga industrial, lo que comprometería la rentabilidad del negocio detal.</p>
                 </div>
+
+                <!-- Initial Stock Banner -->
+                <div class="bg-amber-50 dark:bg-amber-500/[0.06] border border-amber-200 dark:border-amber-500/20 rounded-lg p-3">
+                  <div class="flex items-center gap-2 mb-2">
+                    <PackagePlus class="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <span class="text-xs font-semibold text-amber-800 dark:text-amber-300">Inventario Inicial</span>
+                  </div>
+                  <p class="text-[11px] text-amber-700 dark:text-amber-400 mb-3">Si registras stock inicial, se creará automáticamente una capa de inventario con el costo indicado.</p>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div>
+                      <label class="block text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-1">Stock Físico Inicial</label>
+                      <input v-model.number="form.initial_physical_stock" type="number" min="0" step="0.001" placeholder="0"
+                        class="w-full h-9 px-3 text-sm border border-amber-300 dark:border-amber-500/30 bg-white dark:bg-white/[0.04] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-amber-500/20 focus:border-amber-400 focus:outline-none transition-colors" />
+                      <span class="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 block">{{ isContinuousUnit ? 'Kg / Litros' : 'Unidades' }}</span>
+                    </div>
+                    <div>
+                      <label class="block text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-1">Costo Unit. Inicial USD</label>
+                      <input type="text" inputmode="decimal" placeholder="0,00"
+                        :value="miInitCost.display.value"
+                        @focus="miInitCost.onFocus"
+                        @input="miInitCost.onInput"
+                        @blur="miInitCost.onBlur"
+                        class="w-full h-9 px-3 text-sm border border-amber-300 dark:border-amber-500/30 bg-white dark:bg-white/[0.04] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-amber-500/20 focus:border-amber-400 focus:outline-none transition-colors" />
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
 
-            <!-- Selector de Tipo de Medida (Unidad / Peso / Líquido) / Mayorista -->
-            <div class="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] rounded-lg p-4 space-y-3">
-              <div class="flex items-center gap-2">
-                <Package class="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                  {{ wholesaleEnabled ? 'Unidad de Carga Mayorista' : 'Unidad de Medida' }}
+            <!-- Accordion: Unidad de Medida (Sky) -->
+            <div class="border border-sky-100 dark:border-sky-500/20 rounded-xl space-y-4">
+              <button @click="toggleAccordion('unitMeasure')"
+                class="w-full flex items-center justify-between px-4 py-3 bg-sky-50/80 dark:bg-sky-500/[0.06] hover:bg-sky-100/80 dark:hover:bg-sky-500/[0.1] transition-colors text-left">
+                <span class="flex items-center gap-2 text-xs font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
+                  <ChevronDown class="w-4 h-4 text-sky-400 transition-transform" :class="activePanels.unitMeasure ? 'rotate-0' : '-rotate-90'" />
+                  <Package class="w-4 h-4 text-sky-500" />
+                  Unidad de Medida
                 </span>
+              </button>
+              <div v-show="activePanels.unitMeasure" class="p-4 space-y-4">
+
+                <!-- ══════ RETAIL MODE (UNIDAD / PESO / LIQUIDO) ══════ -->
+                <template v-if="!wholesaleEnabled">
+                  <div class="grid grid-cols-3 gap-2">
+                    <button type="button" @click="form.measurement_type = 'UNIDAD'; form.container_type = 'CAJA'"
+                      class="flex flex-col items-center justify-center h-14 rounded-xl border-2 font-semibold text-xs transition-colors"
+                      :class="form.measurement_type === 'UNIDAD' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/[0.06] text-blue-600 dark:text-blue-400' : 'border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-slate-400 hover:border-slate-300'">
+                      <span class="text-base">📦</span>
+                      <span>Unidad</span>
+                    </button>
+                    <button type="button" @click="form.measurement_type = 'PESO'; form.container_type = 'SACO'"
+                      class="flex flex-col items-center justify-center h-14 rounded-xl border-2 font-semibold text-xs transition-colors"
+                      :class="form.measurement_type === 'PESO' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/[0.06] text-blue-600 dark:text-blue-400' : 'border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-slate-400 hover:border-slate-300'">
+                      <span class="text-base">⚖️</span>
+                      <span>Peso</span>
+                    </button>
+                    <button type="button" @click="form.measurement_type = 'LIQUIDO'; form.container_type = 'BIDON'"
+                      class="flex flex-col items-center justify-center h-14 rounded-xl border-2 font-semibold text-xs transition-colors"
+                      :class="form.measurement_type === 'LIQUIDO' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/[0.06] text-blue-600 dark:text-blue-400' : 'border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-slate-400 hover:border-slate-300'">
+                      <span class="text-base">🧪</span>
+                      <span>Líquido</span>
+                    </button>
+                  </div>
+
+                  <!-- Retail sub‑type selectors -->
+                  <div v-if="form.measurement_type === 'UNIDAD'" class="pt-2 space-y-4">
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de empaque</label>
+                    <div class="flex gap-1 p-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
+                      <button type="button" @click="form.container_type = 'CAJA'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                        :class="form.container_type === 'CAJA' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Caja</button>
+                      <button type="button" @click="form.container_type = 'BULTO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                        :class="form.container_type === 'BULTO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Bulto</button>
+                      <button type="button" @click="form.container_type = 'PAQUETE'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                        :class="form.container_type === 'PAQUETE' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Paquete</button>
+                    </div>
+                  </div>
+
+                  <div v-if="form.measurement_type === 'PESO'" class="pt-2 space-y-4">
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de empaque</label>
+                    <div class="flex gap-1 p-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
+                      <button type="button" @click="form.weight_container = 'SACO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                        :class="form.weight_container === 'SACO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">👜 Saco</button>
+                      <button type="button" @click="form.weight_container = 'CESTA'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                        :class="form.weight_container === 'CESTA' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🧺 Cesta</button>
+                      <button type="button" @click="form.weight_container = 'BUN_CAJA'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                        :class="form.weight_container === 'BUN_CAJA' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Bún / Caja</button>
+                      <button type="button" @click="form.weight_container = 'KG_DIRECTO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                        :class="form.weight_container === 'KG_DIRECTO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">⚖️ Kg directo</button>
+                    </div>
+                  </div>
+
+                  <div v-if="form.measurement_type === 'LIQUIDO'" class="pt-2 space-y-2">
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de empaque</label>
+                    <div class="flex gap-1 p-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
+                      <button type="button" @click="form.liquid_container = 'BIDON'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                        :class="form.liquid_container === 'BIDON' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🛢️ Bidón</button>
+                      <button type="button" @click="form.liquid_container = 'TAMBOR'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                        :class="form.liquid_container === 'TAMBOR' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🥁 Tambor</button>
+                      <button type="button" @click="form.liquid_container = 'GALON'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                        :class="form.liquid_container === 'GALON' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">⛽ Galón</button>
+                      <button type="button" @click="form.liquid_container = 'LT_DIRECTO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
+                        :class="form.liquid_container === 'LT_DIRECTO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🧪 Litro directo</button>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- ══════ WHOLESALE MODE ══════ -->
+                <template v-else>
+                  <div>
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de Unidad Mayorista <span class="text-red-400">*</span></label>
+                    <select v-model="selectedWholesaleUnit"
+                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer">
+                      <option v-for="u in WHOLESALE_UNITS" :key="u.value" :value="u.value">{{ u.label }} — {{ u.desc }}</option>
+                    </select>
+                    <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                      1 {{ wholesaleConfig.label.split(' /')[0] }} = <strong>{{ wholesaleConfig.multiplier }}</strong> {{ wholesaleConfig.subLabel.split(' por')[0].toLowerCase() }}s
+                    </p>
+                  </div>
+                </template>
+
+                <!-- Container quantity / capacity fields (shared, labels adapt) -->
+                <div class="grid grid-cols-2 gap-3 pt-2">
+                  <div>
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      <template v-if="wholesaleEnabled">
+                        Cantidad de {{ wholesaleConfig.label.split(' /')[0].toLowerCase() }}s a ingresar
+                      </template>
+                      <template v-else>
+                        {{ form.measurement_type === 'PESO'
+                          ? (form.weight_container === 'KG_DIRECTO' ? 'Cantidad de Kg' : 'Cantidad de ' + (form.weight_container === 'SACO' ? 'Sacos' : form.weight_container === 'CESTA' ? 'Cestas' : 'Bún / Cajas'))
+                          : form.measurement_type === 'LIQUIDO'
+                            ? (form.liquid_container === 'LT_DIRECTO' ? 'Cantidad de Litros' : 'Cantidad de ' + (form.liquid_container === 'BIDON' ? 'Bidones' : form.liquid_container === 'TAMBOR' ? 'Tambores' : 'Galones'))
+                            : 'Cantidad de ' + (form.container_type === 'CAJA' ? 'Cajas' : form.container_type === 'BULTO' ? 'Bultos' : 'Paquetes')
+                        }}
+                      </template>
+                    </label>
+                    <input v-model.number="form.cantidad_contenedores" type="number" min="1" step="1" placeholder="1"
+                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                  </div>
+                  <div>
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      <template v-if="wholesaleEnabled">
+                        {{ wholesaleConfig.subLabel }}
+                      </template>
+                      <template v-else>
+                        {{ form.measurement_type === 'PESO'
+                          ? (form.weight_container === 'KG_DIRECTO' ? 'Kg por contenedor' : 'Kg por ' + (form.weight_container === 'SACO' ? 'Saco' : form.weight_container === 'CESTA' ? 'Cesta' : 'Bún / Caja'))
+                          : form.measurement_type === 'LIQUIDO'
+                            ? (form.liquid_container === 'LT_DIRECTO' ? 'Litros por contenedor' : 'Litros por ' + (form.liquid_container === 'BIDON' ? 'Bidón' : form.liquid_container === 'TAMBOR' ? 'Tambor' : 'Galón'))
+                            : 'Unidades por ' + (form.container_type === 'CAJA' ? 'Caja' : form.container_type === 'BULTO' ? 'Bulto' : 'Paquete')
+                        }}
+                      </template>
+                    </label>
+                    <input v-model.number="form.capacidad_por_contenedor" type="number" min="0.1" step="0.1" placeholder="1"
+                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                  </div>
+                </div>
+
+                <!-- Wholesale multiplier breakdown -->
+                <div v-if="wholesaleEnabled" class="bg-indigo-50 dark:bg-indigo-500/[0.06] border border-indigo-200 dark:border-indigo-500/20 rounded-xl px-4 py-2.5 text-xs text-indigo-700 dark:text-indigo-300 leading-relaxed">
+                  🧮 <strong>{{ form.cantidad_contenedores || 0 }} {{ wholesaleConfig.label.split(' /')[0].toLowerCase() }}s</strong>
+                  × {{ wholesaleConfig.multiplier }} {{ wholesaleConfig.subLabel.split(' por')[0].toLowerCase() }}/unidad
+                  = <strong>{{ effectiveContainers }}</strong> {{ wholesaleConfig.subLabel.split(' por')[0].toLowerCase() }}s
+                  → {{ calculatedStockTotal }} uds. finales
+                </div>
+
+                <!-- Stock total calculado -->
+                <div class="bg-blue-50 dark:bg-blue-500/[0.06] border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[10px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Stock Total Calculado</span>
+                    <span class="text-sm font-mono font-bold text-blue-900 dark:text-blue-200">
+                      {{ calculatedStockTotal }}
+                      <span class="text-[10px] font-normal">
+                        {{ form.measurement_type === 'PESO'
+                          ? 'Kg'
+                          : form.measurement_type === 'LIQUIDO'
+                            ? 'Litros'
+                            : 'Unidades'
+                        }}
+                      </span>
+                      <span v-if="!wholesaleEnabled" class="text-[10px] text-blue-500 dark:text-blue-400 ml-1">
+                        ({{ form.cantidad_contenedores }} {{ form.measurement_type === 'PESO'
+                          ? (form.weight_container === 'KG_DIRECTO' ? 'Kg' : '× ' + form.capacidad_por_contenedor + ' Kg/' + (form.weight_container === 'SACO' ? 'saco' : form.weight_container === 'CESTA' ? 'cesta' : 'bún'))
+                          : form.measurement_type === 'LIQUIDO'
+                            ? (form.liquid_container === 'LT_DIRECTO' ? 'Litros' : '× ' + form.capacidad_por_contenedor + ' L/' + (form.liquid_container === 'BIDON' ? 'bidón' : form.liquid_container === 'TAMBOR' ? 'tambor' : 'galón'))
+                            : '× ' + form.capacidad_por_contenedor + ' uds/' + (form.container_type === 'CAJA' ? 'caja' : form.container_type === 'BULTO' ? 'bulto' : 'paquete')
+                        }})
+                      </span>
+                      <span v-else class="text-[10px] text-indigo-500 dark:text-indigo-400 ml-1">
+                        ({{ effectiveContainers }} {{ wholesaleConfig.subLabel.split(' por')[0].toLowerCase() }}s × {{ form.capacidad_por_contenedor }} uds)
+                      </span>
+                    </span>
+                  </div>
+                </div>
+
               </div>
+            </div>
 
-              <!-- ══════ RETAIL MODE (UNIDAD / PESO / LIQUIDO) ══════ -->
-              <template v-if="!wholesaleEnabled">
-                <div class="grid grid-cols-3 gap-2">
-                  <button type="button" @click="form.measurement_type = 'UNIDAD'; form.container_type = 'CAJA'"
-                    class="flex flex-col items-center justify-center h-14 rounded-xl border-2 font-semibold text-xs transition-colors"
-                    :class="form.measurement_type === 'UNIDAD' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/[0.06] text-blue-600 dark:text-blue-400' : 'border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-slate-400 hover:border-slate-300'">
-                    <span class="text-base">📦</span>
-                    <span>Unidad</span>
-                  </button>
-                  <button type="button" @click="form.measurement_type = 'PESO'; form.container_type = 'SACO'"
-                    class="flex flex-col items-center justify-center h-14 rounded-xl border-2 font-semibold text-xs transition-colors"
-                    :class="form.measurement_type === 'PESO' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/[0.06] text-blue-600 dark:text-blue-400' : 'border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-slate-400 hover:border-slate-300'">
-                    <span class="text-base">⚖️</span>
-                    <span>Peso</span>
-                  </button>
-                  <button type="button" @click="form.measurement_type = 'LIQUIDO'; form.container_type = 'BIDON'"
-                    class="flex flex-col items-center justify-center h-14 rounded-xl border-2 font-semibold text-xs transition-colors"
-                    :class="form.measurement_type === 'LIQUIDO' ? 'border-blue-500 bg-blue-50 dark:bg-blue-500/[0.06] text-blue-600 dark:text-blue-400' : 'border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-slate-400 hover:border-slate-300'">
-                    <span class="text-base">🧪</span>
-                    <span>Líquido</span>
-                  </button>
-                </div>
-
-                <!-- Retail sub‑type selectors -->
-                <div v-if="form.measurement_type === 'UNIDAD'" class="pt-2">
-                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de empaque</label>
+            <!-- Accordion: Costos y Flete Mayorista (Teal) -->
+            <div class="border border-teal-200 dark:border-teal-500/30 rounded-xl">
+              <button @click="toggleAccordion('costsFreight')"
+                class="w-full flex items-center justify-between px-4 py-3 bg-teal-50/80 dark:bg-teal-500/[0.06] hover:bg-teal-100/80 dark:hover:bg-teal-500/[0.1] transition-colors text-left">
+                <span class="flex items-center gap-2 text-xs font-semibold text-teal-700 dark:text-teal-300 uppercase tracking-wider">
+                  <ChevronDown class="w-4 h-4 text-teal-400 transition-transform" :class="activePanels.costsFreight ? 'rotate-0' : '-rotate-90'" />
+                  <Truck class="w-4 h-4 text-teal-400" />
+                  Costos y Flete Mayorista
+                </span>
+              </button>
+              <div v-show="activePanels.costsFreight" class="p-4 space-y-4">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <Package class="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                    <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Costos y Flete Mayorista</span>
+                  </div>
+                  <!-- Currency toggle -->
                   <div class="flex gap-1 p-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
-                    <button type="button" @click="form.container_type = 'CAJA'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                      :class="form.container_type === 'CAJA' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Caja</button>
-                    <button type="button" @click="form.container_type = 'BULTO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                      :class="form.container_type === 'BULTO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Bulto</button>
-                    <button type="button" @click="form.container_type = 'PAQUETE'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                      :class="form.container_type === 'PAQUETE' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Paquete</button>
+                    <button type="button" @click="selectedInvoiceCurrency = 'USD'"
+                      class="px-3 py-1 text-[10px] font-semibold rounded-md transition-colors"
+                      :class="selectedInvoiceCurrency === 'USD' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'">
+                      USD ($)
+                    </button>
+                    <button type="button" @click="selectedInvoiceCurrency = 'VES'"
+                      class="px-3 py-1 text-[10px] font-semibold rounded-md transition-colors"
+                      :class="selectedInvoiceCurrency === 'VES' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'">
+                      VES (Bs.)
+                    </button>
                   </div>
                 </div>
 
-                <div v-if="form.measurement_type === 'PESO'" class="pt-2 space-y-2">
-                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de empaque</label>
-                  <div class="flex gap-1 p-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
-                    <button type="button" @click="form.weight_container = 'SACO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                      :class="form.weight_container === 'SACO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">👜 Saco</button>
-                    <button type="button" @click="form.weight_container = 'CESTA'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                      :class="form.weight_container === 'CESTA' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🧺 Cesta</button>
-                    <button type="button" @click="form.weight_container = 'BUN_CAJA'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                      :class="form.weight_container === 'BUN_CAJA' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">📦 Bún / Caja</button>
-                    <button type="button" @click="form.weight_container = 'KG_DIRECTO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                      :class="form.weight_container === 'KG_DIRECTO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">⚖️ Kg directo</button>
+                <!-- Badge informativo (solo lectura) -->
+                <div class="p-3 bg-blue-50/50 dark:bg-blue-500/[0.04] border border-blue-200 dark:border-blue-500/20 rounded-lg text-xs text-blue-800 dark:text-blue-300 flex items-center justify-between">
+                  <span>Distribución de costos para:</span>
+                  <span class="font-bold bg-blue-100 dark:bg-blue-500/[0.12] px-2.5 py-1 rounded-md text-sm text-blue-700 dark:text-blue-300">
+                    <template v-if="wholesaleEnabled">
+                      {{ effectiveContainers }} {{ wholesaleConfig.subLabel.split(' por')[0].toLowerCase() }}s
+                    </template>
+                    <template v-else>
+                      {{ form.cantidad_contenedores }} {{ containerLabel }}{{ form.cantidad_contenedores !== 1 ? 's' : '' }}
+                    </template>
+                    <span class="text-[10px] opacity-70">({{ form.capacidad_por_contenedor }}
+                      {{ form.measurement_type === 'PESO' ? 'Kg' : form.measurement_type === 'LIQUIDO' ? 'L' : 'uds' }} c/u)</span>
+                  </span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      Costo Total del {{ containerLabel }} ({{ selectedInvoiceCurrency === 'USD' ? 'USD' : 'VES' }})
+                    </label>
+                    <input v-model.number="UIFields.costo_ingresado_usuario" type="number" min="0" step="0.01" placeholder="0.00"
+                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                  </div>
+                  <div>
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                      Flete / Importación ({{ selectedInvoiceCurrency === 'USD' ? 'USD' : 'VES' }})
+                    </label>
+                    <input v-model.number="UIFields.flete_ingresado_usuario" type="number" min="0" step="0.01" placeholder="0.00"
+                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
                   </div>
                 </div>
 
-                <div v-if="form.measurement_type === 'LIQUIDO'" class="pt-2 space-y-2">
-                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de empaque</label>
-                  <div class="flex gap-1 p-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
-                    <button type="button" @click="form.liquid_container = 'BIDON'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                      :class="form.liquid_container === 'BIDON' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🛢️ Bidón</button>
-                    <button type="button" @click="form.liquid_container = 'TAMBOR'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                      :class="form.liquid_container === 'TAMBOR' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🥁 Tambor</button>
-                    <button type="button" @click="form.liquid_container = 'GALON'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                      :class="form.liquid_container === 'GALON' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">⛽ Galón</button>
-                    <button type="button" @click="form.liquid_container = 'LT_DIRECTO'" class="px-3 py-1.5 text-xs font-semibold rounded-md transition-colors"
-                      :class="form.liquid_container === 'LT_DIRECTO' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400'">🧪 Litro directo</button>
-                  </div>
-                </div>
-              </template>
-
-              <!-- ══════ WHOLESALE MODE ══════ -->
-              <template v-else>
-                <div>
-                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">Tipo de Unidad Mayorista <span class="text-red-400">*</span></label>
-                  <select v-model="selectedWholesaleUnit"
-                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer">
-                    <option v-for="u in WHOLESALE_UNITS" :key="u.value" :value="u.value">{{ u.label }} — {{ u.desc }}</option>
-                  </select>
-                  <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-                    1 {{ wholesaleConfig.label.split(' /')[0] }} = <strong>{{ wholesaleConfig.multiplier }}</strong> {{ wholesaleConfig.subLabel.split(' por')[0].toLowerCase() }}s
+                <!-- Custom exchange rate (solo cuando la factura es en VES) -->
+                <div v-if="selectedInvoiceCurrency === 'VES'" class="p-3 bg-amber-50/50 dark:bg-amber-500/[0.04] border border-amber-200 dark:border-amber-500/20 rounded-lg">
+                  <label class="block text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-1">
+                    Tasa de Cambio de la Factura ({{ selectedInvoiceCurrency === 'VES' ? 'Bs. por USD' : '' }})
+                  </label>
+                  <input v-model.number="dekaRate" type="number" min="0" step="0.01" :placeholder="rateValue > 0 ? String(rateValue) : '0.00'"
+                    class="w-full h-9 px-3 text-sm border border-amber-300 dark:border-amber-500/30 bg-white dark:bg-white/[0.04] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-amber-500/20 focus:border-amber-400 focus:outline-none transition-colors" />
+                  <p v-if="dekaRate > 0 && UIFields.costo_ingresado_usuario > 0" class="text-[10px] text-amber-600 dark:text-amber-400 mt-1">
+                    Costo en USD: <strong>${{ fmt(finalCostoBultoUSD) }}</strong>
+                    <span v-if="UIFields.flete_ingresado_usuario > 0">
+                      · Flete: <strong>${{ fmt(finalFleteUSD) }}</strong>
+                    </span>
                   </p>
                 </div>
-              </template>
 
-              <!-- Container quantity / capacity fields (shared, labels adapt) -->
-              <div class="grid grid-cols-2 gap-3 pt-2">
-                <div>
-                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                    <template v-if="wholesaleEnabled">
-                      Cantidad de {{ wholesaleConfig.label.split(' /')[0].toLowerCase() }}s a ingresar
-                    </template>
-                    <template v-else>
-                      {{ form.measurement_type === 'PESO'
-                        ? (form.weight_container === 'KG_DIRECTO' ? 'Cantidad de Kg' : 'Cantidad de ' + (form.weight_container === 'SACO' ? 'Sacos' : form.weight_container === 'CESTA' ? 'Cestas' : 'Bún / Cajas'))
-                        : form.measurement_type === 'LIQUIDO'
-                          ? (form.liquid_container === 'LT_DIRECTO' ? 'Cantidad de Litros' : 'Cantidad de ' + (form.liquid_container === 'BIDON' ? 'Bidones' : form.liquid_container === 'TAMBOR' ? 'Tambores' : 'Galones'))
-                          : 'Cantidad de ' + (form.container_type === 'CAJA' ? 'Cajas' : form.container_type === 'BULTO' ? 'Bultos' : 'Paquetes')
-                      }}
-                    </template>
-                  </label>
-                  <input v-model.number="form.cantidad_contenedores" type="number" min="1" step="1" placeholder="1"
-                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
-                </div>
-                <div>
-                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                    <template v-if="wholesaleEnabled">
-                      {{ wholesaleConfig.subLabel }}
-                    </template>
-                    <template v-else>
-                      {{ form.measurement_type === 'PESO'
-                        ? (form.weight_container === 'KG_DIRECTO' ? 'Kg por contenedor' : 'Kg por ' + (form.weight_container === 'SACO' ? 'Saco' : form.weight_container === 'CESTA' ? 'Cesta' : 'Bún / Caja'))
-                        : form.measurement_type === 'LIQUIDO'
-                          ? (form.liquid_container === 'LT_DIRECTO' ? 'Litros por contenedor' : 'Litros por ' + (form.liquid_container === 'BIDON' ? 'Bidón' : form.liquid_container === 'TAMBOR' ? 'Tambor' : 'Galón'))
-                          : 'Unidades por ' + (form.container_type === 'CAJA' ? 'Caja' : form.container_type === 'BULTO' ? 'Bulto' : 'Paquete')
-                      }}
-                    </template>
-                  </label>
-                  <input v-model.number="form.capacidad_por_contenedor" type="number" min="0.1" step="0.1" placeholder="1"
-                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
-                </div>
-              </div>
-
-              <!-- Wholesale multiplier breakdown -->
-              <div v-if="wholesaleEnabled" class="bg-indigo-50 dark:bg-indigo-500/[0.06] border border-indigo-200 dark:border-indigo-500/20 rounded-xl px-4 py-2.5 text-xs text-indigo-700 dark:text-indigo-300 leading-relaxed">
-                🧮 <strong>{{ form.cantidad_contenedores || 0 }} {{ wholesaleConfig.label.split(' /')[0].toLowerCase() }}s</strong>
-                × {{ wholesaleConfig.multiplier }} {{ wholesaleConfig.subLabel.split(' por')[0].toLowerCase() }}/unidad
-                = <strong>{{ effectiveContainers }}</strong> {{ wholesaleConfig.subLabel.split(' por')[0].toLowerCase() }}s
-                → {{ calculatedStockTotal }} uds. finales
-              </div>
-
-              <!-- Stock total calculado -->
-              <div class="bg-blue-50 dark:bg-blue-500/[0.06] border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
-                <div class="flex items-center justify-between">
-                  <span class="text-[10px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Stock Total Calculado</span>
-                  <span class="text-sm font-mono font-bold text-blue-900 dark:text-blue-200">
-                    {{ calculatedStockTotal }}
-                    <span class="text-[10px] font-normal">
-                      {{ form.measurement_type === 'PESO'
-                        ? 'Kg'
-                        : form.measurement_type === 'LIQUIDO'
-                          ? 'Litros'
-                          : 'Unidades'
-                      }}
+                <!-- Costo unitario calculado -->
+                <div v-if="finalCostoBultoUSD > 0" class="bg-blue-50 dark:bg-blue-500/[0.06] border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[10px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Costo Unitario</span>
+                    <span class="text-sm font-mono font-bold text-blue-900 dark:text-blue-200">
+                      $ {{ fmt(bulkUnitCost) }}
                     </span>
-                    <span v-if="!wholesaleEnabled" class="text-[10px] text-blue-500 dark:text-blue-400 ml-1">
-                      ({{ form.cantidad_contenedores }} {{ form.measurement_type === 'PESO'
-                        ? (form.weight_container === 'KG_DIRECTO' ? 'Kg' : '× ' + form.capacidad_por_contenedor + ' Kg/' + (form.weight_container === 'SACO' ? 'saco' : form.weight_container === 'CESTA' ? 'cesta' : 'bún'))
-                        : form.measurement_type === 'LIQUIDO'
-                          ? (form.liquid_container === 'LT_DIRECTO' ? 'Litros' : '× ' + form.capacidad_por_contenedor + ' L/' + (form.liquid_container === 'BIDON' ? 'bidón' : form.liquid_container === 'TAMBOR' ? 'tambor' : 'galón'))
-                          : '× ' + form.capacidad_por_contenedor + ' uds/' + (form.container_type === 'CAJA' ? 'caja' : form.container_type === 'BULTO' ? 'bulto' : 'paquete')
-                      }})
+                  </div>
+                  <p class="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">
+                    ({{ wholesaleEnabled ? effectiveContainers : form.cantidad_contenedores }} × <template v-if="selectedInvoiceCurrency === 'VES'">Bs. {{ fmt(UIFields.costo_ingresado_usuario) }} / {{ fmt(dekaRate) }} = </template>${{ fmt(finalCostoBultoUSD) }}
+                    <template v-if="finalFleteUSD > 0"> + ${{ fmt(finalFleteUSD) }} flete</template>)
+                    / {{ calculatedStockTotal }}
+                    {{ form.measurement_type === 'PESO' ? 'Kg' : form.measurement_type === 'LIQUIDO' ? 'L' : 'uds' }}
+                    = <strong>${{ fmt(bulkUnitCost) }}</strong>
+                  </p>
+                  <div v-if="rateValue > 0 && bulkUnitCost > 0" class="mt-1.5 pt-1.5 border-t border-blue-200 dark:border-blue-500/20">
+                    <span class="text-[10px] text-blue-600 dark:text-blue-400">Equivalente en VES (BCV):</span>
+                    <span class="text-sm font-mono font-bold text-blue-900 dark:text-blue-200 ml-2">
+                      {{ fmtVES(bcvRound(bulkUnitCost * rateValue, 2)) }}
                     </span>
-                    <span v-else class="text-[10px] text-indigo-500 dark:text-indigo-400 ml-1">
-                      ({{ effectiveContainers }} {{ wholesaleConfig.subLabel.split(' por')[0].toLowerCase() }}s × {{ form.capacidad_por_contenedor }} uds)
-                    </span>
-                  </span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- Costos y Flete Mayorista (con conversión VES→USD) -->
-            <div class="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] rounded-lg p-4 space-y-4">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <Package class="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                  <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Costos y Flete Mayorista</span>
-                </div>
-                <!-- Currency toggle -->
-                <div class="flex gap-1 p-0.5 bg-slate-100 dark:bg-white/[0.04] rounded-lg w-fit">
-                  <button type="button" @click="selectedInvoiceCurrency = 'USD'"
-                    class="px-3 py-1 text-[10px] font-semibold rounded-md transition-colors"
-                    :class="selectedInvoiceCurrency === 'USD' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'">
-                    USD ($)
-                  </button>
-                  <button type="button" @click="selectedInvoiceCurrency = 'VES'"
-                    class="px-3 py-1 text-[10px] font-semibold rounded-md transition-colors"
-                    :class="selectedInvoiceCurrency === 'VES' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'">
-                    VES (Bs.)
-                  </button>
-                </div>
-              </div>
-
-              <!-- Badge informativo (solo lectura) -->
-              <div class="p-3 bg-blue-50/50 dark:bg-blue-500/[0.04] border border-blue-200 dark:border-blue-500/20 rounded-lg text-xs text-blue-800 dark:text-blue-300 flex items-center justify-between">
-                <span>Distribución de costos para:</span>
-                <span class="font-bold bg-blue-100 dark:bg-blue-500/[0.12] px-2.5 py-1 rounded-md text-sm text-blue-700 dark:text-blue-300">
-                  <template v-if="wholesaleEnabled">
-                    {{ effectiveContainers }} {{ wholesaleConfig.subLabel.split(' por')[0].toLowerCase() }}s
-                  </template>
-                  <template v-else>
-                    {{ form.cantidad_contenedores }} {{ containerLabel }}{{ form.cantidad_contenedores !== 1 ? 's' : '' }}
-                  </template>
-                  <span class="text-[10px] opacity-70">({{ form.capacidad_por_contenedor }}
-                    {{ form.measurement_type === 'PESO' ? 'Kg' : form.measurement_type === 'LIQUIDO' ? 'L' : 'uds' }} c/u)</span>
+            <!-- Accordion: Costo y Margen (Blue) -->
+            <div class="border border-blue-200 dark:border-blue-500/30 rounded-xl">
+              <button @click="toggleAccordion('costMargin')"
+                class="w-full flex items-center justify-between px-4 py-3 bg-blue-50/80 dark:bg-blue-500/[0.06] hover:bg-blue-100/80 dark:hover:bg-blue-500/[0.1] transition-colors text-left">
+                <span class="flex items-center gap-2 text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
+                  <ChevronDown class="w-4 h-4 text-blue-400 transition-transform" :class="activePanels.costMargin ? 'rotate-0' : '-rotate-90'" />
+                  <Percent class="w-4 h-4 text-blue-400" />
+                  Costo y Margen
                 </span>
-              </div>
+              </button>
+              <div v-show="activePanels.costMargin" class="p-4 space-y-4">
+                <div class="flex items-center gap-2">
+                  <Percent class="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                  <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Costo y Margen</span>
+                </div>
 
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                    Costo Total del {{ containerLabel }} ({{ selectedInvoiceCurrency === 'USD' ? 'USD' : 'VES' }})
-                  </label>
-                  <input v-model.number="UIFields.costo_ingresado_usuario" type="number" min="0" step="0.01" placeholder="0.00"
-                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Costo USD</label>
+                    <input type="text" inputmode="decimal" placeholder="0,00"
+                      :value="miCostUsd.display.value"
+                      @focus="miCostUsd.onFocus"
+                      @input="miCostUsd.onInput"
+                      @blur="miCostUsd.onBlur"
+                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                  </div>
+                  <div>
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Costo VES</label>
+                    <input type="text" inputmode="decimal" placeholder="0,00"
+                      :value="miCostVes.display.value"
+                      @focus="miCostVes.onFocus"
+                      @input="miCostVes.onInput"
+                      @blur="miCostVes.onBlur"
+                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                  </div>
                 </div>
-                <div>
-                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
-                    Flete / Importación ({{ selectedInvoiceCurrency === 'USD' ? 'USD' : 'VES' }})
-                  </label>
-                  <input v-model.number="UIFields.flete_ingresado_usuario" type="number" min="0" step="0.01" placeholder="0.00"
-                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
-                </div>
-              </div>
 
-              <!-- Custom exchange rate (solo cuando la factura es en VES) -->
-              <div v-if="selectedInvoiceCurrency === 'VES'" class="p-3 bg-amber-50/50 dark:bg-amber-500/[0.04] border border-amber-200 dark:border-amber-500/20 rounded-lg">
-                <label class="block text-[10px] font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider mb-1">
-                  Tasa de Cambio de la Factura ({{ selectedInvoiceCurrency === 'VES' ? 'Bs. por USD' : '' }})
-                </label>
-                <input v-model.number="dekaRate" type="number" min="0" step="0.01" :placeholder="rateValue > 0 ? String(rateValue) : '0.00'"
-                  class="w-full h-9 px-3 text-sm border border-amber-300 dark:border-amber-500/30 bg-white dark:bg-white/[0.04] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-amber-500/20 focus:border-amber-400 focus:outline-none transition-colors" />
-                <p v-if="dekaRate > 0 && UIFields.costo_ingresado_usuario > 0" class="text-[10px] text-amber-600 dark:text-amber-400 mt-1">
-                  Costo en USD: <strong>${{ fmt(finalCostoBultoUSD) }}</strong>
-                  <span v-if="UIFields.flete_ingresado_usuario > 0">
-                    · Flete: <strong>${{ fmt(finalFleteUSD) }}</strong>
-                  </span>
-                </p>
-              </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Margen %</label>
+                    <input v-model.number="form.profit_margin" type="number" min="0" max="100" step="0.5" placeholder="30"
+                      @input="recalcSuggested"
+                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tipo de Margen</label>
+                      <span class="relative inline-flex items-center" @click.stop="toggleTooltip('marginType')">
+                        <Info class="w-3.5 h-3.5 text-slate-400 cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 transition-colors" />
+                        <div v-if="showMarginTypeTooltip" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 p-3 rounded-lg bg-slate-800 dark:bg-slate-700 text-white text-[11px] leading-relaxed shadow-xl z-50" @click.stop>
+                          <p class="font-semibold text-blue-300 text-[10px] uppercase tracking-wider mb-1">TRADICIONAL (SUMA)</p>
+                          <p class="mb-2 text-slate-200">Calcula tu ganancia sumando un porcentaje directo sobre tu costo base. Ideal para operaciones comerciales sencillas.</p>
+                          <p class="font-semibold text-blue-300 text-[10px] uppercase tracking-wider mb-1">FINANCIERO (PROTECCIÓN)</p>
+                          <p class="text-slate-200">Aplica la fórmula financiera de margen sobre precio de venta, protegiendo tu utilidad real contra fluctuaciones e inflación al reponer inventario. Es la opción recomendada para mantener tu capital sano.</p>
+                          <div class="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-800 dark:border-t-slate-700" />
+                        </div>
+                      </span>
+                    </div>
+                    <select v-model="form.margin_type" @change="recalcSuggested"
+                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer">
+                      <option value="TRADITIONAL">Tradicional (suma)</option>
+                      <option value="FINANCIAL">Financiero (protección)</option>
+                    </select>
+                  </div>
+                </div>
 
-              <!-- Costo unitario calculado -->
-              <div v-if="finalCostoBultoUSD > 0" class="bg-blue-50 dark:bg-blue-500/[0.06] border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
-                <div class="flex items-center justify-between">
-                  <span class="text-[10px] font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">Costo Unitario</span>
-                  <span class="text-sm font-mono font-bold text-blue-900 dark:text-blue-200">
-                    $ {{ fmt(bulkUnitCost) }}
-                  </span>
-                </div>
-                <p class="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5">
-                  ({{ wholesaleEnabled ? effectiveContainers : form.cantidad_contenedores }} × <template v-if="selectedInvoiceCurrency === 'VES'">Bs. {{ fmt(UIFields.costo_ingresado_usuario) }} / {{ fmt(dekaRate) }} = </template>${{ fmt(finalCostoBultoUSD) }}
-                  <template v-if="finalFleteUSD > 0"> + ${{ fmt(finalFleteUSD) }} flete</template>)
-                  / {{ calculatedStockTotal }}
-                  {{ form.measurement_type === 'PESO' ? 'Kg' : form.measurement_type === 'LIQUIDO' ? 'L' : 'uds' }}
-                  = <strong>${{ fmt(bulkUnitCost) }}</strong>
-                </p>
-                <div v-if="rateValue > 0 && bulkUnitCost > 0" class="mt-1.5 pt-1.5 border-t border-blue-200 dark:border-blue-500/20">
-                  <span class="text-[10px] text-blue-600 dark:text-blue-400">Equivalente en VES (BCV):</span>
-                  <span class="text-sm font-mono font-bold text-blue-900 dark:text-blue-200 ml-2">
-                    {{ fmtVES(bcvRound(bulkUnitCost * rateValue, 2)) }}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Cost & Margin Card -->
-            <div class="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] rounded-lg p-4 space-y-3">
-              <div class="flex items-center gap-2">
-                <Percent class="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Costo y Margen</span>
-              </div>
-
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Costo USD</label>
-                  <input type="text" inputmode="decimal" placeholder="0,00"
-                    :value="miCostUsd.display.value"
-                    @focus="miCostUsd.onFocus"
-                    @input="miCostUsd.onInput"
-                    @blur="miCostUsd.onBlur"
-                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
-                </div>
-                <div>
-                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Costo VES</label>
-                  <input type="text" inputmode="decimal" placeholder="0,00"
-                    :value="miCostVes.display.value"
-                    @focus="miCostVes.onFocus"
-                    @input="miCostVes.onInput"
-                    @blur="miCostVes.onBlur"
-                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
-                </div>
-              </div>
-
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Margen %</label>
-                  <input v-model.number="form.profit_margin" type="number" min="0" max="100" step="0.5" placeholder="30"
-                    @input="recalcSuggested"
-                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
-                </div>
-                <div>
-                  <div class="flex items-center gap-1.5 mb-1">
-                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tipo de Margen</label>
-                    <span class="relative inline-flex items-center" @click.stop="toggleTooltip('marginType')">
-                      <Info class="w-3.5 h-3.5 text-slate-400 cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 transition-colors" />
-                      <div v-if="showMarginTypeTooltip" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 p-3 rounded-lg bg-slate-800 dark:bg-slate-700 text-white text-[11px] leading-relaxed shadow-xl z-50" @click.stop>
-                        <p class="font-semibold text-blue-300 text-[10px] uppercase tracking-wider mb-1">TRADICIONAL (SUMA)</p>
-                        <p class="mb-2 text-slate-200">Calcula tu ganancia sumando un porcentaje directo sobre tu costo base. Ideal para operaciones comerciales sencillas.</p>
-                        <p class="font-semibold text-blue-300 text-[10px] uppercase tracking-wider mb-1">FINANCIERO (PROTECCIÓN)</p>
-                        <p class="text-slate-200">Aplica la fórmula financiera de margen sobre precio de venta, protegiendo tu utilidad real contra fluctuaciones e inflación al reponer inventario. Es la opción recomendada para mantener tu capital sano.</p>
-                        <div class="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-800 dark:border-t-slate-700" />
+                <!-- Suggested Prices (dual: Traditional + Financial) -->
+                <div class="bg-blue-50 dark:bg-blue-500/[0.06] border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
+                  <div class="flex items-center gap-2 mb-3">
+                    <BadgeDollarSign class="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <span class="text-xs font-semibold text-blue-800 dark:text-blue-300">Precios Sugeridos</span>
+                    <span class="text-[10px] text-blue-500 dark:text-blue-400 ml-auto">Tasa BCV: {{ rateValue > 0 ? fmtVES(rateValue) : 'Cargando...' }}</span>
+                  </div>
+                  <div class="space-y-2">
+                    <!-- Traditional -->
+                    <div class="flex items-center justify-between bg-white dark:bg-white/[0.04] rounded-lg px-3 py-2 border border-amber-200 dark:border-amber-500/20">
+                      <div>
+                        <span class="text-[11px] font-semibold text-amber-700 dark:text-amber-400">Tradicional</span>
+                        <span class="text-[9px] text-amber-500 dark:text-amber-500 ml-1">(suma)</span>
                       </div>
-                    </span>
-                  </div>
-                  <select v-model="form.margin_type" @change="recalcSuggested"
-                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer">
-                    <option value="TRADITIONAL">Tradicional (suma)</option>
-                    <option value="FINANCIAL">Financiero (protección)</option>
-                  </select>
-                </div>
-              </div>
-
-              <!-- Suggested Prices (dual: Traditional + Financial) -->
-              <div class="bg-blue-50 dark:bg-blue-500/[0.06] border border-blue-200 dark:border-blue-500/20 rounded-lg p-3">
-                <div class="flex items-center gap-2 mb-3">
-                  <BadgeDollarSign class="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <span class="text-xs font-semibold text-blue-800 dark:text-blue-300">Precios Sugeridos</span>
-                  <span class="text-[10px] text-blue-500 dark:text-blue-400 ml-auto">Tasa BCV: {{ rateValue > 0 ? fmtVES(rateValue) : 'Cargando...' }}</span>
-                </div>
-                <div class="space-y-2">
-                  <!-- Traditional -->
-                  <div class="flex items-center justify-between bg-white dark:bg-white/[0.04] rounded-lg px-3 py-2 border border-amber-200 dark:border-amber-500/20">
-                    <div>
-                      <span class="text-[11px] font-semibold text-amber-700 dark:text-amber-400">Tradicional</span>
-                      <span class="text-[9px] text-amber-500 dark:text-amber-500 ml-1">(suma)</span>
-                    </div>
-                    <div class="text-right">
-                      <span class="text-sm font-mono font-bold text-slate-900 dark:text-white">{{ fmtUSD(suggestedTraditionalNum) }}</span>
-                      <span v-if="suggestedTraditionalVES !== fmtVES(0)" class="text-[10px] text-slate-500 dark:text-slate-400 ml-2">{{ suggestedTraditionalVES }}</span>
-                    </div>
-                  </div>
-                  <!-- Financial -->
-                  <div class="flex items-center justify-between bg-white dark:bg-white/[0.04] rounded-lg px-3 py-2 border border-emerald-200 dark:border-emerald-500/20">
-                    <div>
-                      <span class="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">Financiero</span>
-                      <span class="text-[9px] text-emerald-500 dark:text-emerald-500 ml-1">(protección)</span>
-                    </div>
-                    <div class="text-right">
-                      <span class="text-sm font-mono font-bold text-slate-900 dark:text-white">{{ fmtUSD(suggestedFinancialNum) }}</span>
-                      <span v-if="suggestedFinancialVES !== fmtVES(0)" class="text-[10px] text-slate-500 dark:text-slate-400 ml-2">{{ suggestedFinancialVES }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Final Prices -->
-            <div class="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] rounded-lg p-4 space-y-3">
-              <div class="flex items-center gap-2">
-                <DollarSign class="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Precios de Venta</span>
-              </div>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Precio USD</label>
-                  <input type="text" inputmode="decimal" placeholder="0,00"
-                    :value="miPriceUsd.display.value"
-                    @focus="miPriceUsd.onFocus"
-                    @input="miPriceUsd.onInput"
-                    @blur="miPriceUsd.onBlur"
-                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
-                </div>
-                <div>
-                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Precio VES</label>
-                  <input type="text" inputmode="decimal" placeholder="0,00"
-                    :value="miPriceVes.display.value"
-                    @focus="miPriceVes.onFocus"
-                    @input="miPriceVes.onInput"
-                    @blur="miPriceVes.onBlur"
-                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
-                </div>
-              </div>
-            </div>
-
-            <!-- Logistics base -->
-            <div class="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.08] rounded-lg p-4 space-y-3">
-              <div class="flex items-center gap-2">
-                <Package class="w-4 h-4 text-slate-500 dark:text-slate-400" />
-                <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Logística</span>
-              </div>
-              <div>
-                <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Tipo de Producto *</label>
-                <select v-model="form.product_type_id"
-                  class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer">
-                  <option :value="null">Seleccionar...</option>
-                  <option v-for="pt in productTypes" :key="pt.id" :value="pt.id">
-                    {{ pt.name }}
-                  </option>
-                </select>
-              </div>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <div class="flex items-center gap-1.5 mb-1">
-                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Método de Inventario</label>
-                    <span class="relative inline-flex items-center" @click.stop="toggleTooltip('inventoryMethod')">
-                      <Info class="w-3.5 h-3.5 text-slate-400 cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 transition-colors" />
-                      <div v-if="showInventoryMethodTooltip" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 p-3 rounded-lg bg-slate-800 dark:bg-slate-700 text-white text-[11px] leading-relaxed shadow-xl z-50" @click.stop>
-                        <p class="font-semibold text-blue-300 text-[10px] uppercase tracking-wider mb-1">PROMEDIO PONDERADO</p>
-                        <p class="mb-2 text-slate-200">Mezcla los costos de bultos viejos y nuevos para darte un costo medio estable. La mejor decisión para abarrotes, víveres, bodegas y productos de alta rotación homogénea.</p>
-                        <p class="font-semibold text-blue-300 text-[10px] uppercase tracking-wider mb-1">FIFO (PEPS)</p>
-                        <p class="mb-2 text-slate-200">El primer producto que entra es el primero que sale. Ideal si vendes artículos perecederos, alimentos con vencimiento o moda, asegurando que el stock antiguo se agote primero.</p>
-                        <p class="font-semibold text-blue-300 text-[10px] uppercase tracking-wider mb-1">LIFO (UEPS)</p>
-                        <p class="text-slate-200">El último bulto que entra es el primero que se vende. Útil en entornos inflacionarios muy severos para indexar el costo al precio más nuevo del mercado (usa con discreción fiscal).</p>
-                        <div class="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-800 dark:border-t-slate-700" />
+                      <div class="text-right">
+                        <span class="text-sm font-mono font-bold text-slate-900 dark:text-white">{{ fmtUSD(suggestedTraditionalNum) }}</span>
+                        <span v-if="suggestedTraditionalVES !== fmtVES(0)" class="text-[10px] text-slate-500 dark:text-slate-400 ml-2">{{ suggestedTraditionalVES }}</span>
                       </div>
-                    </span>
+                    </div>
+                    <!-- Financial -->
+                    <div class="flex items-center justify-between bg-white dark:bg-white/[0.04] rounded-lg px-3 py-2 border border-emerald-200 dark:border-emerald-500/20">
+                      <div>
+                        <span class="text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">Financiero</span>
+                        <span class="text-[9px] text-emerald-500 dark:text-emerald-500 ml-1">(protección)</span>
+                      </div>
+                      <div class="text-right">
+                        <span class="text-sm font-mono font-bold text-slate-900 dark:text-white">{{ fmtUSD(suggestedFinancialNum) }}</span>
+                        <span v-if="suggestedFinancialVES !== fmtVES(0)" class="text-[10px] text-slate-500 dark:text-slate-400 ml-2">{{ suggestedFinancialVES }}</span>
+                      </div>
+                    </div>
                   </div>
-                  <select v-model="form.inventory_method"
-                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer">
-                    <option value="AVERAGE">Promedio Ponderado</option>
-                    <option value="FIFO">FIFO</option>
-                    <option value="LIFO">LIFO</option>
-                  </select>
                 </div>
-                <div>
-                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Unidad de Compra</label>
-                  <select v-model="form.default_purchase_unit"
-                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer">
-                    <option value="UNIT">Unidad</option>
-                    <option value="BOX">Caja</option>
-                    <option value="BULK">Bulto</option>
-                    <option value="SACK">Saco</option>
-                    <option value="LOT">Lote</option>
-                    <option value="KG">KG</option>
-                    <option value="LITER">Litro</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Unidades por Empaque</label>
-                <input v-model.number="form.units_per_package" type="number" min="1" step="1" placeholder="1"
-                  class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
               </div>
             </div>
+
+            <!-- Accordion: Precios de Venta (Violet) -->
+            <div class="border border-violet-200 dark:border-violet-500/30 rounded-xl">
+              <button @click="toggleAccordion('sellPrices')"
+                class="w-full flex items-center justify-between px-4 py-3 bg-violet-50/80 dark:bg-violet-500/[0.06] hover:bg-violet-100/80 dark:hover:bg-violet-500/[0.1] transition-colors text-left">
+                <span class="flex items-center gap-2 text-xs font-semibold text-violet-700 dark:text-violet-300 uppercase tracking-wider">
+                  <ChevronDown class="w-4 h-4 text-violet-400 transition-transform" :class="activePanels.sellPrices ? 'rotate-0' : '-rotate-90'" />
+                  <BadgeDollarSign class="w-4 h-4 text-violet-400" />
+                  Precios de Venta
+                </span>
+              </button>
+              <div v-show="activePanels.sellPrices" class="p-4 space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Precio USD</label>
+                    <input type="text" inputmode="decimal" placeholder="0,00"
+                      :value="miPriceUsd.display.value"
+                      @focus="miPriceUsd.onFocus"
+                      @input="miPriceUsd.onInput"
+                      @blur="miPriceUsd.onBlur"
+                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                  </div>
+                  <div>
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Precio VES</label>
+                    <input type="text" inputmode="decimal" placeholder="0,00"
+                      :value="miPriceVes.display.value"
+                      @focus="miPriceVes.onFocus"
+                      @input="miPriceVes.onInput"
+                      @blur="miPriceVes.onBlur"
+                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Accordion: Logística (Orange) -->
+            <div class="border border-orange-200 dark:border-orange-500/30 rounded-xl">
+              <button @click="toggleAccordion('logistics')"
+                class="w-full flex items-center justify-between px-4 py-3 bg-orange-50/80 dark:bg-orange-500/[0.06] hover:bg-orange-100/80 dark:hover:bg-orange-500/[0.1] transition-colors text-left">
+                <span class="flex items-center gap-2 text-xs font-semibold text-orange-700 dark:text-orange-300 uppercase tracking-wider">
+                  <ChevronDown class="w-4 h-4 text-orange-400 transition-transform" :class="activePanels.logistics ? 'rotate-0' : '-rotate-90'" />
+                  <Package class="w-4 h-4 text-orange-400" />
+                  Logística
+                </span>
+              </button>
+              <div v-show="activePanels.logistics" class="p-4 space-y-4">
+                <div>
+                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Tipo de Producto *</label>
+                  <select v-model="form.product_type_id"
+                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer">
+                    <option :value="null">Seleccionar...</option>
+                    <option v-for="pt in productTypes" :key="pt.id" :value="pt.id">
+                      {{ pt.name }}
+                    </option>
+                  </select>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <div class="flex items-center gap-1.5 mb-1">
+                      <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Método de Inventario</label>
+                      <span class="relative inline-flex items-center" @click.stop="toggleTooltip('inventoryMethod')">
+                        <Info class="w-3.5 h-3.5 text-slate-400 cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 transition-colors" />
+                        <div v-if="showInventoryMethodTooltip" class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-72 p-3 rounded-lg bg-slate-800 dark:bg-slate-700 text-white text-[11px] leading-relaxed shadow-xl z-50" @click.stop>
+                          <p class="font-semibold text-blue-300 text-[10px] uppercase tracking-wider mb-1">PROMEDIO PONDERADO</p>
+                          <p class="mb-2 text-slate-200">Mezcla los costos de bultos viejos y nuevos para darte un costo medio estable. La mejor decisión para abarrotes, víveres, bodegas y productos de alta rotación homogénea.</p>
+                          <p class="font-semibold text-blue-300 text-[10px] uppercase tracking-wider mb-1">FIFO (PEPS)</p>
+                          <p class="mb-2 text-slate-200">El primer producto que entra es el primero que sale. Ideal si vendes artículos perecederos, alimentos con vencimiento o moda, asegurando que el stock antiguo se agote primero.</p>
+                          <p class="font-semibold text-blue-300 text-[10px] uppercase tracking-wider mb-1">LIFO (UEPS)</p>
+                          <p class="text-slate-200">El último bulto que entra es el primero que se vende. Útil en entornos inflacionarios muy severos para indexar el costo al precio más nuevo del mercado (usa con discreción fiscal).</p>
+                          <div class="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-800 dark:border-t-slate-700" />
+                        </div>
+                      </span>
+                    </div>
+                    <select v-model="form.inventory_method"
+                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer">
+                      <option value="AVERAGE">Promedio Ponderado</option>
+                      <option value="FIFO">FIFO</option>
+                      <option value="LIFO">LIFO</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Unidad de Compra</label>
+                    <select v-model="form.default_purchase_unit"
+                      class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer">
+                      <option value="UNIT">Unidad</option>
+                      <option value="BOX">Caja</option>
+                      <option value="BULK">Bulto</option>
+                      <option value="SACK">Saco</option>
+                      <option value="LOT">Lote</option>
+                      <option value="KG">KG</option>
+                      <option value="LITER">Litro</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Unidades por Empaque</label>
+                  <input v-model.number="form.units_per_package" type="number" min="1" step="1" placeholder="1"
+                    class="w-full h-9 px-3 text-sm border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                </div>
+              </div>
+            </div>
+
+
+            <!-- Accordion E: Variants & Attributes (Fuchsia) -->
+            <div class="border border-fuchsia-200 dark:border-fuchsia-500/30 rounded-xl">
+              <button @click="toggleAccordion('variantGenerator')"
+                class="w-full flex items-center justify-between px-4 py-3 bg-fuchsia-50/80 dark:bg-fuchsia-500/[0.06] hover:bg-fuchsia-100/80 dark:hover:bg-fuchsia-500/[0.1] transition-colors text-left">
+                <span class="flex items-center gap-2 text-xs font-semibold text-fuchsia-700 dark:text-fuchsia-300 uppercase tracking-wider min-w-0">
+                  <Layers class="w-4 h-4 text-fuchsia-400 shrink-0" />
+                  <span class="truncate">Variantes y Atributos de Producto</span>
+                </span>
+                <span v-if="variants.length > 0" class="ml-2 flex items-center gap-1.5 shrink-0">
+                  <span class="text-[10px] font-mono font-bold text-fuchsia-600 dark:text-fuchsia-400 bg-fuchsia-100 dark:bg-fuchsia-500/[0.12] px-2 py-0.5 rounded-md">
+                    {{ totalAllocatedStock }} / {{ form.initial_physical_stock }} uds
+                  </span>
+                  <span v-if="stockBalance < 0" class="text-[10px] font-bold text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-500/[0.12] px-2 py-0.5 rounded-md">
+                    ⚠️ {{ Math.abs(stockBalance) }} faltan
+                  </span>
+                </span>
+              </button>
+              <div v-show="activePanels.variantGenerator" class="p-4 space-y-4">
+                <div v-if="dynamicAttributes.length === 0" class="text-center py-8">
+                  <Layers class="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                  <p class="text-sm font-medium text-slate-500 dark:text-slate-400">No hay atributos disponibles</p>
+                  <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Selecciona una categoría con atributos para generar variantes.</p>
+                </div>
+
+                <template v-else>
+                  <p class="text-[11px] text-slate-500 dark:text-slate-400">Agrega variantes con atributos, stock y precio. Cada fila representa una variante del producto.</p>
+
+                  <!-- Barcode base input -->
+                  <div>
+                    <label class="block text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Base de Código de Barras</label>
+                    <input v-model="variantBarcodeBase" type="text" placeholder="Ej: 750123456789"
+                      class="w-full h-8 px-3 text-xs border border-slate-300 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-lg focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                  </div>
+
+                  <!-- Stock balance deficit badge -->
+                  <div v-if="variants.length > 0 && stockBalance > 0"
+                    class="flex items-center gap-2 px-3 py-2 bg-red-50 dark:bg-red-500/[0.06] border border-red-200 dark:border-red-500/20 rounded-lg">
+                    <span class="text-[11px] font-semibold text-red-700 dark:text-red-400">⚠️ Faltan {{ stockBalance }} unidades por asignar</span>
+                  </div>
+
+                  <!-- Stock surplus banner -->
+                  <div v-if="variants.length > 0 && stockBalance < 0"
+                    class="flex items-center justify-between gap-3 px-3 py-2 bg-amber-50 dark:bg-amber-500/[0.06] border border-amber-200 dark:border-amber-500/20 rounded-lg">
+                    <p class="text-[11px] text-amber-800 dark:text-amber-300">
+                      La cantidad asignada en variantes (<strong>{{ totalAllocatedStock }}</strong>) supera el stock inicial configurado (<strong>{{ form.initial_physical_stock }}</strong>)
+                    </p>
+                    <button type="button" @click="syncStockToGlobal"
+                      class="shrink-0 h-7 px-3 rounded-md text-[10px] font-semibold text-white bg-amber-600 hover:bg-amber-500 transition-colors flex items-center gap-1">
+                      Actualizar Stock Global
+                    </button>
+                  </div>
+
+                  <!-- Variant cards (collapsible) -->
+                  <div v-for="(v, idx) in variants" :key="v.id" class="border border-fuchsia-100 dark:border-fuchsia-500/20 rounded-xl">
+                    <button type="button" @click="toggleVariantCollapse(v.id)" class="w-full flex items-center justify-between px-3 py-2 bg-fuchsia-50/50 dark:bg-fuchsia-500/[0.04] hover:bg-fuchsia-100/50 dark:hover:bg-fuchsia-500/[0.08] transition-colors text-left">
+                      <div class="flex items-center gap-2 min-w-0">
+                        <ChevronDown class="w-3 h-3 text-fuchsia-400 shrink-0 transition-transform" :class="isVariantCollapsed(v.id) ? '-rotate-90' : 'rotate-0'" />
+                        <span class="text-[10px] font-bold text-fuchsia-700 dark:text-fuchsia-400 uppercase shrink-0">#{{ idx + 1 }}</span>
+                        <span v-if="v.sku_suffix" class="text-[9px] font-mono text-fuchsia-500 dark:text-fuchsia-500 truncate max-w-[100px]">{{ v.sku_suffix }}</span>
+                        <span v-if="v.barcode && !isVariantCollapsed(v.id)" class="text-[9px] font-mono text-slate-400 dark:text-slate-500 truncate hidden sm:inline max-w-[80px]">| {{ v.barcode }}</span>
+                        <span v-if="v.stock > 0" class="text-[9px] font-semibold text-slate-500 dark:text-slate-400 bg-white dark:bg-white/[0.04] px-1.5 py-0.5 rounded shrink-0">{{ v.stock }} uds</span>
+                        <span v-if="v.price_base > 0" class="text-[9px] font-mono font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">${{ fmt(v.price_base) }}</span>
+                      </div>
+                      <div class="flex items-center gap-1 shrink-0">
+                        <button type="button" @click.stop="removeVariantRow(idx)" class="p-1 rounded-md text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/[0.08] transition-colors">
+                          <Trash2 class="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </button>
+                    <div v-show="!isVariantCollapsed(v.id)" class="p-3 space-y-2 border-t border-fuchsia-100 dark:border-fuchsia-500/20">
+                      <!-- Attribute inputs -->
+                      <div class="grid grid-cols-2 gap-2">
+                        <div v-for="attr in dynamicAttributes" :key="attr.id" class="space-y-0.5">
+                          <label class="block text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{{ attr.label }}</label>
+                          <select v-if="attr.attr_type === 'select'" v-model="v.attribute_values[attr.id]"
+                            class="w-full h-7 px-2 text-[11px] border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 rounded-md focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors appearance-none cursor-pointer">
+                            <option value="">Seleccionar...</option>
+                            <option v-for="opt in (attr.options || [])" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                          </select>
+                          <input v-else-if="attr.attr_type === 'decimal'" v-model="v.attribute_values[attr.id]" type="number" step="0.01" min="0" placeholder="0.00"
+                            class="w-full h-7 px-2 text-[11px] border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-md focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                          <input v-else-if="attr.attr_type === 'number'" v-model="v.attribute_values[attr.id]" type="number" step="1" min="0" placeholder="0"
+                            class="w-full h-7 px-2 text-[11px] border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-md focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                          <input v-else v-model="v.attribute_values[attr.id]" type="text" :placeholder="attr.label"
+                            class="w-full h-7 px-2 text-[11px] border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-md focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                        </div>
+                      </div>
+                      <!-- Stock + Price Base -->
+                      <div class="grid grid-cols-2 gap-2">
+                        <div>
+                          <label class="block text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Stock</label>
+                          <input v-model.number="v.stock" type="number" step="1" min="0" placeholder="0"
+                            class="w-full h-7 px-2 text-[11px] border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-md focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                        </div>
+                        <div>
+                          <label class="block text-[9px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Precio Base USD</label>
+                          <input :value="v.price_base" @input="onPriceBaseInput(idx, $event)" type="number" step="0.01" min="0" placeholder="0.00"
+                            class="w-full h-7 px-2 text-[11px] border border-slate-200 dark:border-white/[0.08] bg-white dark:bg-white/[0.03] text-slate-900 dark:text-slate-200 placeholder-slate-400 rounded-md focus:ring-blue-500/20 focus:border-blue-400 dark:focus:border-blue-500/50 focus:outline-none transition-colors" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Action buttons -->
+                  <div class="flex flex-wrap gap-2">
+                    <button type="button" @click="addVariantRow"
+                      class="flex-1 h-8 rounded-lg text-xs font-semibold text-fuchsia-700 dark:text-fuchsia-300 border-2 border-dashed border-fuchsia-300 dark:border-fuchsia-500/40 hover:bg-fuchsia-50 dark:hover:bg-fuchsia-500/[0.06] transition-colors flex items-center justify-center gap-1.5">
+                      <Plus class="w-3.5 h-3.5" />
+                      Agregar Variante
+                    </button>
+                    <button type="button" @click="applySuggestedPriceToAll" v-if="variants.length > 0"
+                      class="h-8 px-3 rounded-lg text-xs font-semibold text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40 hover:bg-emerald-50 dark:hover:bg-emerald-500/[0.06] transition-colors flex items-center gap-1">
+                      Aplicar precio sugerido a todas
+                    </button>
+                    <button type="button" @click="clearVariants" v-if="variants.length > 0"
+                      class="h-8 px-3 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-white/[0.08] hover:bg-slate-100 dark:hover:bg-white/[0.04] transition-colors">
+                      Limpiar
+                    </button>
+                  </div>
+
+                  <!-- Counter -->
+                  <div v-if="variants.length > 0" class="text-[10px] text-slate-500 dark:text-slate-400 text-center">
+                    {{ variants.length }} variante{{ variants.length !== 1 ? 's' : '' }} · {{ totalAllocatedStock }} unidad{{ totalAllocatedStock !== 1 ? 'es' : '' }} asignada{{ totalAllocatedStock !== 1 ? 's' : '' }}
+                  </div>
+                </template>
+              </div>
+            </div>
+
           </div>
         </div>
 
@@ -873,8 +1042,8 @@
 import { reactive, ref, computed, watch, onMounted, onUnmounted, type Ref } from 'vue';
 import {
   X, ScanBarcode, ScanLine, Save, Loader2,
-  Percent, DollarSign, Package, PackagePlus, BadgeDollarSign, AlertTriangle, Info,
-  ImagePlus, CheckCircle2, Trash2, Camera,
+  Percent, Package, PackagePlus, Truck, BadgeDollarSign, AlertTriangle, Info,
+  ImagePlus, CheckCircle2, Trash2, Camera, ChevronDown, Layers, FileText, Tag, Receipt, Plus,
 } from 'lucide-vue-next';
 import { useRouter } from 'vue-router';
 import { useApi } from '@/composables/useApi';
@@ -1056,6 +1225,21 @@ const tabs = [
 ];
 
 const activeTab = ref('general');
+const activePanels = reactive({
+  basic: true,
+  classification: true,
+  fiscal: false,
+  pricingLogistics: true,
+  variantGenerator: false,
+  unitMeasure: true,
+  costsFreight: true,
+  costMargin: true,
+  sellPrices: true,
+  logistics: true,
+});
+function toggleAccordion(panel: keyof typeof activePanels) {
+  activePanels[panel] = !activePanels[panel];
+}
 const submitting = ref(false);
 
 // ── Wholesale Mode ──
@@ -1629,14 +1813,28 @@ function validate(): boolean {
 
   if (!form.name.trim()) {
     errors.name = 'El nombre es obligatorio';
+    notifyError('El nombre es obligatorio');
     ok = false;
   }
   if (!form.sku.trim()) {
     errors.sku = 'El SKU es obligatorio';
+    notifyError('El SKU es obligatorio');
     ok = false;
   }
   if (!selectedCategoryId.value) {
     notifyError('Debe seleccionar una categoría');
+    ok = false;
+  }
+  if (!form.brand) {
+    notifyError('Debe seleccionar una marca');
+    ok = false;
+  }
+  if (!form.product_type_id) {
+    notifyError('Debe seleccionar un tipo de producto');
+    ok = false;
+  }
+  if (!form.tax_rate_id) {
+    notifyError('Debe seleccionar un impuesto (IVA)');
     ok = false;
   }
   if (form.price_usd <= 0 && form.price_ves <= 0) {
@@ -1652,83 +1850,97 @@ async function handleSubmit() {
   if (!validate()) return;
   submitting.value = true;
   try {
-    const effectiveRate = dekaRate.value > 0 ? dekaRate.value : rateValue.value;
-    const presentationsPayload = [
-      {
-        name: form.default_purchase_unit || 'UNIDAD',
-        units_per_package: form.units_per_package || 1,
-        barcode: form.barcode || '',
-        sku: form.sku,
-        prices: [
-          {
-            currency_code: 'USD',
-            cost_price: bcvRound(form.cost_price_usd, 2),
-            base_price: bcvRound(form.price_usd, 2),
-            profit_margin: form.profit_margin,
-          },
-          {
-            currency_code: 'VES',
-            cost_price: bcvRound(form.cost_price_ves, 2),
-            base_price: bcvRound(form.price_ves, 2),
-            profit_margin: form.profit_margin,
-          },
-        ],
-      },
-    ];
+    const hasVariants = variants.value.length > 0;
 
-    const formData = new FormData();
+    const fd = new FormData();
 
-    formData.append('name', form.name);
-    formData.append('sku', form.sku);
-    formData.append('barcode', form.barcode || '');
-    formData.append('description', form.description || '');
-    if (form.tax_rate_id) formData.append('tax_rate_id', form.tax_rate_id);
-    if (form.product_type_id) formData.append('product_type_id', form.product_type_id);
-    formData.append('tenant_id', authStore.tenantUlid || '');
-    formData.append('category_id', selectedCategoryId.value ?? '');
-    formData.append('exchange_rate', String(effectiveRate));
-    formData.append('tenant_base_currency', 'USD');
-    formData.append('is_new_global', String(isNewProductGlobal.value));
+    const append = (key: string, value: any) => {
+      if (value != null && value !== '' && value !== false) fd.append(key, String(value));
+    };
+
+    append('name', form.name.trim());
+    append('sku', form.sku.trim());
+    append('barcode', form.barcode.trim());
+    append('description', form.description.trim());
+    append('category_id', selectedCategoryId.value);
+    append('brand_id', form.brand);
+    append('product_type_id', form.product_type_id);
+    append('tax_rate_id', form.tax_rate_id ?? (taxRates.value.length > 0 ? taxRates.value[0].id : '1'));
+    append('measurement_type', form.measurement_type);
+    append('container_type', form.container_type);
+    append('weight_container', form.weight_container);
+    append('liquid_container', form.liquid_container);
+    append('cantidad_contenedores', form.cantidad_contenedores);
+    append('capacidad_por_contenedor', form.capacidad_por_contenedor);
+    append('cost_price_usd', form.cost_price_usd);
+    append('cost_price_ves', form.cost_price_ves);
+    append('profit_margin', form.profit_margin);
+    append('margin_type', form.margin_type);
+    append('initial_physical_stock', form.initial_physical_stock);
+    append('suggested_price', form.price_usd);
+    append('suggested_price_ves', form.price_ves);
+    append('initial_cost_price', form.initial_cost_price);
+    append('inventory_method', form.inventory_method);
+    append('default_purchase_unit', form.default_purchase_unit);
+    append('units_per_package', form.units_per_package);
+    append('has_variants', hasVariants ? 'true' : 'false');
+
     if (form.global_product_id) {
-      formData.append('global_product_id', String(form.global_product_id));
+      append('global_product_id', form.global_product_id);
     }
-    if (form.brand) {
-      formData.append('brand_id', form.brand);
+    if (isNewProductGlobal.value) {
+      append('is_new_global', 'true');
     }
     if (wholesaleEnabled.value) {
-      formData.append('sale_type', 'MAYORISTA');
-    } else {
-      formData.append('sale_type', 'UNIDAD');
+      append('sale_type', 'MAYORISTA');
+      append('wholesale_unit', selectedWholesaleUnit.value);
     }
-
-    // Image: prefer native File/Blob from ImageStudio, fallback to URL string
-    if (selectedImageFile.value instanceof Blob) {
-      formData.append('image', selectedImageFile.value, 'product_image.webp');
+    if (selectedImageFile.value) {
+      fd.append('image', selectedImageFile.value, 'product.webp');
     } else if (typeof form.image === 'string' && form.image.startsWith('http')) {
-      formData.append('image', form.image);
+      append('image', form.image);
     }
-
-    // Dynamic attributes
     const attrKeys = Object.keys(form.attributes).filter(k => form.attributes[k]);
     if (attrKeys.length > 0) {
-      formData.append('attributes', JSON.stringify(form.attributes));
+      append('attributes', JSON.stringify(form.attributes));
+    }
+    if (hasVariants) {
+      append('variants', JSON.stringify(variants.value.map(v => ({
+        sku: `${form.sku}${v.sku_suffix}`.replace(/\s+/g, ''),
+        barcode: v.barcode || '',
+        stock: parseInt(String(v.stock), 10) || 0,
+        price_base: parseFloat(String(v.price_base)) || 0,
+        attribute_values: v.attribute_values || {},
+      }))));
     }
 
-    // Serialized presentations matrix
-    formData.append('presentations', JSON.stringify(presentationsPayload));
-
-    await apiClient.post('/api/v1/products/', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    await apiClient.post('/api/v1/products/', fd);
     notifySuccess('Producto creado exitosamente');
     clearDraft();
     resetForm();
     emit('productCreated', { name: form.name, sku: form.sku });
     emit('close');
   } catch (e: any) {
-    const drfData = e.data;
+    const drfData = e?.response?.data ?? e?.data;
     if (drfData && typeof drfData === 'object' && !Array.isArray(drfData)) {
-      const msg = Object.entries(drfData)
+      const errMap = drfData as Record<string, any>;
+      if (errMap.sku || errMap.barcode) {
+        const msgs = [errMap.sku, errMap.barcode].flat().filter(Boolean).join(' ');
+        if (msgs) { notifyError(msgs); return; }
+      }
+      if (errMap.non_field_errors) {
+        const msg = Array.isArray(errMap.non_field_errors)
+          ? errMap.non_field_errors.join('. ')
+          : errMap.non_field_errors;
+        if (msg) { notifyError(msg); return; }
+      }
+      if (errMap.variants) {
+        const msg = Array.isArray(errMap.variants)
+          ? errMap.variants.join('. ')
+          : errMap.variants;
+        if (msg) { notifyError(`Variantes: ${msg}`); return; }
+      }
+      const msg = Object.entries(errMap)
         .map(([, msgs]) => (Array.isArray(msgs) ? msgs[0] : msgs))
         .filter(Boolean)
         .join('. ');
@@ -1808,6 +2020,11 @@ function resetForm() {
   isNewProductGlobal.value = false;
   isCheckingBarcode.value = false;
   scanning.value = false;
+  variants.value = [];
+  variantBarcodeBase.value = '';
+  for (const key of Object.keys(variantCollapsed)) {
+    delete variantCollapsed[key];
+  }
 }
 
 function handleClose() {
@@ -1945,11 +2162,9 @@ watch(() => props.visible, async (v) => {
     activeTab.value = 'general';
     await Promise.all([loadFiscalSettings(), fetchForexRate()]);
     document.addEventListener('click', onDocumentClick);
-    if (!fiscalSettings.enable_iva) {
-      const exe = taxRates.value.find(t => t.code === 'EXE');
-      if (exe) form.tax_rate_id = exe.id;
-      fiscalModuleEnabled.value = false;
-    }
+    fiscalModuleEnabled.value = false;
+    const exe = taxRates.value.find(t => t.code === 'EXE');
+    if (exe) form.tax_rate_id = exe.id;
   } else {
     document.removeEventListener('click', onDocumentClick);
   }
@@ -1967,6 +2182,99 @@ async function loadFiscalSettings() {
   } catch {
     // Keep defaults
   }
+}
+
+// ── Variant Generator (Accordion E) ──
+
+interface VariantRow {
+  id: string;
+  attribute_values: Record<string, string>;
+  sku_suffix: string;
+  barcode: string;
+  stock: number;
+  price_base: number;
+  _manualPrice: boolean;
+}
+
+let variantIdCounter = 0;
+const variantBarcodeBase = ref('');
+const variants = ref<VariantRow[]>([]);
+const variantCollapsed = reactive<Record<string, boolean>>({});
+
+function isVariantCollapsed(id: string): boolean {
+  return variantCollapsed[id] === true;
+}
+
+function toggleVariantCollapse(id: string) {
+  variantCollapsed[id] = !variantCollapsed[id];
+}
+
+const totalAllocatedStock = computed(() =>
+  variants.value.reduce((sum, v) => sum + (v.stock || 0), 0)
+);
+
+const stockBalance = computed(() =>
+  (form.initial_physical_stock || 0) - totalAllocatedStock.value
+);
+
+function generateSkuSuffix(attrs: Record<string, string>): string {
+  return Object.values(attrs).filter(Boolean).join('-').toUpperCase().replace(/\s+/g, '-');
+}
+
+function addVariantRow() {
+  const initialAttrs: Record<string, string> = {};
+  for (const attr of dynamicAttributes.value) {
+    initialAttrs[attr.id] = '';
+  }
+  const id = `var_${++variantIdCounter}`;
+  const suffix = generateSkuSuffix(initialAttrs);
+  const base = variantBarcodeBase.value.trim();
+  const bcode = base ? `${base}${String(variantIdCounter).padStart(3, '0')}` : '';
+  variantCollapsed[id] = false;
+  variants.value.push({
+    id,
+    attribute_values: initialAttrs,
+    sku_suffix: suffix,
+    barcode: bcode,
+    stock: 0,
+    price_base: 0,
+    _manualPrice: false,
+  });
+}
+
+function removeVariantRow(index: number) {
+  variants.value.splice(index, 1);
+}
+
+function clearVariants() {
+  variants.value = [];
+  variantBarcodeBase.value = '';
+  for (const key of Object.keys(variantCollapsed)) {
+    delete variantCollapsed[key];
+  }
+}
+
+function applySuggestedPriceToAll() {
+  const suggested = form.price_usd > 0 ? form.price_usd : (suggestedTraditionalNum.value || 0);
+  if (suggested <= 0) return;
+  for (const v of variants.value) {
+    if (!v._manualPrice) {
+      v.price_base = suggested;
+    }
+  }
+}
+
+function syncStockToGlobal() {
+  form.initial_physical_stock = totalAllocatedStock.value;
+}
+
+function onPriceBaseInput(index: number, event: Event) {
+  const v = variants.value[index];
+  if (!v) return;
+  v._manualPrice = true;
+  const raw = (event.target as HTMLInputElement).value;
+  const parsed = parseFloat(raw);
+  v.price_base = isNaN(parsed) ? 0 : parsed;
 }
 </script>
 

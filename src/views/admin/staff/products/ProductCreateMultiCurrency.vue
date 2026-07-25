@@ -505,7 +505,7 @@ function computeAnchor(pIdx: number, prIdx: number, field: 'cost' | 'base'): str
   return (val / exchangeRate.value).toFixed(2);
 }
 
-function onPriceInput(pIdx: number, prIdx: number, field: 'cost' | 'base') {
+function onPriceInput(_pIdx: number, _prIdx: number, _field: 'cost' | 'base') {
   // Trigger reactivity for computed display
 }
 

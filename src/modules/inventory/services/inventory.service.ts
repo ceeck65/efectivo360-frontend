@@ -303,28 +303,73 @@ export const InventoryService = {
   },
 } as const;
 
+function extractPriceFromPresentations(presentations: any[]): number {
+  if (!presentations?.length) return 0;
+  const def = presentations.find((p: any) => p.is_default);
+  const target = def || presentations[0];
+  if (!target?.prices?.length) return 0;
+  const anchor = target.prices.find((p: any) => p.is_anchor);
+  const price = anchor || target.prices[0];
+  return parseFloat(price?.retail_price ?? 0);
+}
+
+function extractUnitsPerPackage(presentations: any[]): number {
+  if (!presentations?.length) return 1;
+  const bulk = presentations.find(
+    (p: any) => !p.is_base_unit && parseFloat(p.units_per_package ?? p.multiplier ?? 1) > 1,
+  );
+  if (bulk) return parseFloat(bulk.units_per_package ?? bulk.multiplier ?? 1);
+  const anyBulk = presentations.find(
+    (p: any) => parseFloat(p.units_per_package ?? p.multiplier ?? 1) > 1,
+  );
+  if (anyBulk) return parseFloat(anyBulk.units_per_package ?? anyBulk.multiplier ?? 1);
+  return 1;
+}
+
 function mapProduct(item: any): Product {
-  const priceUsd = parseFloat(item.base_price_usd ?? item.price_data?.current_prices?.usd ?? 0);
+  const priceUsd = extractPriceFromPresentations(item.presentations);
+  const unitsPerPackage = extractUnitsPerPackage(item.presentations);
+  const variants: any[] = item.variants ?? [];
   return {
     id: item.id ?? '',
-    sku: item.sku ?? '',
-    name: item.name ?? '',
+    sku: item.effective_sku ?? item.sku ?? '',
+    name: item.effective_name ?? item.name ?? '',
     description: item.description ?? '',
     category: item.category ?? '',
     categoryId: item.category_global_id ?? item.category_id ?? '',
     unitOfMeasure: (item.measurement_unit || item.unit_of_measure || 'UNIT') as any,
     salePrice: Math.round(priceUsd * 100),
     costPrice: Math.round(parseFloat(item.cost_price_usd ?? 0) * 100),
-    currentStock: Number(item.current_stock ?? item.base_unit_stock ?? 0),
+    currentStock: Number(item.total_stock ?? item.current_stock ?? item.base_unit_stock ?? 0),
     minStockLevel: Number(item.minimum_stock ?? 0),
     maxStockLevel: 0,
     location: item.location ?? '',
-    barcode: item.sku ?? '',
-    isActive: true,
+    barcode: item.effective_sku ?? item.sku ?? '',
+    isActive: item.is_active ?? true,
     trackLots: false,
     trackExpiry: false,
-    image: item.image_url ?? item.image ?? '',
-    image_url: item.image_url ?? item.image ?? '',
+    image: item.image ?? item.image_url ?? '',
+    image_url: item.image ?? item.image_url ?? '',
+    effectiveName: item.effective_name ?? '',
+    effectiveSku: item.effective_sku ?? '',
+    totalStock: Number(item.total_stock ?? 0),
+    imageUrl: item.image ?? '',
+    priceUsd,
+    unitsPerPackage,
+    wholesalePrice: unitsPerPackage > 1 ? parseFloat((priceUsd * unitsPerPackage).toFixed(2)) : undefined,
+    hasVariants: variants.length > 0,
+    variants: variants.map((v: any) => ({
+      id: v.id ?? '',
+      sku: v.sku ?? '',
+      barcode: v.barcode ?? '',
+      stock: Number(v.stock ?? 0),
+      price_base: v.price_base ?? '0',
+      display_name: v.display_name ?? '',
+      formatted_attributes: v.formatted_attributes ?? [],
+      attribute_values: v.attribute_values ?? {},
+    })),
+    brandName: item.brand_name ?? '',
+    categoryName: item.category_name ?? '',
     status: 'ACTIVE' as any,
     createdBy: item.created_by ?? '',
     updatedBy: item.updated_by ?? '',

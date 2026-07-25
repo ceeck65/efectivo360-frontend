@@ -260,7 +260,7 @@ const blockedProduct = reactive<{ visible: boolean; productName: string; categor
 const importableProduct = ref<any | null>(null);
 const importing = ref(false);
 
-const newProduct = reactive({ barcode: '', name: '', category_id: null as number | null, image_url: '', processedBlob: null as Blob | null });
+const newProduct = reactive({ barcode: '', name: '', category_id: null as string | null, image_url: '', processedBlob: null as Blob | null });
 
 // ── Barcode search → lookup ──
 

@@ -276,7 +276,7 @@ const router = createRouter({
       {
         path: '/admin/staff/products/:id/edit',
         name: 'EditProduct',
-        component: () => import('@/views/admin/staff/products/ProductForm.vue'),
+        component: () => import('@/views/admin/staff/products/ProductEditView.vue'),
         meta: { requiresAuth: true },
       },
      {
