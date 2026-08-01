@@ -78,6 +78,8 @@ export interface Product extends BaseEntity {
   effectiveSku?: string;
   /** Stock total incluyendo variantes */
   totalStock?: number;
+  /** Stock disponible (total - reservado) */
+  availableStock?: number;
   /** URL de la imagen del producto */
   imageUrl?: string;
   /** Precio USD calculado desde presentaciones */

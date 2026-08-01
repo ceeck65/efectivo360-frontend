@@ -187,6 +187,12 @@ const router = createRouter({
            }
          },
        },
+       {
+         path: '/admin/pos/history',
+         name: 'PosSalesHistory',
+         component: () => import('@/views/admin/staff/pos/SalesHistoryView.vue'),
+         meta: { requiresAuth: true },
+       },
 // Treasury - Available to authenticated users (staff and tenants)
      {
        path: '/admin/staff/treasury',

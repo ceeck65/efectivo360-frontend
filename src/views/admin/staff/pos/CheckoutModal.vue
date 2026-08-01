@@ -32,27 +32,30 @@
           </div>
         </div>
 
-        <!-- Métodos de Pago Condicionales -->
+        <!-- Métodos de Pago Dinámicos -->
         <div class="space-y-1.5">
           <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Método de Pago</span>
-          <div class="grid grid-cols-2 gap-2">
-            <template v-if="selectedCurrency === 'USD'">
-              <button v-for="m in usdMethods" :key="m.id" @click="selectedMethod = m.id"
-                class="border-2 p-2.5 rounded-xl font-bold text-xs shadow-sm text-center transition-all"
-                :class="selectedMethod === m.id ? 'border-blue-600 bg-blue-50 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-blue-500'">
-                <span class="block text-base mb-0.5">{{ m.icon }}</span>
-                {{ m.label }}
-              </button>
-            </template>
-            <template v-else>
-              <button v-for="m in vesMethods" :key="m.id" @click="selectedMethod = m.id"
-                class="border-2 p-2.5 rounded-xl font-bold text-xs shadow-sm text-center transition-all"
-                :class="selectedMethod === m.id ? 'border-blue-600 bg-blue-50 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-blue-500'">
-                <span class="block text-base mb-0.5">{{ m.icon }}</span>
-                {{ m.label }}
-              </button>
-            </template>
+          <div v-if="filteredMethods.length === 0" class="text-[11px] text-slate-400 text-center py-3 bg-slate-50 rounded-xl border border-slate-200">
+            No hay métodos de pago disponibles para {{ selectedCurrency }}
           </div>
+          <div v-else class="grid grid-cols-2 gap-2">
+            <button v-for="m in filteredMethods" :key="m.id" @click="selectMethod(m)"
+              class="border-2 p-2.5 rounded-xl font-bold text-xs shadow-sm text-center transition-all"
+              :class="selectedMethod?.id === m.id ? 'border-blue-600 bg-blue-50 text-blue-700' : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-blue-500'">
+              <span class="block text-sm font-black">{{ m.label || m.name }}</span>
+              <span class="text-[9px] text-slate-400 font-medium uppercase mt-0.5 block">{{ m.code }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Referencia para pagos electrónicos -->
+        <div v-if="selectedMethod && needsReference(selectedMethod)" class="space-y-1">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+            N° de Comprobante / Referencia <span class="text-rose-500">*</span>
+          </span>
+          <input v-model="reference"
+            type="text" placeholder="Ingrese el número de referencia (mín. 4 dígitos)"
+            class="w-full h-11 px-3 text-sm border border-slate-300 rounded-xl bg-white text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 shadow-sm" />
         </div>
 
         <!-- Monto a Recibir -->
@@ -174,19 +177,28 @@
         </div>
       </div>
 
+      <!-- Error banner -->
+      <div v-if="errorMessage" class="mx-3 mb-2 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-start gap-2.5">
+        <p class="flex-1 text-red-600 text-xs font-medium">{{ errorMessage }}</p>
+        <button @click="$emit('clear-error')" aria-label="Cerrar error"
+          class="shrink-0 text-red-400 hover:text-red-600 transition-colors">
+          <X class="w-3.5 h-3.5" />
+        </button>
+      </div>
+
       <!-- Footer -->
       <div class="p-3 bg-slate-50 border-t border-slate-200 flex gap-2 justify-end items-center">
         <div class="flex-1 text-[10px] text-slate-400 font-mono">
           Tasa BCV: Bs. {{ formatVES(tasaBcv) }}
         </div>
-        <button @click="$emit('close')"
-          class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors rounded-lg hover:bg-slate-100">
+        <button @click="$emit('close')" :disabled="processing"
+          class="px-4 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors rounded-lg hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed">
           Cancelar
         </button>
         <button @click="confirm"
-          :disabled="(isCreditSale && !selectedCustomer) || (receivedUSD <= 0 && selectedCurrency === 'USD' && selectedMethod !== 'cash_ves')"
+          :disabled="!canConfirm || processing"
           class="px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white text-xs font-black rounded-xl shadow-md transition-all active:scale-[0.98] disabled:shadow-none">
-          {{ isCreditSale ? 'Procesar Crédito' : 'Procesar Pago' }}
+          {{ processing ? 'Procesando…' : (isCreditSale ? 'Procesar Crédito' : 'Procesar Pago') }}
         </button>
       </div>
     </div>
@@ -195,31 +207,68 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { Trash2 } from 'lucide-vue-next';
+import { Trash2, X } from 'lucide-vue-next';
+import type { PaymentMethod } from '@/services/treasury.service';
+
+interface CheckoutPayment {
+  payment_method_id: string;
+  gavetero_id: string;
+  amount_usd: number;
+  amount_ves: number;
+  reference: string;
+}
 
 const props = defineProps<{
   totalUsd: number;
   totalVes: number;
   tasaBcv: number;
+  paymentMethods: PaymentMethod[];
+  processing?: boolean;
+  errorMessage?: string | null;
 }>();
 
-const emit = defineEmits<{ confirm: []; close: [] }>();
+const emit = defineEmits<{
+  confirm: [payments: CheckoutPayment[]];
+  close: [];
+  'clear-error': [];
+}>();
 
 // Moneda
 const selectedCurrency = ref<'USD' | 'VES'>('USD');
 const amountReceived = ref('');
+const reference = ref('');
 
-// Métodos de pago por moneda
-const usdMethods = [
-  { id: 'cash_usd', label: 'Efectivo USD', icon: '💵' },
-  { id: 'zelle', label: 'Zelle', icon: '💜' },
-];
-const vesMethods = [
-  { id: 'mobile', label: 'Pago Móvil', icon: '📱' },
-  { id: 'pos', label: 'Punto de Venta', icon: '💳' },
-  { id: 'cash_ves', label: 'Efectivo VES', icon: '💵' },
-];
-const selectedMethod = ref('cash_usd');
+// Método de pago seleccionado
+const selectedMethod = ref<PaymentMethod | null>(null);
+
+const filteredMethods = computed(() => {
+  if (!props.paymentMethods || !Array.isArray(props.paymentMethods)) return [];
+
+  const targetCurrency = selectedCurrency.value.toUpperCase().trim();
+
+  return props.paymentMethods.filter(m => {
+    if (!m.is_enabled) return false;
+    const methodCurrency = (m.gavetero?.currency || m.currency || '').toUpperCase().trim();
+    return methodCurrency === targetCurrency;
+  });
+});
+
+// Auto-select first method when list changes
+watch(filteredMethods, (list) => {
+  if (list.length > 0 && (!selectedMethod.value || !list.some(m => m.id === selectedMethod.value?.id))) {
+    selectedMethod.value = list[0];
+  }
+}, { immediate: true });
+
+function selectMethod(m: PaymentMethod) {
+  selectedMethod.value = m;
+  reference.value = '';
+}
+
+const cashCodes = new Set(['cash']);
+function needsReference(m: PaymentMethod): boolean {
+  return !cashCodes.has(m.code?.toLowerCase());
+}
 
 // Numpad
 const numpadKeys = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '00', '0', '.', '⌫', '✓'];
@@ -251,14 +300,8 @@ function switchCurrency(currency: 'USD' | 'VES') {
   selectedCurrency.value = currency;
   if (currency === 'USD') {
     amountReceived.value = props.totalUsd.toFixed(2);
-    if (selectedMethod.value === 'mobile' || selectedMethod.value === 'pos' || selectedMethod.value === 'cash_ves') {
-      selectedMethod.value = 'cash_usd';
-    }
   } else {
     amountReceived.value = (props.totalUsd * props.tasaBcv).toFixed(2);
-    if (selectedMethod.value === 'cash_usd' || selectedMethod.value === 'zelle') {
-      selectedMethod.value = 'mobile';
-    }
   }
 }
 
@@ -283,15 +326,21 @@ watch(selectedCurrency, (c) => {
 }, { immediate: true });
 
 const receivedUSD = computed(() => {
-  if (selectedCurrency.value === 'VES') {
-    return 0;
-  }
+  if (selectedCurrency.value === 'VES') return 0;
   const raw = amountReceived.value.replace(/[^0-9.]/g, '');
   return parseFloat(raw) || 0;
 });
 
 const changeUSD = computed(() => Math.max(0, receivedUSD.value - props.totalUsd));
 const changeVES = computed(() => changeUSD.value * props.tasaBcv);
+
+const canConfirm = computed(() => {
+  if (isCreditSale.value && !selectedCustomer.value) return false;
+  if (!selectedMethod.value) return false;
+  if (needsReference(selectedMethod.value) && reference.value.trim().length < 4) return false;
+  if (selectedCurrency.value === 'USD' && receivedUSD.value <= 0) return false;
+  return true;
+});
 
 function numpadPress(k: string) {
   if (k === '✓') { confirm(); return; }
@@ -311,9 +360,22 @@ function numpadKeyClass(k: string): string {
 }
 
 function confirm() {
-  if (isCreditSale.value && !selectedCustomer.value) return;
-  if (receivedUSD.value <= 0 && selectedCurrency.value === 'USD' && selectedMethod.value !== 'cash_ves') return;
-  emit('confirm');
+  if (!canConfirm.value || !selectedMethod.value || props.processing) return;
+
+  const amountUsd = selectedCurrency.value === 'USD' ? receivedUSD.value : 0;
+  const amountVes = selectedCurrency.value === 'VES'
+    ? parseFloat(amountReceived.value.replace(/[^0-9.]/g, '')) || 0
+    : 0;
+
+  const payments: CheckoutPayment[] = [{
+    payment_method_id: selectedMethod.value.id,
+    gavetero_id: selectedMethod.value.gavetero?.id || '',
+    amount_usd: amountUsd,
+    amount_ves: amountVes,
+    reference: needsReference(selectedMethod.value) ? reference.value.trim() : '',
+  }];
+
+  emit('confirm', payments);
 }
 
 function formatUSD(n: number): string {

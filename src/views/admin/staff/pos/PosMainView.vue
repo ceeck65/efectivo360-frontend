@@ -23,6 +23,11 @@
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           BCV: <span class="text-blue-50">Bs.{{ formatVES(tasaBCV) }}</span>
         </div>
+        <button v-if="parkedSales.length > 0" @click="showParkedSalesModal = true"
+          class="flex items-center gap-1.5 text-xs font-bold text-amber-200 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/30 px-2.5 py-1 rounded-xl shadow-sm backdrop-blur-md transition-all whitespace-nowrap">
+          <Clock class="w-3 h-3" />
+          <span>{{ parkedSales.length }} Ventas Pausadas</span>
+        </button>
         <div v-if="!esIlimitado"
           class="flex items-center gap-1.5 text-[10px] font-bold text-white/80 bg-white/10 backdrop-blur-md border border-white/20 px-2.5 py-1 rounded-xl shadow-sm whitespace-nowrap">
           <Ticket class="w-3 h-3 text-blue-300" />
@@ -176,14 +181,14 @@
           <div v-else-if="currentLayout === 'modern'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             <button v-for="p in filteredProducts" :key="p.id" @click="addItem(p)"
               class="bg-white border border-slate-300 rounded-xl p-2.5 flex gap-2.5 shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer group relative overflow-hidden text-left"
-              :class="{ 'opacity-60': p.stock <= 0 }">
+              :class="{ 'opacity-60': p.availableStock <= 0 }">
               <div class="w-16 h-16 rounded-lg bg-slate-50 border border-slate-200 flex-shrink-0 flex items-center justify-center overflow-hidden relative">
                 <img v-if="p.image" :src="p.image" :alt="p.name"
                   class="w-full h-full object-cover" @error="($event.target as HTMLImageElement).style.display='none'" />
                 <div v-if="!p.image" class="w-full h-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-400">
                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                 </div>
-                <span v-if="p.stock <= 0"
+                <span v-if="p.availableStock <= 0"
                   class="absolute inset-0 bg-white/60 flex items-center justify-center text-[9px] font-black text-rose-600 uppercase tracking-wider">Agotado</span>
               </div>
               <div class="flex flex-col justify-between flex-1 min-w-0">
@@ -193,7 +198,9 @@
                     <span v-if="p.hasVariants && p.variants.length" class="text-blue-500 font-semibold">{{ p.variants.length }} variantes</span>
                     <span v-else>
                       <span v-if="p.unitsPerPackage > 1" class="text-[8px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-1 py-0.5 rounded mr-1">{{ p.unitsPerPackage }} uds/Bulto</span>
-                      {{ formatStockBreakdown(p.totalStock, p.unitsPerPackage) }}
+                      <span :class="p.availableStock <= 0 ? 'text-rose-600 font-bold' : 'text-amber-600 font-semibold'">
+                        {{ formatStockBreakdown(p.availableStock, p.unitsPerPackage) }}
+                      </span>
                     </span>
                   </p>
                 </div>
@@ -215,7 +222,7 @@
                   <th class="text-left py-2 px-2 w-24">Código</th>
                   <th class="text-left py-2 px-2">Producto</th>
                   <th class="text-left py-2 px-2 w-20">Categoría</th>
-                  <th class="text-center py-2 px-2 w-16">Stock</th>
+                  <th class="text-center py-2 px-2 w-16">Stock Disp.</th>
                   <th class="text-right py-2 px-2 w-20">Precio USD</th>
                   <th class="text-right py-2 px-2 w-24">Precio Bs</th>
                 </tr>
@@ -223,7 +230,7 @@
               <tbody>
                 <tr v-for="p in filteredProducts" :key="p.id" @click="addItem(p)"
                   class="border-b border-slate-100 hover:bg-blue-50/60 cursor-pointer transition-colors group"
-                  :class="{ 'opacity-60': p.stock <= 0 }">
+                  :class="{ 'opacity-60': p.availableStock <= 0 }">
                   <td class="py-1.5 px-2">
                     <div class="w-8 h-8 rounded-lg bg-slate-50 border border-slate-200 overflow-hidden flex-shrink-0">
                       <img v-if="p.image" :src="p.image" :alt="p.name"
@@ -248,9 +255,10 @@
                   <td class="py-1.5 px-2 text-center">
                     <span v-if="p.hasVariants" class="text-[10px] text-blue-600 font-semibold">{{ p.variants.length }} vars.</span>
                     <span v-else class="text-[10px] font-semibold"
-                      :class="p.stock === 0 ? 'text-rose-600' : 'text-emerald-600'">
+                      :class="p.availableStock <= 0 ? 'text-rose-600' : 'text-emerald-600'">
                       <span v-if="p.unitsPerPackage > 1" class="text-[8px] font-semibold text-amber-600 bg-amber-50 border border-amber-200 px-1 py-0.5 rounded mr-1">{{ p.unitsPerPackage }} uds/Bulto</span>
-                      {{ formatStockBreakdown(p.totalStock, p.unitsPerPackage) }}
+                      <span v-if="p.availableStock <= 0">Agotado</span>
+                      <span v-else>{{ formatStockBreakdown(p.availableStock, p.unitsPerPackage) }}</span>
                     </span>
                   </td>
                   <td class="py-1.5 px-2 text-right font-semibold text-slate-900">
@@ -420,18 +428,6 @@
         </div>
         </div>
 
-        <!-- Hold / Resume buttons -->
-        <div v-if="heldSales.length > 0" class="mb-1.5">
-          <div class="flex flex-wrap gap-1.5">
-            <button v-for="(sale, i) in heldSales" :key="sale.id" @click="resumeSale(i)"
-              class="flex items-center gap-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg px-2 py-1 text-[10px] font-semibold text-white transition-all backdrop-blur-sm">
-              <PlayCircle class="w-3 h-3 text-emerald-300" />
-              <span>{{ sale.timestamp }}</span>
-              <span class="text-blue-200 font-mono">${{ formatUSD(sale.total) }}</span>
-            </button>
-          </div>
-        </div>
-
         <!-- Customer + Charge row -->
         <div class="space-y-2.5 pt-2 border-t border-white/10">
           <div class="flex items-center justify-between bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 text-xs">
@@ -440,7 +436,7 @@
             <span v-else class="font-bold text-white">{{ selectedCustomer.name }}</span>
           </div>
           <div class="flex gap-2">
-            <button @click="pauseCurrentSale" :disabled="cart.length === 0"
+            <button @click="showPauseModal = true" :disabled="cart.length === 0"
               class="flex items-center justify-center gap-1 h-12 rounded-xl text-xs font-bold text-white/80 bg-white/10 hover:bg-white/20 border border-white/20 transition-all active:scale-[0.98] px-3 backdrop-blur-sm"
               :class="cart.length === 0 ? 'opacity-30 cursor-not-allowed' : ''">
               <PauseCircle class="w-3.5 h-3.5" />
@@ -539,7 +535,7 @@
               </div>
             </div>
             <div class="flex gap-2">
-              <button @click="pauseCurrentSale(); showMobileCart = false" :disabled="cart.length === 0"
+              <button @click="showPauseModal = true; showMobileCart = false" :disabled="cart.length === 0"
                 class="flex items-center justify-center gap-1 h-12 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border border-slate-200 transition-all active:scale-[0.98] px-3"
                 :class="cart.length === 0 ? 'opacity-30 cursor-not-allowed' : ''">
                 <PauseCircle class="w-4 h-4" />
@@ -598,8 +594,12 @@
       :total-usd="totalUSD"
       :total-ves="totalVES"
       :tasa-bcv="tasaBCV"
+      :payment-methods="paymentMethods"
+      :processing="isProcessingCheckout"
+      :error-message="checkoutError"
       @confirm="onCheckoutConfirm"
       @close="showCheckout = false"
+      @clear-error="clearCheckoutError"
     />
 
     <!-- ═══════ TOP-UP MODAL ═══════ -->
@@ -623,6 +623,32 @@
       @select="onVariantSelected"
       @close="showVariantModal = false"
     />
+
+    <!-- ═══════ PAUSE SALE MODAL ═══════ -->
+    <PauseModal
+      v-if="showPauseModal"
+      @close="showPauseModal = false"
+      @pause="onPauseSale"
+    />
+
+    <!-- ═══════ PARKED SALES MODAL ═══════ -->
+    <ParkedSalesModal
+      v-if="showParkedSalesModal"
+      :parked-sales="parkedSales"
+      :parked-timers="parkedTimers"
+      @resume="onResumeSale"
+      @cancel="onCancelParked"
+      @close="showParkedSalesModal = false"
+    />
+
+    <!-- ═══════ EXPIRED PARKED SALE MODAL ═══════ -->
+    <ExpiredParkedSaleModal
+      v-if="showExpiredModal && expiredSale"
+      :sale="expiredSale"
+      @extend="onExtendExpired"
+      @cancel="onCancelExpired"
+      @close="showExpiredModal = false"
+    />
   </div>
 </template>
 
@@ -632,7 +658,7 @@ import {
   Search, X, User, ShoppingBag, Trash2,
   CreditCard, PackageSearch, PauseCircle, PlayCircle, Wifi, WifiOff,
   ScanBarcode, ScanLine, LayoutGrid, List,
-  ListTree, Ticket,
+  ListTree, Ticket, Clock,
 } from 'lucide-vue-next';
 import BarcodeScanner from '@/components/shared/BarcodeScanner.vue';
 import { useRouter } from 'vue-router';
@@ -641,13 +667,27 @@ import { useCajaStore } from '@/stores/caja';
 import { useForexRate } from '@/composables/useForexRate';
 import { useInventory } from '@/modules/inventory/composables/useInventory';
 import { useTenantMetadata } from '@/composables/useTenantMetadata';
+import { useCheckout } from '@/composables/useCheckout';
+import { useApi } from '@/composables/useApi';
 import RifInput from '@/components/shared/RifInput.vue';
 import PhoneInput from '@/components/shared/PhoneInput.vue';
 import CheckoutModal from './CheckoutModal.vue';
 import TransactionTopUpModal from '@/components/modals/TransactionTopUpModal.vue';
 import CierreCaja from './CierreCaja.vue';
 import VariantSelectorModal from './VariantSelectorModal.vue';
+import PauseModal from './PauseModal.vue';
+import ParkedSalesModal from './ParkedSalesModal.vue';
+import ExpiredParkedSaleModal from './ExpiredParkedSaleModal.vue';
 import { toast } from 'vue3-toastify';
+import { fetchPaymentMethods, type PaymentMethod } from '@/services/treasury.service';
+import {
+  listParkedSales,
+  createParkedSale,
+  resumeParkedSale,
+  cancelParkedSale,
+  extendParkedSale,
+  type ParkedSale,
+} from '@/modules/inventory/services/parkedSales.service';
 
 const authStore = useAuthStore();
 const cajaStore = useCajaStore();
@@ -656,9 +696,18 @@ const tenantCommercialName = computed(() => authStore.user?.tenant_commercial_na
 
 const {
   ticketsDisponibles, esIlimitado, sinVencimiento,
-  canCharge, consumirTicket, persistTickets,
+  canCharge, consumirTicket,
 } = useTenantMetadata();
 const showTopUp = ref(false);
+
+const {
+  isProcessing: isProcessingCheckout,
+  errorMessage: checkoutError,
+  clearError: clearCheckoutError,
+  checkout,
+} = useCheckout();
+const { fetchApi } = useApi();
+const defaultWarehouseId = ref<string | null>(null);
 
 const { rateValue: tasaBCV, fetchForexRate } = useForexRate();
 const {
@@ -725,6 +774,7 @@ interface Product {
   price_usd: number;
   stock: number;
   totalStock: number;
+  availableStock: number;
   barcode?: string;
   category_id?: string;
   image?: string;
@@ -773,31 +823,265 @@ function toggleScanner() { scanning.value = !scanning.value; }
 // Layout toggle
 const currentLayout = ref<'modern' | 'traditional'>('modern');
 
-// Hold / Resume
-const heldSales = ref<{ id: number; items: CartItem[]; timestamp: string; total: number }[]>([]);
+// Parked Sales (API-backed)
+const parkedSales = ref<ParkedSale[]>([]);
+const showPauseModal = ref(false);
+const showParkedSalesModal = ref(false);
+const showExpiredModal = ref(false);
+const expiredSale = ref<ParkedSale | null>(null);
+const notifiedExpired = ref<Set<number>>(new Set());
+const pausing = ref(false);
+const parkedTimerInterval = ref<number | null>(null);
+const parkedRefreshInterval = ref<number | null>(null);
+const parkedTimers = ref<Record<number, number>>({});
 
-const pauseCurrentSale = () => {
-  if (cart.value.length === 0) return;
-  heldSales.value.push({
-    id: Date.now(),
-    items: [...cart.value],
-    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    total: subtotalUSD.value,
-  });
-  cart.value = [];
-};
-
-const resumeSale = (index: number) => {
-  if (cart.value.length > 0) {
-    const tmp = [...cart.value];
-    cart.value = heldSales.value[index].items;
-    heldSales.value[index].items = tmp;
-    heldSales.value[index].id = Date.now();
-  } else {
-    cart.value = heldSales.value[index].items;
-    heldSales.value.splice(index, 1);
+/** Update local timers from expires_at (no server call). */
+function tickTimers() {
+  for (const s of parkedSales.value) {
+    const expires = new Date(s.expires_at).getTime();
+    const remaining = Math.max(0, Math.floor((expires - Date.now()) / 1000));
+    parkedTimers.value[s.id] = remaining;
+    // Open expired modal once per sale
+    if (remaining <= 0 && !notifiedExpired.value.has(s.id) && s.status === 'PAUSED') {
+      notifiedExpired.value.add(s.id);
+      expiredSale.value = s;
+      showExpiredModal.value = true;
+    }
   }
-};
+}
+
+function formatTimer(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+async function fetchParkedSales() {
+  try {
+    const result = await listParkedSales('PAUSED');
+    parkedSales.value = result;
+    // Rebuild notified set — only keep IDs that still exist
+    const currentIds = new Set(result.map(s => s.id));
+    notifiedExpired.value = new Set(
+      [...notifiedExpired.value].filter(id => currentIds.has(id))
+    );
+    tickTimers();
+  } catch {
+    // silently retry on next interval
+  }
+}
+
+async function onPauseSale(alias: string) {
+  if (cart.value.length === 0) return;
+  pausing.value = true;
+  try {
+    const items = cart.value.map(i => ({
+      id: i.id,
+      productId: i.productId,
+      variantId: i.variantId,
+      name: i.name,
+      variantLabel: i.variantLabel,
+      price_usd: i.price_usd,
+      qty: i.qty,
+      image: i.image || '',
+      unitsPerPackage: i.unitsPerPackage,
+      mode: i.mode,
+      unitPrice: i.unitPrice,
+      maxStock: i.maxStock,
+      maxVariantStock: i.maxVariantStock,
+      barcode: i.barcode || '',
+      attrs: i.attrs,
+    }));
+    await createParkedSale({
+      alias,
+      items,
+      ttl_minutes: 20,
+    });
+    cart.value = [];
+    showPauseModal.value = false;
+    toast.success('Venta pausada – inventario reservado');
+    await Promise.all([fetchParkedSales(), loadProducts()]);
+  } catch (e: any) {
+    toast.warning(e?.response?.data?.detail || 'Error al pausar la venta');
+  } finally {
+    pausing.value = false;
+  }
+}
+
+async function onResumeSale(sale: ParkedSale) {
+  try {
+    const result = await resumeParkedSale(sale.id);
+    if (cart.value.length > 0) {
+      toast.warning('Finalice la venta actual antes de reanudar');
+      return;
+    }
+    cart.value = result.items.map(i => ({
+      ...i,
+      stock: i.maxStock,
+      maxStock: i.maxStock,
+      maxVariantStock: i.maxVariantStock,
+      conversionFactor: i.mode === 'BULTO' ? i.unitsPerPackage : 1,
+      unitLabel: i.mode === 'BULTO' ? 'Bulto' : 'Unidad',
+      altUnitLabel: i.mode === 'BULTO' ? 'Unidad' : (i.unitsPerPackage > 1 ? 'Bulto' : ''),
+    }));
+    await cancelParkedSale(sale.id);
+    parkedSales.value = parkedSales.value.filter(s => s.id !== sale.id);
+    showParkedSalesModal.value = false;
+    toast.success(`Reanudada: ${result.alias || result.reference}`);
+    loadProducts();
+  } catch (e: any) {
+    toast.warning(e?.response?.data?.detail || 'Error al reanudar');
+  }
+}
+
+async function onCancelParked(sale: ParkedSale) {
+  try {
+    await cancelParkedSale(sale.id);
+    parkedSales.value = parkedSales.value.filter(s => s.id !== sale.id);
+    toast.success('Reservación cancelada, stock liberado');
+    loadProducts();
+  } catch {
+    toast.warning('Error al cancelar');
+  }
+}
+
+async function onExtendExpired(sale: ParkedSale) {
+  try {
+    const result = await extendParkedSale(sale.id, 20);
+    parkedTimers.value[sale.id] = 1200;
+    notifiedExpired.value.delete(sale.id);
+    showExpiredModal.value = false;
+    expiredSale.value = null;
+    // Update expires_at in the list
+    const found = parkedSales.value.find(s => s.id === sale.id);
+    if (found) found.expires_at = result.expires_at;
+    toast.success(`Reserva extendida +20 min — ${result.alias || result.reference}`);
+  } catch {
+    toast.warning('Error al extender la reserva');
+  }
+}
+
+async function onCancelExpired(sale: ParkedSale) {
+  await onCancelParked(sale);
+  showExpiredModal.value = false;
+  expiredSale.value = null;
+}
+
+async function loadDefaultWarehouse() {
+  try {
+    const res = await fetchApi<any>('/api/v1/inventory/warehouses/?page_size=200');
+    const list = Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
+    const main = list.find((w: any) => w.code === 'MAIN');
+    defaultWarehouseId.value = main?.id ?? list[0]?.id ?? null;
+    if (!defaultWarehouseId.value) {
+      console.warn('[POS] No hay almacenes configurados para este tenant');
+    }
+  } catch (e) {
+    console.error('[POS] Error al cargar el almacén por defecto', e);
+    defaultWarehouseId.value = null;
+  }
+}
+
+async function onCheckoutConfirm(payments: { payment_method_id: string; gavetero_id: string; amount_usd: number; amount_ves: number; reference: string }[]) {
+  clearCheckoutError();
+
+  if (!defaultWarehouseId.value) {
+    await loadDefaultWarehouse();
+  }
+  if (!cajaStore.turnoActivo?.id) {
+    await cajaStore.verificarTurnoActivo();
+  }
+
+  if (!cajaStore.turnoActivo?.id || !defaultWarehouseId.value) {
+    toast.warning('No se pudo determinar el turno de caja o el almacén de la venta. Verifica tu conexión e inténtalo de nuevo.');
+    return;
+  }
+
+  // complete reserved stock when sale is paid
+  const matched = parkedSales.value.filter(s =>
+    s.items.every((si: any) =>
+      cart.value.some(ci => ci.productId === si.productId && ci.qty <= si.qty)
+    )
+  );
+  for (const s of matched) {
+    try {
+      const { default: axios } = await import('axios');
+      await axios.post(`/api/v1/parked-sales/${s.id}/complete/`);
+    } catch { /* non-blocking */ }
+  }
+
+  const success = await checkout({
+    shift_id: Number(cajaStore.turnoActivo.id),
+    warehouse_id: defaultWarehouseId.value,
+    exchange_rate: tasaBCV.value,
+    items: cart.value.map(i => ({
+      product_id: i.id,
+      qty: i.qty,
+      unit_price_cents: Math.round(i.unitPrice * 100),
+      pricing_mode: i.mode,
+      conversion_factor: i.conversionFactor,
+    })),
+    payments,
+  });
+
+  if (!success) return;
+
+  // Ticket consumption is now atomic on the backend (same POST); only reflect it
+  // locally for the header badge once we know the sale actually went through.
+  consumirTicket();
+  toast.success('Venta procesada exitosamente');
+
+  showCheckout.value = false;
+  cart.value = [];
+  await Promise.all([fetchParkedSales(), loadProducts()]);
+}
+
+// ── IndexedDB offline cache ──
+const DB_NAME = 'efectivo360-pos';
+const DB_VERSION = 1;
+let dbPromise: Promise<IDBDatabase> | null = null;
+
+function openDB(): Promise<IDBDatabase> {
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('parked_sales')) {
+        db.createObjectStore('parked_sales', { keyPath: 'id' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return dbPromise;
+}
+
+async function syncOfflineParked() {
+  try {
+    const db = await openDB();
+    const tx = db.transaction('parked_sales', 'readonly');
+    const store = tx.objectStore('parked_sales');
+    const all = await new Promise<any[]>((resolve) => {
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result);
+    });
+    for (const item of all) {
+      try {
+        await createParkedSale(item);
+        const delTx = db.transaction('parked_sales', 'readwrite');
+        delTx.objectStore('parked_sales').delete(item.id);
+      } catch {
+        // server will reject duplicates, skip
+      }
+    }
+  } catch { /* offline */ }
+}
+
+// Listen for online → sync
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', syncOfflineParked);
+}
 
 // Online status
 const isOnline = ref(navigator.onLine);
@@ -806,6 +1090,7 @@ const updateOnlineStatus = () => { isOnline.value = navigator.onLine; };
 const mobileTab = ref<'products' | 'cart' | 'payment'>('products');
 const showCheckout = ref(false);
 const showMobileCart = ref(false);
+const paymentMethods = ref<PaymentMethod[]>([]);
 const showCierreCaja = ref(false);
 const cart = ref<CartItem[]>([]);
 
@@ -824,15 +1109,17 @@ const categories = computed<Category[]>(() =>
 const products = computed<Product[]>(() =>
   inventoryProducts.value.map(p => {
     const priceUsd = (p.priceUsd ?? ((p.salePrice as number) || 0) / 100);
-    const stock = p.totalStock ?? p.currentStock ?? 0;
+    const availStock = p.availableStock ?? p.totalStock ?? p.currentStock ?? 0;
+    const totalStock = p.totalStock ?? p.currentStock ?? 0;
     const unitsPerPackage = p.unitsPerPackage ?? 1;
     return {
       id: p.id,
       name: p.effectiveName || p.name,
       sku: p.effectiveSku || p.sku,
       price_usd: priceUsd,
-      stock,
-      totalStock: stock,
+      stock: availStock,
+      totalStock,
+      availableStock: availStock,
       unitsPerPackage,
       barcode: p.effectiveSku || p.sku || p.barcode || undefined,
       image: String(p.imageUrl || p.image || p.image_url || ''),
@@ -891,7 +1178,7 @@ function addToCart(p: Product, variant?: VariantData) {
   const id = variant ? variant.id : p.id;
   const name = variant ? `${p.name} · ${variant.display_name}` : p.name;
   const price = variant ? parseFloat(variant.price_base || '0') : p.price_usd;
-  const maxStock = variant ? variant.stock : p.totalStock;
+  const maxStock = variant ? variant.stock : p.availableStock;
   const unitsPerPackage = p.unitsPerPackage || 1;
 
   if (variant) {
@@ -933,7 +1220,7 @@ function addToCart(p: Product, variant?: VariantData) {
     variantLabel,
     price_usd: price,
     qty: 1,
-    stock: variant ? variant.stock : p.stock,
+    stock: variant ? variant.stock : p.availableStock,
     maxStock,
     maxVariantStock: variant?.stock,
     unitsPerPackage,
@@ -949,7 +1236,7 @@ function addToCart(p: Product, variant?: VariantData) {
 }
 
 function addItem(p: Product) {
-  if (p.stock <= 0 && !p.hasVariants) return;
+  if (p.availableStock <= 0 && !p.hasVariants) return;
   if (p.hasVariants && p.variants.length > 0) {
     selectedVariantProduct.value = p;
     showVariantModal.value = true;
@@ -1105,25 +1392,13 @@ function saveNewCustomer() {
   showCustomerModal.value = false;
 }
 
-function openCheckout() { if (cart.value.length > 0) showCheckout.value = true; }
-
-function onCheckoutConfirm() {
-  consumirTicket();
-  persistTickets();
-  const payload = {
-    items: cart.value.map(i => ({
-      product_id: i.id,
-      qty: i.qty,
-      unit_price_cents: Math.round(i.unitPrice * 100),
-      pricing_mode: i.mode,
-      conversion_factor: i.conversionFactor,
-    })),
-    currency: 'USD',
-    total_usd: subtotalUSD.value,
-  };
-  console.log('[venta]', payload);
-  showCheckout.value = false;
-  cart.value = [];
+async function openCheckout() {
+  if (cart.value.length === 0) return;
+  if (paymentMethods.value.length === 0) {
+    paymentMethods.value = await fetchPaymentMethods(true);
+  }
+  console.log('Métodos de pago recibidos del Backend:', paymentMethods.value);
+  showCheckout.value = true;
 }
 
 function onTopUpConfirm(_pkg: unknown, _code: string) {
@@ -1142,14 +1417,31 @@ const dataLoading = computed(() => invLoading.value.products || invLoading.value
 onMounted(async () => {
   window.addEventListener('online', updateOnlineStatus);
   window.addEventListener('offline', updateOnlineStatus);
-    await Promise.all([
+  await Promise.all([
     loadCategories(),
     loadProducts(),
     fetchForexRate(),
+    loadDefaultWarehouse(),
   ]);
+  fetchParkedSales();
+  fetchPaymentMethods(true).then(methods => { paymentMethods.value = methods; });
+
+  // 1-second local tick for countdown display (no HTTP)
+  parkedTimerInterval.value = window.setInterval(tickTimers, 1000);
+
+  // Background refresh every 30 seconds to sync with server
+  parkedRefreshInterval.value = window.setInterval(fetchParkedSales, 30_000);
 });
 
 onUnmounted(() => {
+  if (parkedTimerInterval.value) {
+    clearInterval(parkedTimerInterval.value);
+    parkedTimerInterval.value = null;
+  }
+  if (parkedRefreshInterval.value) {
+    clearInterval(parkedRefreshInterval.value);
+    parkedRefreshInterval.value = null;
+  }
   window.removeEventListener('online', updateOnlineStatus);
   window.removeEventListener('offline', updateOnlineStatus);
 });
