@@ -147,6 +147,12 @@ const router = createRouter({
       component: () => import('@/views/admin/ForexRatesView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/admin/customers',
+      name: 'Customers',
+      component: () => import('@/views/admin/customers/CustomersView.vue'),
+      meta: { requiresAuth: true },
+    },
 // Payment Methods - Separación de responsabilidades
      {
        path: '/admin/staff/payment-templates',
