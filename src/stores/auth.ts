@@ -24,6 +24,33 @@ interface User {
   tenant_currencies?: string[];
   tenant_active_categories?: string[];
   tenant_settings?: Record<string, unknown> | null;
+  /**
+   * Forma real que envía UserSerializer.get_tenant_info (apps/accounts/serializers.py).
+   * Los campos `tenant_*` planos de arriba (tenant_tax_id, tenant_rif, tenant_address, etc.)
+   * no los llena el backend actual — quedaron de una integración previa; usa `tenant_info`.
+   */
+  tenant_info?: {
+    legal?: {
+      name?: string;
+      legal_name?: string;
+      commercial_name?: string;
+      tax_id?: string;
+      rif?: string;
+      address?: string;
+      phone_numbers?: Record<string, string>;
+      is_withholding_agent?: boolean;
+      es_contribuyente_especial?: boolean;
+    };
+    config?: {
+      global_settings?: {
+        paper_size?: '58mm' | '80mm' | 'a4' | 'letter';
+        printer_type?: string;
+        receipt_footer_text?: string;
+        [key: string]: unknown;
+      };
+      [key: string]: unknown;
+    };
+  } | null;
   tenant_global_settings?: {
     enable_igtf?: boolean;
     enable_withholding?: boolean;

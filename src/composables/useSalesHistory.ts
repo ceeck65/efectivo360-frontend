@@ -30,6 +30,8 @@ export interface SaleLineDetail {
   price_applied_usd: string;
   price_applied_ves: string;
   tax_amount: string;
+  /** EXENTO, IVA_16, IVA_8 o IVA_22 — para el sufijo (E)/(G) del ticket térmico. */
+  tax_type: string;
 }
 
 export interface SalePaymentDetail {
@@ -40,6 +42,17 @@ export interface SalePaymentDetail {
   amount_ves: string;
 }
 
+/** Desglose fiscal SENIAT (ver apps.sales.services.compute_sale_tax_breakdown). */
+export interface SaleTaxBreakdown {
+  exento: string;
+  base_general: string;
+  iva_general: string;
+  base_reducido: string;
+  iva_reducido: string;
+  base_imponible: string;
+  iva_total: string;
+}
+
 export interface SaleDetail {
   id: number;
   sold_at: string;
@@ -47,6 +60,9 @@ export interface SaleDetail {
   seller_name: string | null;
   customer: number | null;
   customer_name: string;
+  customer_document: string | null;
+  customer_phone: string | null;
+  customer_address: string | null;
   invoice_number: string | null;
   public_hash: string;
   reference: string;
@@ -59,6 +75,7 @@ export interface SaleDetail {
   balance_usd: string;
   exchange_rate: string;
   status: SaleStatus;
+  tax_breakdown: SaleTaxBreakdown;
 }
 
 export interface SalesSummary {

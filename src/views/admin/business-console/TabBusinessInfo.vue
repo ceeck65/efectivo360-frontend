@@ -123,11 +123,13 @@ import PhoneInput from '@/components/shared/PhoneInput.vue';
 import ProductImageStudio from '@/views/admin/super-console/components/ProductImageStudio.vue';
 import { useApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
+import { useAuthStore } from '@/stores/auth';
 
 interface SocialEntry { platform: string; url: string; }
 
 const { fetchApi } = useApi();
 const { success } = useNotify();
+const authStore = useAuthStore();
 const saving = ref(false);
 const showImageStudio = ref(false);
 const logoBlob = ref<Blob | null>(null);
@@ -179,6 +181,7 @@ async function save() {
       logoBlob.value = null;
     }
     await fetchApi('/api/v1/tenants/settings/info/', { method: 'PATCH', data: payload });
+    await authStore.refreshSession();
     success('Información guardada');
   } catch {} finally { saving.value = false; }
 }

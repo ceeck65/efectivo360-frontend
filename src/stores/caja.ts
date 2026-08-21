@@ -12,8 +12,10 @@ export interface CajaTerminal {
 
 export interface TurnoActivo {
   id: string | number;
+  register_name?: string;
   terminal_id: number;
   terminal_name?: string;
+  operator_name?: string;
   status: string;
   opening_float_usd: number;
   opening_float_ves: number;

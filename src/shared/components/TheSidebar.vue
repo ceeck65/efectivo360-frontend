@@ -140,12 +140,20 @@
         <div v-if="!esIlimitado" class="space-y-1.5">
           <div class="flex items-center justify-between gap-2">
             <div class="flex items-center gap-1.5">
-              <Ticket class="h-3 w-3 text-blue-400" />
+              <Ticket class="h-3 w-3" :class="ticketsDisponibles <= 0 ? 'text-red-400' : 'text-blue-400'" />
               <span class="text-white/60">Tickets disponibles</span>
             </div>
-            <span class="font-semibold text-white/80 tabular-nums">{{ ticketsDisponibles.toLocaleString() }}</span>
+            <span
+              class="font-semibold tabular-nums"
+              :class="ticketsDisponibles <= 0
+                ? 'rounded-full bg-red-500/20 border border-red-400/40 text-red-300 px-2 py-0.5'
+                : 'text-white/80'"
+            >{{ ticketsDisponibles.toLocaleString() }}</span>
           </div>
-          <div v-if="sinVencimiento" class="text-[10px] text-white/40">· Sin vencimiento</div>
+          <div v-if="ticketsDisponibles <= 0" class="text-[10px] text-red-300/80 font-semibold">
+            Sin tickets. Recarga desde el Marketplace para seguir vendiendo.
+          </div>
+          <div v-else-if="sinVencimiento" class="text-[10px] text-white/40">· Sin vencimiento</div>
         </div>
         <div v-else class="flex items-center gap-1.5">
           <span class="h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -278,7 +286,7 @@ const emit = defineEmits<{
 const route = useRoute();
 const router = useRouter();
 const navigationStore = useNavigationStore();
-const { isModuleLocked, ticketsDisponibles, esIlimitado, sinVencimiento } = useTenantMetadata();
+const { isModuleLocked, ticketsDisponibles, esIlimitado, sinVencimiento, fetchTenantInfo } = useTenantMetadata();
 
 // Map nav paths to module keys for access control
 const MODULE_ROUTE_MAP: Record<string, string> = {
@@ -334,7 +342,9 @@ onMounted(async () => {
     isCollapsed.value = true;
   }
 
-  // Load transaction usage from metadata (handled by useTenantMetadata)
+  // Refresca tickets_disponibles desde el backend para que el contador no dependa
+  // únicamente del snapshot cacheado en el login (login/refresh de token/etc.).
+  fetchTenantInfo();
 
   // Fetch navigation on mount
   navigationStore.clearCache();

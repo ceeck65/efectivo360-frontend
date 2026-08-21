@@ -2,6 +2,8 @@
 import { ref, computed, onMounted } from 'vue';
 import { X, Printer, Ban, Loader2 } from 'lucide-vue-next';
 import { useSalesHistory, type SaleDetail } from '@/composables/useSalesHistory';
+import { useBusinessInfo, usePrintSettings, printThermalReceipt } from '@/composables/useThermalReceipt';
+import ThermalReceiptPrint from '@/shared/components/ThermalReceiptPrint.vue';
 
 const props = defineProps<{
   saleId: number;
@@ -13,6 +15,8 @@ const emit = defineEmits<{
 }>();
 
 const { fetchSaleDetail } = useSalesHistory();
+const business = useBusinessInfo();
+const { settings: printSettings, logoUrl, fetchPrintSettings } = usePrintSettings();
 
 const sale = ref<SaleDetail | null>(null);
 const loading = ref(true);
@@ -46,18 +50,25 @@ async function load() {
 }
 
 function printTicket() {
-  window.print();
+  printThermalReceipt();
 }
 
-onMounted(load);
+onMounted(() => {
+  load();
+  fetchPrintSettings().then(() => {
+    business.logoUrl = logoUrl.value;
+  });
+});
 </script>
 
 <template>
-  <div class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4 print:bg-white print:p-0 print:backdrop-blur-none" @click.self="emit('close')">
-    <div class="bg-white dark:bg-[#141824] w-full max-w-md rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.4)] border border-slate-200/80 dark:border-white/[0.08] relative z-10 flex flex-col overflow-hidden text-slate-800 dark:text-white print:shadow-none print:border-0 print:rounded-none print:max-w-full">
+  <!-- El comprobante térmico real se imprime aparte (ThermalReceiptPrint, vía Teleport a
+       <body>); este modal es solo la vista en pantalla, por eso se oculta entero al imprimir. -->
+  <div class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4 print:hidden" @click.self="emit('close')">
+    <div class="bg-white dark:bg-[#141824] w-full max-w-md rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.4)] border border-slate-200/80 dark:border-white/[0.08] relative z-10 flex flex-col overflow-hidden text-slate-800 dark:text-white">
 
-      <!-- Header (oculto al imprimir) -->
-      <div class="p-4 border-b border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] flex justify-between items-center print:hidden">
+      <!-- Header -->
+      <div class="p-4 border-b border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] flex justify-between items-center">
         <div>
           <h3 class="text-sm font-black uppercase tracking-wider text-slate-800 dark:text-white">Detalle de Venta</h3>
           <p class="text-[10px] text-slate-400 font-medium">#{{ props.saleId }}</p>
@@ -79,7 +90,7 @@ onMounted(load);
       </div>
 
       <!-- Cuerpo -->
-      <div v-else id="sale-ticket-print" class="p-4 space-y-4 max-h-[75vh] overflow-y-auto print:max-h-none print:overflow-visible">
+      <div v-else class="p-4 space-y-4 max-h-[75vh] overflow-y-auto">
         <!-- Encabezado de ticket -->
         <div class="text-center space-y-0.5 pb-3 border-b border-dashed border-slate-200 dark:border-white/[0.1]">
           <p class="text-xs font-black uppercase tracking-wider">{{ sale.invoice_number ? `Factura ${sale.invoice_number}` : `Ticket #${sale.id}` }}</p>
@@ -159,8 +170,8 @@ onMounted(load);
         </div>
       </div>
 
-      <!-- Footer (oculto al imprimir) -->
-      <div v-if="sale && !loading" class="p-3 border-t border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] flex gap-2 justify-between print:hidden">
+      <!-- Footer -->
+      <div v-if="sale && !loading" class="p-3 border-t border-slate-200 dark:border-white/[0.08] bg-slate-50 dark:bg-white/[0.03] flex gap-2 justify-between">
         <button
           v-if="!isVoided"
           @click="emit('void', sale)"
@@ -178,21 +189,6 @@ onMounted(load);
       </div>
     </div>
   </div>
-</template>
 
-<style>
-@media print {
-  body * {
-    visibility: hidden;
-  }
-  #sale-ticket-print,
-  #sale-ticket-print * {
-    visibility: visible;
-  }
-  #sale-ticket-print {
-    position: fixed;
-    inset: 0;
-    padding: 1rem;
-  }
-}
-</style>
+  <ThermalReceiptPrint v-if="sale" :sale="sale" :business="business" :print-settings="printSettings" />
+</template>

@@ -238,6 +238,18 @@ const router = createRouter({
         meta: { requiresAuth: true },
       },
       {
+        path: '/admin/credits',
+        name: 'AdminCredits',
+        component: () => import('@/views/admin/credits/CreditsView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
+        path: '/admin/layaways',
+        name: 'AdminLayaways',
+        component: () => import('@/views/admin/layaways/LayawaysView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: '/admin/staff/global-catalog',
         name: 'GlobalCatalog',
         component: () => import('@/views/admin/staff/GlobalCatalogView.vue'),

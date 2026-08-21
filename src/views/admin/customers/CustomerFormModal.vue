@@ -3,6 +3,7 @@ import { ref, reactive, computed, onMounted } from 'vue';
 import { X, Loader2 } from 'lucide-vue-next';
 import { useCustomers, type Customer } from '@/composables/useCustomers';
 import { parseApiError } from '@/utils/parseApiError';
+import { useAuthStore } from '@/stores/auth';
 
 const props = defineProps<{
   customer?: Customer | null;
@@ -16,6 +17,20 @@ const emit = defineEmits<{
 const { createCustomer, updateCustomer } = useCustomers();
 
 const isEdit = computed(() => !!props.customer);
+
+// Mismo criterio que apps.accounts.permissions.IsOwnerOrManagerOrTenantAdmin en el
+// backend (que ya rechaza el PATCH si estos campos cambian sin ese rol): al crear un
+// cliente nuevo sí se permite fijar el límite inicial (perform_create no está gateado),
+// pero editar el límite de uno existente sí requiere Admin/Owner/Manager.
+const authStore = useAuthStore();
+const canManageCredit = computed(() => {
+  if (!isEdit.value) return true;
+  const u = authStore.user;
+  if (!u) return false;
+  if (u.is_superuser) return true;
+  if (u.role === 'OWNER' || u.role === 'MANAGER') return true;
+  return u.user_type === 'ADMIN';
+});
 
 const DOC_TYPES = [
   { value: 'V', label: 'V - Venezolano' },
@@ -226,7 +241,8 @@ async function onSubmit() {
               <input
                 v-model="form.creditLimitUsd"
                 type="number" step="0.01" min="0"
-                class="w-full h-10 pl-6 pr-3 rounded-xl border text-sm bg-white dark:bg-[#0f1320] outline-none focus:ring-2"
+                :disabled="!canManageCredit"
+                class="w-full h-10 pl-6 pr-3 rounded-xl border text-sm bg-white dark:bg-[#0f1320] outline-none focus:ring-2 disabled:opacity-60 disabled:cursor-not-allowed"
                 :class="errors.creditLimitUsd ? 'border-rose-400 focus:ring-rose-500/30' : 'border-slate-200 dark:border-white/[0.08] focus:ring-blue-500/30 focus:border-blue-400'"
               />
             </div>
@@ -237,11 +253,15 @@ async function onSubmit() {
             <input
               v-model.number="form.creditDays"
               type="number" step="1" min="0"
-              class="w-full h-10 px-3 rounded-xl border text-sm bg-white dark:bg-[#0f1320] outline-none focus:ring-2"
+              :disabled="!canManageCredit"
+              class="w-full h-10 px-3 rounded-xl border text-sm bg-white dark:bg-[#0f1320] outline-none focus:ring-2 disabled:opacity-60 disabled:cursor-not-allowed"
               :class="errors.creditDays ? 'border-rose-400 focus:ring-rose-500/30' : 'border-slate-200 dark:border-white/[0.08] focus:ring-blue-500/30 focus:border-blue-400'"
             />
             <p v-if="errors.creditDays" class="text-[10px] text-rose-500 mt-1">{{ errors.creditDays }}</p>
           </div>
+          <p v-if="!canManageCredit" class="col-span-2 text-[10px] text-slate-400 -mt-1">
+            Solo Admin/Owner puede modificar el crédito de un cliente existente.
+          </p>
         </div>
       </form>
 

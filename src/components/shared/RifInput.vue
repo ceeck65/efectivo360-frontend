@@ -24,15 +24,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{ 'update:modelValue': [v: string] }>();
 
-const types = ['V', 'E', 'J', 'G'];
+const types = ['V', 'E', 'J', 'G', 'P'];
 const rifType = ref('J');
 const rifNumber = ref('');
 
 // Parse initial value
 watch(() => props.modelValue, (v) => {
   if (!v) { rifType.value = 'J'; rifNumber.value = ''; return; }
-  const clean = v.replace(/[^VJEG0-9]/g, '');
-  const match = clean.match(/^([VJEG])(\d.*)$/);
+  const clean = v.replace(/[^VJEGP0-9]/g, '');
+  const match = clean.match(/^([VJEGP])(\d.*)$/);
   if (match) {
     rifType.value = match[1];
     rifNumber.value = match[2] || '';
@@ -42,22 +42,22 @@ watch(() => props.modelValue, (v) => {
   }
 }, { immediate: true });
 
-const maxLen = computed(() => rifType.value === 'V' || rifType.value === 'E' ? 12 : 14);
+const maxLen = computed(() => rifType.value === 'V' || rifType.value === 'E' || rifType.value === 'P' ? 12 : 14);
 
-const placeholder = computed(() => rifType.value === 'V' || rifType.value === 'E' ? '26.789.123' : '40.123.456-7');
+const placeholder = computed(() => rifType.value === 'V' || rifType.value === 'E' || rifType.value === 'P' ? '26.789.123' : '40.123.456-7');
 
 const displayValue = computed(() => rifNumber.value);
 
 const valid = computed(() => {
   const digits = rifNumber.value.replace(/\D/g, '');
-  const min = rifType.value === 'V' || rifType.value === 'E' ? 7 : 8;
+  const min = rifType.value === 'V' || rifType.value === 'E' || rifType.value === 'P' ? 7 : 8;
   return digits.length >= min;
 });
 
 function onInput(e: Event) {
   const v = (e.target as HTMLInputElement).value;
   let digits = v.replace(/[^0-9]/g, '');
-  const isCI = rifType.value === 'V' || rifType.value === 'E';
+  const isCI = rifType.value === 'V' || rifType.value === 'E' || rifType.value === 'P';
   const max = isCI ? 8 : 9;
   if (digits.length > max) digits = digits.slice(0, max);
 

@@ -1,6 +1,11 @@
 import { ref } from 'vue';
 import { apiClient } from '@/composables/useApi';
 import { parseApiError } from '@/utils/parseApiError';
+import { forceTicketsExhausted } from '@/composables/useTenantMetadata';
+import type { SaleDetail } from '@/composables/useSalesHistory';
+
+// Coincide con el mensaje que arma ProcessSaleService cuando tickets_disponibles llega a 0.
+const TICKET_LIMIT_PATTERN = /l[ií]mite.*tickets?|tickets?.*l[ií]mite/i;
 
 export interface CheckoutItem {
   product_id: string;
@@ -45,15 +50,25 @@ export function useCheckout() {
     errorMessage.value = null;
   }
 
-  async function checkout(payload: CheckoutPayload): Promise<boolean> {
+  /** Devuelve la venta creada (para el modal de éxito) o null si falló. */
+  async function checkout(payload: CheckoutPayload): Promise<SaleDetail | null> {
     isProcessing.value = true;
     errorMessage.value = null;
     try {
-      await apiClient.post('/api/v1/sales/checkout/', payload);
-      return true;
-    } catch (error) {
-      errorMessage.value = parseApiError(error);
-      return false;
+      const { data } = await apiClient.post<SaleDetail>('/api/v1/sales/checkout/', payload);
+      return data;
+    } catch (error: any) {
+      const message = parseApiError(error);
+      errorMessage.value = message;
+
+      const status = error?.response?.status ?? error?.status;
+      if ((status === 400 || status === 422) && TICKET_LIMIT_PATTERN.test(message)) {
+        // El backend ya rechazó la venta sin descontar tickets: sincroniza la UI a 0 en
+        // todos los componentes (sidebar, header del POS, dashboard) sin esperar un refetch.
+        forceTicketsExhausted();
+      }
+
+      return null;
     } finally {
       isProcessing.value = false;
     }

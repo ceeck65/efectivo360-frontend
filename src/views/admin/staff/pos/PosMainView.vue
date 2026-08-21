@@ -52,6 +52,10 @@
           <User class="w-3 h-3" />
           <span>{{ authStore.user?.full_name || authStore.user?.username || 'Usuario' }}</span>
         </div>
+        <button @click="showPOSSettings = true" title="Ajustes del punto de venta"
+          class="w-9 h-9 rounded-xl flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 transition-all">
+          <Settings2 class="w-4.5 h-4.5" />
+        </button>
       </div>
     </header>
 
@@ -277,11 +281,13 @@
         <section class="shrink-0 h-24 border-t border-slate-300/50 bg-[#9ca3af] p-3 flex items-center justify-between gap-3 shadow-[0_-4px_20px_-5px_rgba(0,0,0,0.08)]"
           :class="{'hidden md:flex': true}">
           <div class="flex items-center gap-3 flex-1 h-full">
-            <button class="flex-1 h-full bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-md group">
+            <button @click="showCustomersBrowser = true"
+              class="flex-1 h-full bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-md group">
               <span class="text-xl group-hover:scale-110 transition-transform">👤</span>
               <span class="text-[10px] font-black tracking-wider text-slate-600 uppercase">Clientes</span>
             </button>
-            <button class="flex-1 h-full bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-md group">
+            <button @click="showInventoryBrowser = true"
+              class="flex-1 h-full bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 rounded-2xl flex flex-col items-center justify-center gap-1 transition-all active:scale-[0.98] shadow-md group">
               <span class="text-xl group-hover:scale-110 transition-transform">📦</span>
               <span class="text-[10px] font-black tracking-wider text-slate-600 uppercase">Inventario</span>
             </button>
@@ -430,11 +436,11 @@
 
         <!-- Customer + Charge row -->
         <div class="space-y-2.5 pt-2 border-t border-white/10">
-          <div class="flex items-center justify-between bg-white/10 border border-white/20 rounded-xl px-3 py-1.5 text-xs">
-            <span class="text-blue-100 font-medium">Cliente:</span>
-            <span v-if="!selectedCustomer" class="font-bold text-white">Consumidor Final 👤</span>
-            <span v-else class="font-bold text-white">{{ selectedCustomer.name }}</span>
-          </div>
+          <button id="pos-clientes-btn" @click="showCustomerSelector = true"
+            class="w-full flex items-center justify-between bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl px-3 py-1.5 text-xs transition-colors">
+            <span class="text-blue-100 font-medium">CLIENTES:</span>
+            <span class="font-bold text-white truncate max-w-[65%]">{{ customerDisplayName(selectedCustomer) }} {{ selectedCustomer ? '' : '👤' }}</span>
+          </button>
           <div class="flex gap-2">
             <button @click="showPauseModal = true" :disabled="cart.length === 0"
               class="flex items-center justify-center gap-1 h-12 rounded-xl text-xs font-bold text-white/80 bg-white/10 hover:bg-white/20 border border-white/20 transition-all active:scale-[0.98] px-3 backdrop-blur-sm"
@@ -559,33 +565,47 @@
       </div>
     </Teleport>
 
-    <!-- ═══════ CUSTOMER MODAL ═══════ -->
+    <!-- ═══════ CUSTOMER SELECTOR MODAL ═══════ -->
     <Teleport to="body">
-      <div v-if="showCustomerModal" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
-        <div class="absolute inset-0 bg-black/40" @click="showCustomerModal = false" />
-        <div class="relative w-full max-w-sm bg-white rounded-2xl shadow-xl border border-slate-200 p-5">
-          <div class="flex items-center justify-between mb-4">
-            <h3 class="text-sm font-bold text-slate-900">Nuevo Cliente</h3>
-            <button @click="showCustomerModal = false" class="p-1 rounded-lg hover:bg-slate-100 transition-colors">
-              <X class="w-4 h-4 text-slate-400" />
-            </button>
-          </div>
-          <div class="space-y-3">
-            <RifInput v-model="newCustomerRif" placeholder="RIF / Cédula" />
-            <input v-model="newCustomerName" type="text" placeholder="Nombre completo"
-              class="w-full h-10 px-3.5 text-sm border border-slate-200 rounded-xl bg-white text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400" />
-            <PhoneInput v-model="newCustomerPhone" />
-            <input v-model="newCustomerEmail" type="email" placeholder="Correo electrónico (opcional)"
-              class="w-full h-10 px-3.5 text-sm border border-slate-200 rounded-xl bg-white text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400" />
-          </div>
-          <div class="flex justify-end gap-2.5 mt-4">
-            <button @click="showCustomerModal = false"
-              class="px-4 py-2.5 text-sm font-semibold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all">Cancelar</button>
-            <button @click="saveNewCustomer" :disabled="!newCustomerName || !newCustomerRif"
-              class="px-5 py-2.5 text-sm font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 disabled:from-slate-300 disabled:to-slate-300 rounded-xl hover:from-emerald-500 hover:to-teal-500 transition-all shadow-md disabled:shadow-none">Guardar</button>
-          </div>
-        </div>
-      </div>
+      <CustomerSelectorModal
+        v-if="showCustomerSelector"
+        @select="onCustomerSelected"
+        @close="showCustomerSelector = false"
+      />
+    </Teleport>
+
+    <!-- ═══════ CUSTOMER EDITOR MODAL (editar cliente sin salir del POS) ═══════ -->
+    <Teleport to="body">
+      <CustomerFormModal
+        v-if="showCustomerEditor && selectedCustomer"
+        :customer="selectedCustomer"
+        @saved="onCustomerEdited"
+        @close="showCustomerEditor = false"
+      />
+    </Teleport>
+
+    <!-- ═══════ CUSTOMERS BROWSER MODAL (sección "Clientes" de la barra inferior) ═══════ -->
+    <Teleport to="body">
+      <CustomersBrowserModal
+        v-if="showCustomersBrowser"
+        @close="showCustomersBrowser = false"
+      />
+    </Teleport>
+
+    <!-- ═══════ INVENTORY BROWSER MODAL (sección "Inventario" de la barra inferior) ═══════ -->
+    <Teleport to="body">
+      <InventoryBrowserModal
+        v-if="showInventoryBrowser"
+        @close="showInventoryBrowser = false"
+      />
+    </Teleport>
+
+    <!-- ═══════ POS SETTINGS MODAL ═══════ -->
+    <Teleport to="body">
+      <POSSettingsModal
+        v-if="showPOSSettings"
+        @close="showPOSSettings = false"
+      />
     </Teleport>
 
     <!-- ═══════ CHECKOUT MODAL ═══════ -->
@@ -595,11 +615,34 @@
       :total-ves="totalVES"
       :tasa-bcv="tasaBCV"
       :payment-methods="paymentMethods"
-      :processing="isProcessingCheckout"
-      :error-message="checkoutError"
+      :processing="checkoutModalProcessing"
+      :error-message="checkoutModalError"
+      :selected-customer="selectedCustomer"
+      :is-credit-sale="isCreditSale"
+      :requires-fiscal-invoice="requiresFiscalInvoice"
       @confirm="onCheckoutConfirm"
+      @confirm-layaway="onLayawayConfirm"
       @close="showCheckout = false"
-      @clear-error="clearCheckoutError"
+      @clear-error="clearCheckoutModalError"
+      @open-customer-selector="showCustomerSelector = true"
+      @open-customer-editor="showCustomerEditor = true"
+      @update:is-credit-sale="isCreditSale = $event"
+      @update:requires-fiscal-invoice="requiresFiscalInvoice = $event"
+    />
+
+    <!-- ═══════ SALE SUCCESS MODAL ═══════ -->
+    <SaleSuccessModal
+      v-if="successSale"
+      :sale="successSale"
+      :customer-phone="selectedCustomer?.phone"
+      @new-sale="onNewSale"
+    />
+
+    <!-- ═══════ LAYAWAY SUCCESS MODAL ═══════ -->
+    <LayawaySuccessModal
+      v-if="successLayaway"
+      :layaway="successLayaway"
+      @new-sale="onNewSale"
     />
 
     <!-- ═══════ TOP-UP MODAL ═══════ -->
@@ -658,7 +701,7 @@ import {
   Search, X, User, ShoppingBag, Trash2,
   CreditCard, PackageSearch, PauseCircle, PlayCircle, Wifi, WifiOff,
   ScanBarcode, ScanLine, LayoutGrid, List,
-  ListTree, Ticket, Clock,
+  ListTree, Ticket, Clock, Settings2,
 } from 'lucide-vue-next';
 import BarcodeScanner from '@/components/shared/BarcodeScanner.vue';
 import { useRouter } from 'vue-router';
@@ -668,10 +711,19 @@ import { useForexRate } from '@/composables/useForexRate';
 import { useInventory } from '@/modules/inventory/composables/useInventory';
 import { useTenantMetadata } from '@/composables/useTenantMetadata';
 import { useCheckout } from '@/composables/useCheckout';
+import { useLayaway, type LayawayDetail } from '@/composables/useLayaway';
 import { useApi } from '@/composables/useApi';
-import RifInput from '@/components/shared/RifInput.vue';
-import PhoneInput from '@/components/shared/PhoneInput.vue';
-import CheckoutModal from './CheckoutModal.vue';
+import { usePos, customerDisplayName } from '@/composables/usePos';
+import type { Customer } from '@/composables/useCustomers';
+import type { SaleDetail } from '@/composables/useSalesHistory';
+import CheckoutModal, { type LayawayConfirmPayload } from './CheckoutModal.vue';
+import CustomerSelectorModal from './CustomerSelectorModal.vue';
+import CustomerFormModal from '@/views/admin/customers/CustomerFormModal.vue';
+import CustomersBrowserModal from './CustomersBrowserModal.vue';
+import InventoryBrowserModal from './InventoryBrowserModal.vue';
+import POSSettingsModal from './POSSettingsModal.vue';
+import SaleSuccessModal from './SaleSuccessModal.vue';
+import LayawaySuccessModal from './LayawaySuccessModal.vue';
 import TransactionTopUpModal from '@/components/modals/TransactionTopUpModal.vue';
 import CierreCaja from './CierreCaja.vue';
 import VariantSelectorModal from './VariantSelectorModal.vue';
@@ -706,8 +758,37 @@ const {
   clearError: clearCheckoutError,
   checkout,
 } = useCheckout();
+const {
+  isProcessing: isProcessingLayaway,
+  errorMessage: layawayError,
+  clearError: clearLayawayError,
+  processLayaway,
+} = useLayaway();
 const { fetchApi } = useApi();
 const defaultWarehouseId = ref<string | null>(null);
+
+const {
+  selectedCustomer,
+  isCreditSale,
+  requiresFiscalInvoice,
+  selectCustomer,
+  resetForNewSale,
+  validateBeforeCheckout,
+} = usePos();
+const showCustomerSelector = ref(false);
+const showCustomerEditor = ref(false);
+const showCustomersBrowser = ref(false);
+const showInventoryBrowser = ref(false);
+const successSale = ref<SaleDetail | null>(null);
+const successLayaway = ref<LayawayDetail | null>(null);
+
+/** El modal de checkout comparte processing/error entre venta y apartado según cuál esté en curso. */
+const checkoutModalProcessing = computed(() => isProcessingCheckout.value || isProcessingLayaway.value);
+const checkoutModalError = computed(() => checkoutError.value || layawayError.value);
+function clearCheckoutModalError() {
+  clearCheckoutError();
+  clearLayawayError();
+}
 
 const { rateValue: tasaBCV, fetchForexRate } = useForexRate();
 const {
@@ -786,15 +867,6 @@ interface Product {
   unitsPerPackage: number;
 }
 
-interface Customer {
-  id: number;
-  name: string;
-  rif: string;
-  phone?: string;
-  email?: string;
-  isWholesale?: boolean;
-}
-
 interface Category {
   id: string;
   name: string;
@@ -806,13 +878,6 @@ const searchQuery = ref('');
 const searchInputRef = ref<HTMLInputElement | null>(null);
 const selectedCategoryId = ref<string | null>(null);
 const showCategorySidebar = ref(false);
-
-const selectedCustomer = ref<Customer | null>(null);
-const showCustomerModal = ref(false);
-const newCustomerRif = ref('');
-const newCustomerName = ref('');
-const newCustomerPhone = ref('');
-const newCustomerEmail = ref('');
 
 // Barcode scanner
 const scanning = ref(false);
@@ -982,8 +1047,21 @@ async function loadDefaultWarehouse() {
   }
 }
 
-async function onCheckoutConfirm(payments: { payment_method_id: string; gavetero_id: string; amount_usd: number; amount_ves: number; reference: string }[]) {
-  clearCheckoutError();
+async function onCheckoutConfirm(payload: {
+  payments: { payment_method_id: string; gavetero_id: string; amount_usd: number; amount_ves: number; reference: string }[];
+  isCredit: boolean;
+  clientId: string | null;
+  requiresFiscalInvoice: boolean;
+}) {
+  clearCheckoutModalError();
+
+  // Validaciones estrictas pre-checkout (regla crédito + regla factura fiscal).
+  const block = validateBeforeCheckout();
+  if (block.blocked) {
+    toast.error(block.message || 'No se pudo procesar la venta.');
+    if (block.openCustomerModal) showCustomerSelector.value = true;
+    return;
+  }
 
   if (!defaultWarehouseId.value) {
     await loadDefaultWarehouse();
@@ -1010,7 +1088,7 @@ async function onCheckoutConfirm(payments: { payment_method_id: string; gavetero
     } catch { /* non-blocking */ }
   }
 
-  const success = await checkout({
+  const sale = await checkout({
     shift_id: Number(cajaStore.turnoActivo.id),
     warehouse_id: defaultWarehouseId.value,
     exchange_rate: tasaBCV.value,
@@ -1021,19 +1099,85 @@ async function onCheckoutConfirm(payments: { payment_method_id: string; gavetero
       pricing_mode: i.mode,
       conversion_factor: i.conversionFactor,
     })),
-    payments,
+    payments: payload.payments,
+    client_id: payload.clientId || undefined,
+    is_credit: payload.isCredit,
   });
 
-  if (!success) return;
+  if (!sale) return;
 
   // Ticket consumption is now atomic on the backend (same POST); only reflect it
   // locally for the header badge once we know the sale actually went through.
   consumirTicket();
-  toast.success('Venta procesada exitosamente');
 
   showCheckout.value = false;
-  cart.value = [];
+  successSale.value = sale;
   await Promise.all([fetchParkedSales(), loadProducts()]);
+}
+
+async function onLayawayConfirm(payload: LayawayConfirmPayload) {
+  clearCheckoutModalError();
+
+  // Misma regla de factura fiscal que la venta al contado/crédito (la regla de
+  // crédito no aplica: isCreditSale permanece false en modo apartado).
+  const block = validateBeforeCheckout();
+  if (block.blocked) {
+    toast.error(block.message || 'No se pudo procesar el apartado.');
+    if (block.openCustomerModal) showCustomerSelector.value = true;
+    return;
+  }
+
+  if (!cajaStore.turnoActivo?.id) {
+    await cajaStore.verificarTurnoActivo();
+  }
+  if (!cajaStore.turnoActivo?.id) {
+    toast.warning('No se pudo determinar el turno de caja. Verifica tu conexión e inténtalo de nuevo.');
+    return;
+  }
+
+  // El apartado reserva stock (reserved_quantity) sin descontar quantity física
+  // ni pasar por un warehouse específico — LayawayService reserva proporcional
+  // entre todos los almacenes del tenant, por eso no envía warehouse_id.
+  const layaway = await processLayaway({
+    shift_id: Number(cajaStore.turnoActivo.id),
+    client_id: payload.clientId,
+    terminal_id: cajaStore.turnoActivo.terminal_id ?? undefined,
+    exchange_rate: tasaBCV.value,
+    items: cart.value.map(i => ({
+      product_id: i.id,
+      qty: i.qty,
+      unit_price_cents: Math.round(i.unitPrice * 100),
+      pricing_mode: i.mode,
+      conversion_factor: i.conversionFactor,
+    })),
+    initial_deposit_usd: payload.initialDepositUsd,
+    expiration_days: payload.expirationDays,
+    gavetero_id: payload.gaveteroId || undefined,
+  });
+
+  if (!layaway) return;
+
+  showCheckout.value = false;
+  successLayaway.value = layaway;
+  await Promise.all([fetchParkedSales(), loadProducts()]);
+}
+
+function onCustomerSelected(customer: Customer | null) {
+  selectCustomer(customer);
+  showCustomerSelector.value = false;
+}
+
+/** Editar datos del cliente actual sin salir del checkout (CustomerFormModal en modo edición). */
+function onCustomerEdited(customer: Customer) {
+  selectCustomer(customer);
+  showCustomerEditor.value = false;
+}
+
+function onNewSale() {
+  successSale.value = null;
+  successLayaway.value = null;
+  cart.value = [];
+  resetForNewSale();
 }
 
 // ── IndexedDB offline cache ──
@@ -1089,6 +1233,7 @@ const updateOnlineStatus = () => { isOnline.value = navigator.onLine; };
 
 const mobileTab = ref<'products' | 'cart' | 'payment'>('products');
 const showCheckout = ref(false);
+const showPOSSettings = ref(false);
 const showMobileCart = ref(false);
 const paymentMethods = ref<PaymentMethod[]>([]);
 const showCierreCaja = ref(false);
@@ -1374,22 +1519,6 @@ function filterByCategory(id: string | null) {
 
 function productCountForCategory(cat: Category): number {
   return products.value.filter((p) => p.category_id === cat.id).length;
-}
-
-function saveNewCustomer() {
-  if (!newCustomerName.value || !newCustomerRif.value) return;
-  selectedCustomer.value = {
-    id: Date.now(),
-    name: newCustomerName.value,
-    rif: newCustomerRif.value,
-    phone: newCustomerPhone.value || undefined,
-    email: newCustomerEmail.value || undefined,
-  };
-  newCustomerName.value = '';
-  newCustomerRif.value = '';
-  newCustomerPhone.value = '';
-  newCustomerEmail.value = '';
-  showCustomerModal.value = false;
 }
 
 async function openCheckout() {

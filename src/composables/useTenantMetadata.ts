@@ -133,10 +133,23 @@ function validTipoPlan(v: unknown): TipoPlan {
   return 'gratis';
 }
 
+// Estado compartido a nivel de módulo: todas las instancias de este composable (sidebar,
+// header del POS, dashboard, etc.) leen y escriben el mismo ref, así un decremento optimista
+// en el POS se refleja de inmediato en el resto de la UI sin esperar un refetch.
+const localTickets = ref<number | null>(null);
+
+/**
+ * Fuerza el contador de tickets a 0 en toda la app. Pensado para el caso 400/422 de
+ * "límite de tickets alcanzado" que devuelve /api/v1/sales/checkout/, sin necesidad de
+ * montar el composable completo desde fuera de un componente (p.ej. en useCheckout.ts).
+ */
+export function forceTicketsExhausted(): void {
+  localTickets.value = 0;
+}
+
 export function useTenantMetadata() {
   const authStore = useAuthStore();
   const { fetchApi } = useApi();
-  const localTickets = ref<number | null>(null);
 
   const metadata = computed<TenantMetadata>(() =>
     parseMetadata(authStore.user?.tenant_settings)
@@ -163,6 +176,42 @@ export function useTenantMetadata() {
     const next = current - 1;
     localTickets.value = next;
     return next;
+  }
+
+  /** Alias en inglés de `consumirTicket`, para llamadores que sigan esa convención. */
+  const decrementTicket = consumirTicket;
+
+  /**
+   * Aplica un valor de `tickets_disponibles` conocido con certeza (respuesta de
+   * /me/ o de una compra recién confirmada) como fuente de verdad, descartando
+   * cualquier ajuste local/optimista previo.
+   */
+  function applyTicketsRemaining(value: number): void {
+    if (authStore.user) {
+      const settings = { ...(authStore.user.tenant_settings || {}) } as Record<string, unknown>;
+      settings.paquete_transaccional = {
+        ...((settings.paquete_transaccional as Record<string, unknown>) || {}),
+        tickets_disponibles: value,
+      };
+      authStore.user.tenant_settings = settings;
+      localStorage.setItem('efectivo360_user', JSON.stringify(authStore.user));
+    }
+    localTickets.value = null;
+  }
+
+  /**
+   * Refresca `tickets_disponibles` desde el backend (GET /api/v1/tenants/me/).
+   */
+  async function fetchTenantInfo(): Promise<number> {
+    try {
+      const data = await fetchApi<{ tickets_remaining?: number }>('/api/v1/tenants/me/');
+      if (typeof data?.tickets_remaining === 'number') {
+        applyTicketsRemaining(data.tickets_remaining);
+      }
+      return ticketsDisponibles.value;
+    } catch {
+      return ticketsDisponibles.value;
+    }
   }
 
   function hasModule(key: string): boolean {
@@ -262,6 +311,9 @@ export function useTenantMetadata() {
     canCharge,
     isPlanGratis,
     consumirTicket,
+    decrementTicket,
+    fetchTenantInfo,
+    applyTicketsRemaining,
     persistTickets,
     hasModule,
     isModuleLocked,
