@@ -1,5 +1,6 @@
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { ref } from 'vue';
+import Swal from 'sweetalert2';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
@@ -28,6 +29,37 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Guards against stacking one alert+redirect per concurrent failed request —
+// only the first 401-with-failed-refresh triggers the explanation + redirect.
+let sessionEndHandled = false;
+
+/**
+ * Replaces the old silent `window.location.href = '/es/login'` kick: the user
+ * must be told the session ended and why (expired/invalidated server-side —
+ * the "otro motivo" case, distinct from the proactive inactivity warning in
+ * useSessionTimeout.ts) before losing whatever they were doing.
+ */
+function endSessionWithNotice(reason: 'no_refresh_token' | 'refresh_failed') {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  if (window.location.pathname.startsWith('/es/login') || sessionEndHandled) return;
+  sessionEndHandled = true;
+
+  Swal.fire({
+    icon: 'warning',
+    title: 'Tu sesión ha finalizado',
+    text: reason === 'no_refresh_token'
+      ? 'Tu sesión expiró. Por favor, inicia sesión nuevamente.'
+      : 'Tu sesión fue cerrada o expiró en el servidor. Por favor, inicia sesión nuevamente.',
+    confirmButtonText: 'Iniciar sesión',
+    confirmButtonColor: '#3b82f6',
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+  }).then(() => {
+    window.location.href = '/es/login';
+  });
+}
+
 // Response interceptor for error handling
 apiClient.interceptors.response.use(
   (response) => response,
@@ -53,21 +85,11 @@ apiClient.interceptors.response.use(
           }
           return apiClient(originalRequest);
         } catch (refreshError) {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          // Use full path to avoid additional redirects
-          if (!window.location.pathname.startsWith('/es/login')) {
-            window.location.href = '/es/login';
-          }
+          endSessionWithNotice('refresh_failed');
           return Promise.reject(refreshError);
         }
       } else {
-        // No refresh token, clear auth and redirect
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        if (!window.location.pathname.startsWith('/es/login')) {
-          window.location.href = '/es/login';
-        }
+        endSessionWithNotice('no_refresh_token');
       }
     }
 

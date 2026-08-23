@@ -21,37 +21,7 @@
           </div>
 
           <!-- Logo Upload -->
-          <div>
-            <label class="block text-xs font-medium text-slate-600 mb-1">Logo de la Marca</label>
-            <div class="flex items-start gap-4">
-              <div
-                class="relative w-24 h-24 rounded-xl border-2 border-dashed flex items-center justify-center overflow-hidden cursor-pointer transition-all"
-                :class="uploading ? 'border-blue-300 bg-blue-50' : logoPreview ? 'border-slate-200 bg-white' : 'border-slate-300 bg-slate-50 hover:border-blue-400 hover:bg-blue-50'"
-                @click="triggerFileInput"
-                @dragover.prevent="dragOver = true"
-                @dragleave.prevent="dragOver = false"
-                @drop.prevent="handleDrop"
-              >
-                <Loader2 v-if="uploading" class="w-6 h-6 animate-spin text-blue-500" />
-                <template v-else-if="logoPreview">
-                  <img :src="logoPreview" class="w-full h-full object-contain" alt="" />
-                  <button @click.stop="removeLogo" class="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors">
-                    <X class="w-3 h-3" />
-                  </button>
-                </template>
-                <div v-else class="flex flex-col items-center gap-1 text-slate-400">
-                  <ImagePlus class="w-6 h-6" />
-                  <span class="text-[10px] font-medium">250×250</span>
-                </div>
-                <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="handleFile" />
-              </div>
-              <div class="flex-1 text-xs text-slate-500 space-y-1 pt-1">
-                <p>Formato: <strong>WebP</strong> generada automáticamente</p>
-                <p>Tamaño: <strong>250 × 250 px</strong></p>
-                <p class="text-slate-400">Arrastra una imagen o haz clic para seleccionar</p>
-              </div>
-            </div>
-          </div>
+          <ProductImageUpload v-model="logoFile" :existing-url="logoPreview" label="Logo de la Marca" />
 
           <div>
             <label class="block text-xs font-medium text-slate-600 mb-1">Descripcion</label>
@@ -98,10 +68,9 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
-import { X, Save, Loader2, ImagePlus } from 'lucide-vue-next';
-import { useApi } from '@/composables/useApi';
-import { useNotify } from '@/composables/useNotify';
+import { X, Save, Loader2 } from 'lucide-vue-next';
 import CategoryMultiTreeSelect from './CategoryMultiTreeSelect.vue';
+import ProductImageUpload from './ProductImageUpload.vue';
 
 interface TreeNode { id: number; name: string; code: string; children?: TreeNode[]; parent_name?: string | null; parent_id?: number | null; }
 
@@ -114,16 +83,10 @@ const emit = defineEmits<{
   close: []; save: [data: Record<string, any>];
 }>();
 
-const { fetchApi } = useApi();
-const { error: notifyError } = useNotify();
-
-const form = ref({ name: '', slug: '', logo_url: '', description: '', is_active: true });
+const form = ref({ name: '', slug: '', description: '', is_active: true });
 const selectedCategoryIds = ref<number[]>([]);
 const logoPreview = ref('');
 const logoFile = ref<File | null>(null);
-const uploading = ref(false);
-const dragOver = ref(false);
-const fileInput = ref<HTMLInputElement | null>(null);
 
 const flatCategoryMap = computed(() => {
   const map = new Map<number, TreeNode>();
@@ -160,68 +123,18 @@ function autoSlug() {
   }
 }
 
-function triggerFileInput() {
-  fileInput.value?.click();
-}
-
-function handleFile(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0];
-  if (file) processFile(file);
-}
-
-function handleDrop(e: DragEvent) {
-  dragOver.value = false;
-  const file = e.dataTransfer?.files?.[0];
-  if (file && file.type.startsWith('image/')) processFile(file);
-}
-
-function processFile(file: File) {
-  logoFile.value = file;
-  const reader = new FileReader();
-  reader.onload = (e) => { logoPreview.value = e.target?.result as string; };
-  reader.readAsDataURL(file);
-}
-
-function removeLogo() {
-  logoFile.value = null;
-  logoPreview.value = '';
-  form.value.logo_url = '';
-}
-
-async function uploadLogo(brandId: string): Promise<{ url: string; path: string } | null> {
-  if (!logoFile.value) return { url: form.value.logo_url, path: '' };
-  uploading.value = true;
-  try {
-    const fd = new FormData();
-    fd.append('image', logoFile.value);
-    fd.append('brand_id', brandId);
-    const res = await fetchApi<{ url: string; path: string }>('/api/v1/catalog/brands/upload-logo/', {
-      method: 'POST',
-      data: fd,
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return res || null;
-  } catch {
-    notifyError('Error al subir logo');
-    return null;
-  } finally {
-    uploading.value = false;
-  }
-}
-
 function fillForm(ed: any) {
-  form.value = { name: ed.name || '', slug: ed.slug || '', logo_url: ed.logo || '', description: ed.description || '', is_active: ed.is_active ?? true };
-  selectedCategoryIds.value = (ed.category_ids || ed.smart_categories || []).map((c: any) => typeof c === 'object' ? c.id : c);
+  form.value = { name: ed.name || '', slug: ed.slug || '', description: ed.description || '', is_active: ed.is_active ?? true };
+  selectedCategoryIds.value = (ed.category_ids || ed.smart_categories || ed.categories || []).map((c: any) => typeof c === 'object' ? c.id : c);
   logoPreview.value = ed.logo || '';
   logoFile.value = null;
 }
 
 function resetForm() {
-  form.value = { name: '', slug: '', logo_url: '', description: '', is_active: true };
+  form.value = { name: '', slug: '', description: '', is_active: true };
   selectedCategoryIds.value = [];
   logoPreview.value = '';
   logoFile.value = null;
-  uploading.value = false;
 }
 
 watch(() => props.visible, (v) => {
@@ -229,13 +142,12 @@ watch(() => props.visible, (v) => {
   if (v && props.editing) fillForm(props.editing);
 });
 
-async function save() {
-  const logoResult = await uploadLogo(props.editing?.id || form.value.slug || Date.now().toString());
+function save() {
   emit('save', {
     name: form.value.name.trim(),
     slug: form.value.slug.trim(),
     description: form.value.description.trim(),
-    logo_path: logoResult?.path || '',
+    logo: logoFile.value,
     category_ids: selectedCategoryIds.value,
   });
 }

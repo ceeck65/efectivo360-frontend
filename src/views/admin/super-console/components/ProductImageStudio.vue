@@ -122,6 +122,9 @@
               <span class="text-[11px] text-gray-400 font-normal w-8 text-right">–</span>
               <input type="range" min="0.1" max="2" step="0.05" v-model.number="zoom" class="range-slider flex-1" />
               <span class="text-[11px] text-gray-400 font-normal w-8">+</span>
+              <button @click="rotate90" type="button" title="Rotar 90°" class="text-[11px] font-normal text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 p-1.5 rounded-lg transition-colors shrink-0">
+                <RotateCw class="w-3.5 h-3.5" />
+              </button>
               <button @click="fitToCanvas" type="button" class="text-[11px] font-normal text-gray-500 hover:text-gray-700 bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap shrink-0">
                 🔲 Ajustar al Lienzo
               </button>
@@ -222,7 +225,7 @@
 import { ref, reactive, computed, watch, nextTick } from 'vue';
 import { Cropper } from 'vue-advanced-cropper';
 import 'vue-advanced-cropper/dist/style.css';
-import { Camera, CameraOff, ImagePlus, Check, Loader2, Eraser, Brush, Upload } from 'lucide-vue-next';
+import { Camera, CameraOff, ImagePlus, Check, Loader2, Eraser, Brush, Upload, RotateCw } from 'lucide-vue-next';
 import Swal from 'sweetalert2';
 
 const emit = defineEmits<{
@@ -369,6 +372,25 @@ function fitToCanvas() {
   zoom.value = 1;
   centerCrop();
 }
+
+function rotate90() {
+  cropperRef.value?.rotate(90);
+}
+
+/** Pre-loads an already-uploaded image (e.g. the product's current photo) into the editor. */
+async function loadFromUrl(url: string) {
+  try {
+    const resp = await fetch(url, { mode: 'cors' });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const blob = await resp.blob();
+    const file = new File([blob], 'current-image.webp', { type: blob.type || 'image/webp' });
+    await loadFile(file);
+  } catch (e) {
+    console.warn('No se pudo cargar la imagen actual en el editor', e);
+  }
+}
+
+defineExpose({ loadFromUrl });
 
 function resetAll() {
   for (const a of adjustments) values[a.key] = a.default;

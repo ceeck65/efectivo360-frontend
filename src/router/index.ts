@@ -286,6 +286,12 @@ const router = createRouter({
         meta: { requiresAuth: true },
       },
       {
+        path: '/admin/inventory/purchases/new',
+        name: 'PurchaseExpressEntry',
+        component: () => import('@/views/admin/staff/inventory/PurchaseExpressEntryView.vue'),
+        meta: { requiresAuth: true },
+      },
+      {
         path: '/admin/staff/products',
         name: 'ProductCatalog',
         component: () => import('@/views/admin/staff/products/ProductCatalogView.vue'),

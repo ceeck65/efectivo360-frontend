@@ -77,13 +77,12 @@
     <AddonsSection v-if="activeTab === 'addons'" />
     <AttributesSection v-if="activeTab === 'attributes'" />
     <BlueprintConfigSection v-if="activeTab === 'blueprint-config'" />
-    <BrandManageView v-if="activeTab === 'brands'" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { Shield, Building2, Boxes, RefreshCw, CreditCard, Target, Package, Settings, FileCode, Tag } from 'lucide-vue-next';
+import { Shield, Building2, Boxes, RefreshCw, CreditCard, Target, Package, Settings, FileCode } from 'lucide-vue-next';
 import BlueprintsSection from './components/BlueprintsSection.vue';
 import CategoriesSection from './components/CategoryTreeView.vue';
 import PlansSection from './components/PlansSection.vue';
@@ -91,7 +90,6 @@ import AddonsSection from './components/AddonsSection.vue';
 import ModulesSection from './components/ModulesSection.vue';
 import AttributesSection from './components/AttributesSection.vue';
 import BlueprintConfigSection from './components/BlueprintConfigSection.vue';
-import BrandManageView from './components/BrandManagementView.vue';
 import StatsCard from './components/StatsCard.vue';
 import { useApi } from '@/composables/useApi';
 
@@ -112,7 +110,6 @@ const tabs = [
   { id: 'addons', label: 'Add-ons', icon: Target },
   { id: 'attributes', label: 'Atributos', icon: FileCode },
   { id: 'blueprint-config', label: 'Panel de Blueprints', icon: Settings },
-  { id: 'brands', label: 'Marcas', icon: Tag },
 ];
 
 async function loadAllData() {

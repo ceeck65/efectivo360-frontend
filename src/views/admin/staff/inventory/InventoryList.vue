@@ -11,6 +11,10 @@
           class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition-colors shadow-sm">
           <Zap class="w-4 h-4" /> Entrada Rápida (Lector)
         </button>
+        <button @click="$router.push('/admin/inventory/purchases/new')"
+          class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm">
+          <FileText class="w-4 h-4" /> Cargar Compra / Reponer Stock
+        </button>
         <button @click="$router.push('/admin/staff/products')"
           class="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm">
           <PackagePlus class="w-4 h-4" /> Gestionar Productos
@@ -111,8 +115,8 @@
                 <span v-if="p.inventory_type === 'NONE'"
                   class="text-sm text-purple-500 font-medium">&infin;</span>
                 <button v-else-if="(p.current_stock ?? 0) <= 0"
-                  @click="openRestock(p)"
-                  title="Sin stock — clic para reponer"
+                  @click="goToPurchaseEntry(p)"
+                  title="Sin stock — clic para reponer vía Carga de Factura"
                   class="text-sm font-semibold text-rose-600 underline decoration-dotted decoration-rose-300 underline-offset-2 hover:text-rose-700 transition-colors">
                   {{ formatStock(p.current_stock) }}
                 </button>
@@ -122,7 +126,7 @@
               </td>
               <td class="px-4 py-3 text-center">
                 <div v-if="p.inventory_type === 'KARDEX' || p.inventory_type === 'SIMPLE'" class="flex items-center justify-center gap-1">
-                  <button @click="openRestock(p)"
+                  <button @click="goToPurchaseEntry(p)"
                     class="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors">
                     <PackagePlus class="w-3.5 h-3.5" /> Reponer
                   </button>
@@ -205,14 +209,6 @@
       @close="auditProduct = null"
     />
 
-    <!-- Quick Restock Modal -->
-    <QuickRestockModal
-      :visible="restockProduct !== null"
-      :product="restockProduct"
-      @close="restockProduct = null"
-      @success="handleRestockSuccess"
-    />
-
     <!-- Scanner Restock Drawer -->
     <ScannerRestockDrawer
       :visible="showScannerDrawer"
@@ -224,11 +220,11 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { useRouter } from 'vue-router';
 import { apiClient } from '@/composables/useApi';
-import { Package, Loader2, Activity, Inbox, Infinity, Clock, MoreVertical, PackagePlus, Wrench, ChevronRight, ChevronDown, Zap } from 'lucide-vue-next';
+import { Package, Loader2, Activity, Inbox, Infinity, Clock, MoreVertical, PackagePlus, Wrench, ChevronRight, ChevronDown, Zap, FileText } from 'lucide-vue-next';
 import KardexAuditDrawer from './KardexAuditDrawer.vue';
 import ProductSearchSelect from './ProductSearchSelect.vue';
-import QuickRestockModal, { type RestockProduct } from './QuickRestockModal.vue';
 import ScannerRestockDrawer from './ScannerRestockDrawer.vue';
 
 interface VariantStock {
@@ -250,6 +246,8 @@ interface ProductItem {
   variants?: VariantStock[];
 }
 
+const router = useRouter();
+
 const search = ref('');
 const filterType = ref('');
 const loading = ref(true);
@@ -257,7 +255,6 @@ const products = ref<ProductItem[]>([]);
 const auditProduct = ref<ProductItem | null>(null);
 const openMenuId = ref<string | null>(null);
 const expandedRows = ref<Set<string>>(new Set());
-const restockProduct = ref<RestockProduct | null>(null);
 const showScannerDrawer = ref(false);
 
 function toggleExpand(id: string) {
@@ -291,15 +288,12 @@ function openAdjustmentDrawer(p: ProductItem) {
   openMenuId.value = null;
 }
 
-function openRestock(p: ProductItem) {
-  restockProduct.value = {
-    id: p.product_id,
-    name: p.name,
-    sku: p.sku,
-    image: p.image,
-    current_stock: p.current_stock ?? 0,
-  };
+function goToPurchaseEntry(p: ProductItem) {
   openMenuId.value = null;
+  router.push({
+    path: '/admin/inventory/purchases/new',
+    query: { product_id: p.product_id },
+  });
 }
 
 function handleRestockSuccess(payload: { productId: string; newStock: number }) {

@@ -333,6 +333,10 @@ function resetForm() {
   newSellingPrice.value = null;
   updateSellingPrice.value = true;
   priceManuallyEdited.value = false;
+  paymentSource.value = 'CASH_DRAWER';
+  invoiceNumber.value = '';
+  supplierId.value = '';
+  expectedCashUsd.value = null;
 }
 
 async function loadCurrentPrice(productId: string) {
@@ -352,6 +356,53 @@ async function loadCurrentPrice(productId: string) {
   }
 }
 
+async function loadExchangeRate() {
+  try {
+    const res = await fetchApi<any>('/api/v1/forex/bcv-rate/');
+    exchangeRate.value = res?.rate ? Number(res.rate) : null;
+  } catch {
+    exchangeRate.value = null;
+  }
+}
+
+async function loadCashDrawerContext() {
+  loadingBalance.value = true;
+  try {
+    if (!cajaStore.turnoActivo) {
+      await cajaStore.verificarTurnoActivo();
+    }
+    if (cajaStore.turnoActivo?.id) {
+      const res = await fetchApi<any>(`/api/shifts/${cajaStore.turnoActivo.id}/expected-balance/`);
+      expectedCashUsd.value = Number(res?.breakdown?.CASH_USD?.usd ?? res?.total?.usd ?? 0);
+    } else {
+      expectedCashUsd.value = null;
+    }
+  } catch {
+    expectedCashUsd.value = null;
+  } finally {
+    loadingBalance.value = false;
+  }
+}
+
+async function loadSuppliers() {
+  if (suppliers.value.length > 0 || loadingSuppliers.value) return;
+  loadingSuppliers.value = true;
+  try {
+    const res = await fetchApi<any>('/api/v1/purchases/suppliers/?page_size=200');
+    const items = Array.isArray(res?.results) ? res.results : (Array.isArray(res) ? res : []);
+    suppliers.value = items.map((s: any) => ({ id: s.id, name: s.name }));
+  } catch {
+    suppliers.value = [];
+  } finally {
+    loadingSuppliers.value = false;
+  }
+}
+
+watch(paymentSource, (v) => {
+  if (v === 'CASH_DRAWER') loadCashDrawerContext();
+  else if (v === 'SUPPLIER_CREDIT') loadSuppliers();
+});
+
 function extractErrorMessage(e: any): string {
   const data = e?.data;
   if (data && typeof data === 'object') {
@@ -363,6 +414,30 @@ function extractErrorMessage(e: any): string {
   return e?.message || 'Error al registrar la reposición';
 }
 
+function buildSuccessMessage(res: any, qtyLabel: string, productName: string): string {
+  const base = `+${qtyLabel} unidades agregadas`;
+  const financial = res?.financial;
+  if (!financial) return `${base} a ${productName}`;
+
+  const amount = Number(financial.amount_usd ?? res?.total_amount_usd ?? 0).toFixed(2);
+  switch (financial.type) {
+    case 'CASH_DRAWER_OUTFLOW': {
+      const label = cajaStore.turnoActivo?.register_name || `#${financial.shift_id}`;
+      return `${base}. Egreso de $${amount} registrado en Caja ${label}`;
+    }
+    case 'ACCOUNTS_PAYABLE': {
+      const total = Number(financial.total_amount ?? amount).toFixed(2);
+      return `${base}. Cuenta por pagar de $${total} registrada a ${financial.provider}`;
+    }
+    case 'OWNER_CAPITAL_CONTRIBUTION':
+      return `${base}. Aporte de capital de $${amount} registrado (bolsillo del dueño)`;
+    case 'BANK_TRANSFER':
+      return `${base}. Egreso bancario de $${amount} registrado`;
+    default:
+      return `${base} a ${productName}`;
+  }
+}
+
 async function submit() {
   if (!canSubmit.value || !props.product || submitting.value) return;
   submitting.value = true;
@@ -370,6 +445,7 @@ async function submit() {
     const payload: Record<string, any> = {
       product_id: props.product.id,
       quantity: quantity.value,
+      payment_source: paymentSource.value,
     };
     if (newCost.value != null && newCost.value !== previousCost.value) {
       payload.unit_cost_usd = newCost.value;
@@ -379,6 +455,13 @@ async function submit() {
       payload.new_selling_price_usd = newSellingPrice.value;
     }
     if (notes.value.trim()) payload.notes = notes.value.trim();
+    if (invoiceNumber.value.trim()) payload.invoice_number = invoiceNumber.value.trim();
+    if (paymentSource.value === 'CASH_DRAWER' && cajaStore.turnoActivo?.id) {
+      payload.cash_drawer_id = cajaStore.turnoActivo.id;
+    }
+    if (paymentSource.value === 'SUPPLIER_CREDIT' && supplierId.value) {
+      payload.supplier_id = supplierId.value;
+    }
 
     const res = await fetchApi<any>('/api/v1/inventory/quick-restock/', {
       method: 'POST',
@@ -389,7 +472,7 @@ async function submit() {
     const newStock = Number(res?.stock?.new_stock ?? (props.product.current_stock + qty));
     const qtyLabel = Number.isInteger(qty) ? String(qty) : qty.toFixed(2);
 
-    success(`+${qtyLabel} unidades agregadas a ${props.product.name}`);
+    success(buildSuccessMessage(res, qtyLabel, props.product.name));
     emit('success', { productId: props.product.id, newStock, quantity: qty });
     emit('close');
   } catch (e: any) {
@@ -408,6 +491,8 @@ watch(() => props.visible, (v) => {
   if (v && props.product) {
     resetForm();
     loadCurrentPrice(props.product.id);
+    loadExchangeRate();
+    loadCashDrawerContext();
     nextTick(() => quantityInput.value?.focus());
   }
 });

@@ -87,6 +87,7 @@ import TenantConfigurationBanner from '@/components/tenant/TenantConfigurationBa
 import { useAuthStore } from '@/stores/auth';
 import { useConfigStore } from '@/stores/config';
 import { useForexRate } from '@/composables/useForexRate';
+import { useSessionTimeout } from '@/composables/useSessionTimeout';
 
 const { needRefresh, updateSW } = useRegisterSW({
   immediate: true,
@@ -108,6 +109,7 @@ const isMobileMenuOpen = ref(false);
 const isSidebarCollapsed = ref(false);
 
 const { forexRate } = useForexRate();
+useSessionTimeout();
 
 const isAuthRoute = computed(() => {
   const path = route.path;
