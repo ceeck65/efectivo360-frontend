@@ -13,6 +13,7 @@ export interface PaymentMethod {
   is_enabled: boolean;
   label: string;
   gavetero: PaymentMethodGavetero | null;
+  currency?: string;
 }
 
 export interface PaymentMethodsResponse {

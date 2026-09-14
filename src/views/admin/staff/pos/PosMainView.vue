@@ -23,6 +23,18 @@
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           BCV: <span class="text-blue-50">Bs.{{ formatVES(tasaBCV) }}</span>
         </div>
+        <div class="flex items-center rounded-full border border-white/25 bg-white/10 p-0.5 backdrop-blur-md shadow-sm" title="Moneda de visualización del POS">
+          <button type="button" @click="posDisplayStore.setDisplayCurrency('USD')"
+            class="px-2.5 py-1 text-[11px] font-bold rounded-full transition-colors"
+            :class="posDisplayStore.displayCurrency === 'USD' ? 'bg-white text-blue-700 shadow-sm' : 'text-white/70 hover:text-white'">
+            $ USD
+          </button>
+          <button type="button" @click="posDisplayStore.setDisplayCurrency('VES')"
+            class="px-2.5 py-1 text-[11px] font-bold rounded-full transition-colors"
+            :class="posDisplayStore.displayCurrency === 'VES' ? 'bg-white text-blue-700 shadow-sm' : 'text-white/70 hover:text-white'">
+            Bs. VES
+          </button>
+        </div>
         <button v-if="parkedSales.length > 0" @click="showParkedSalesModal = true"
           class="flex items-center gap-1.5 text-xs font-bold text-amber-200 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/30 px-2.5 py-1 rounded-xl shadow-sm backdrop-blur-md transition-all whitespace-nowrap">
           <Clock class="w-3 h-3" />
@@ -209,8 +221,8 @@
                   </p>
                 </div>
                 <div class="flex justify-between items-baseline mt-0.5">
-                  <span class="text-xs font-black text-slate-900">${{ formatUSD(p.price_usd) }}</span>
-                  <span class="text-[9px] font-medium text-slate-400 font-mono">Bs.{{ formatVES(p.price_usd * tasaBCV) }}</span>
+                  <span class="text-xs font-black text-slate-900">{{ posDisplayStore.formatPrice(p.price_usd, tasaBCV).primary }}</span>
+                  <span class="text-[9px] font-medium text-slate-400 font-mono">{{ posDisplayStore.formatPrice(p.price_usd, tasaBCV).secondary }}</span>
                 </div>
                 <span v-if="p.hasVariants" class="absolute top-1 right-1 bg-blue-500 text-white text-[7px] font-bold px-1 py-0.5 rounded leading-tight">VAR</span>
               </div>
@@ -266,10 +278,10 @@
                     </span>
                   </td>
                   <td class="py-1.5 px-2 text-right font-semibold text-slate-900">
-                    ${{ formatUSD(p.price_usd) }}
+                    {{ posDisplayStore.formatPrice(p.price_usd, tasaBCV).primary }}
                   </td>
                   <td class="py-1.5 px-2 text-right font-mono text-slate-500">
-                    Bs.{{ formatVES(p.price_usd * tasaBCV) }}
+                    {{ posDisplayStore.formatPrice(p.price_usd, tasaBCV).secondary }}
                   </td>
                 </tr>
               </tbody>
@@ -366,8 +378,8 @@
           <div class="flex justify-between items-baseline">
             <span class="text-xs font-bold text-blue-100 uppercase tracking-wider">Total Cuenta:</span>
             <div class="text-right">
-              <p class="text-3xl font-black text-white tracking-tight">${{ formatUSD(totalUSD) }}</p>
-              <p class="text-xs text-blue-100 font-medium font-mono mt-0.5">Bs.{{ formatVES(totalVES) }}</p>
+              <p class="text-3xl font-black text-white tracking-tight">{{ formattedTotal.primary }}</p>
+              <p class="text-xs text-blue-100 font-medium font-mono mt-0.5">{{ formattedTotal.secondary }}</p>
             </div>
           </div>
         </div>
@@ -383,7 +395,7 @@
             Agregue productos desde el catálogo
           </div>
           <div v-else class="flex-1 overflow-y-auto space-y-2 pr-0.5">
-            <div v-for="(item, i) in cart" :key="item.id + item.mode + (item.attrs ? JSON.stringify(item.attrs) : '')"
+            <div v-for="(item, i) in cart" :key="item.cartItemId || (item.id + item.mode + (item.attrs ? JSON.stringify(item.attrs) : ''))"
               class="bg-white border border-slate-200 rounded-xl p-2.5 shadow-sm flex items-center justify-between hover:border-slate-300 transition-all text-slate-800">
               <div class="flex items-center gap-2.5 min-w-0 flex-1">
                 <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 border border-slate-200">
@@ -406,14 +418,24 @@
                       :title="'Cambiar a ' + (item.mode === 'BULTO' ? 'Unidad' : 'Bulto')">
                       {{ item.mode === 'BULTO' ? `BULTO (${item.unitsPerPackage} UDS)` : 'UNIDAD' }}
                     </button>
-                    <span class="text-[10px] text-slate-400 font-bold">${{ formatUSD(item.unitPrice) }}</span>
+                    <span class="text-[10px] text-slate-400 font-bold">{{ posDisplayStore.formatPrice(item.unitPrice, tasaBCV).primary }}</span>
                     <span class="text-[9px] text-slate-300">·</span>
-                    <span class="text-[9px] text-slate-400 font-medium">Bs.{{ formatVES(item.unitPrice * tasaBCV) }}</span>
+                    <span class="text-[9px] text-slate-400 font-medium">{{ posDisplayStore.formatPrice(item.unitPrice, tasaBCV).secondary }}</span>
                   </div>
                 </div>
               </div>
               <div class="flex items-center gap-1.5 shrink-0">
-                <div class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200/80">
+                <template v-if="item.mode === 'PESO' || item.mode === 'VOLUMEN'">
+                  <button @click="openWeightModalForEdit(i)"
+                    class="text-right leading-tight hover:bg-blue-50 rounded-lg px-1.5 py-1 transition-colors"
+                    title="Click para ajustar el peso/monto">
+                    <span class="block text-xs font-black text-slate-800 underline decoration-dotted decoration-slate-300">
+                      {{ formatCartQty(item.qty) }} {{ unitsLabelFor(item.sale_unit) }}
+                    </span>
+                    <span class="block text-[9px] text-slate-400">× {{ posDisplayStore.formatPrice(item.unitPrice, tasaBCV).primary }}/{{ unitsLabelFor(item.sale_unit) }}</span>
+                  </button>
+                </template>
+                <div v-else class="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200/80">
                   <button @click="qtyDown(i)"
                     class="w-5 h-5 flex items-center justify-center text-xs font-black bg-white hover:bg-slate-200 text-slate-600 rounded-md border border-slate-300 shadow-sm transition-all active:scale-90">−</button>
                   <span class="w-6 text-center text-xs font-black text-slate-800">{{ item.qty }}</span>
@@ -423,7 +445,7 @@
                   <span v-if="item.qty >= item.maxStock && item.maxStock > 0" class="text-[8px] text-amber-600 font-semibold ml-1">Máx</span>
                 </div>
                 <div class="flex items-center gap-2 pl-1">
-                  <span class="text-xs font-black text-slate-800">${{ formatUSD(item.unitPrice * item.qty) }}</span>
+                  <span class="text-xs font-black text-slate-800">{{ posDisplayStore.formatPrice(item.unitPrice * item.qty, tasaBCV).primary }}</span>
                   <button @click="removeItem(i)"
                     class="text-slate-300 hover:text-rose-500 transition-colors text-xs p-1">
                     <Trash2 class="w-3.5 h-3.5" />
@@ -472,7 +494,7 @@
         {{ cartTotal }}
       </span>
       <span class="text-sm">Ver Ticket</span>
-      <span class="text-xs font-semibold text-white/80 ml-1">${{ formatUSD(totalUSD) }}</span>
+      <span class="text-xs font-semibold text-white/80 ml-1">{{ formattedTotal.primary }}</span>
     </button>
 
     <!-- ═══════ MOBILE CART BOTTOM SHEET ═══════ -->
@@ -490,7 +512,7 @@
             </button>
           </div>
           <div class="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
-            <div v-for="(item, i) in cart" :key="'mob-' + item.id + item.mode + (item.attrs ? JSON.stringify(item.attrs) : '')"
+            <div v-for="(item, i) in cart" :key="'mob-' + (item.cartItemId || (item.id + item.mode + (item.attrs ? JSON.stringify(item.attrs) : '')))"
               class="bg-slate-50 rounded-xl p-3 flex items-start gap-3">
               <div class="w-10 h-10 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 border border-slate-200 mt-0.5">
                 <img v-if="item.image" :src="item.image" :alt="item.name" class="w-full h-full object-cover"
@@ -512,19 +534,27 @@
                     :title="'Cambiar a ' + (item.mode === 'BULTO' ? 'Unidad' : 'Bulto')">
                     {{ item.mode === 'BULTO' ? `BULTO (${item.unitsPerPackage} UDS)` : 'UNIDAD' }}
                   </button>
-                  <span class="text-[11px] text-slate-400 font-semibold">${{ formatUSD(item.unitPrice) }}</span>
+                  <span class="text-[11px] text-slate-400 font-semibold">{{ posDisplayStore.formatPrice(item.unitPrice, tasaBCV).primary }}</span>
                   <span class="text-[9px] text-slate-300">·</span>
-                  <span class="text-[10px] text-slate-400">Bs.{{ formatVES(item.unitPrice * tasaBCV) }}</span>
+                  <span class="text-[10px] text-slate-400">{{ posDisplayStore.formatPrice(item.unitPrice, tasaBCV).secondary }}</span>
                 </div>
                 <div class="flex items-center gap-2 mt-2">
-                  <div class="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white">
+                  <button v-if="item.mode === 'PESO' || item.mode === 'VOLUMEN'" @click="openWeightModalForEdit(i)"
+                    class="text-left leading-tight hover:bg-blue-50 rounded-lg px-1.5 py-1 -ml-1.5 transition-colors"
+                    title="Click para ajustar el peso/monto">
+                    <span class="block text-sm font-bold text-slate-800 underline decoration-dotted decoration-slate-300">
+                      {{ formatCartQty(item.qty) }} {{ unitsLabelFor(item.sale_unit) }}
+                    </span>
+                    <span class="block text-[10px] text-slate-400">× {{ posDisplayStore.formatPrice(item.unitPrice, tasaBCV).primary }}/{{ unitsLabelFor(item.sale_unit) }}</span>
+                  </button>
+                  <div v-else class="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white">
                     <button @click="qtyDown(i)" class="px-2 py-0.5 text-slate-500 hover:bg-slate-100 text-sm font-bold">−</button>
                     <span class="px-2.5 text-sm font-bold text-slate-700">{{ item.qty }}</span>
                     <button @click="qtyUp(i)" :disabled="item.qty >= item.maxStock"
                       class="px-2 py-0.5 text-sm font-bold transition-all"
                       :class="item.qty >= item.maxStock ? 'text-slate-300 cursor-not-allowed' : 'text-slate-500 hover:bg-slate-100'">+</button>
                   </div>
-                  <span class="text-sm font-bold text-slate-800">${{ formatUSD(item.unitPrice * item.qty) }}</span>
+                  <span class="text-sm font-bold text-slate-800">{{ posDisplayStore.formatPrice(item.unitPrice * item.qty, tasaBCV).primary }}</span>
                   <button @click="removeItem(i)" class="ml-auto p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-rose-50 transition-colors">
                     <Trash2 class="w-3.5 h-3.5" />
                   </button>
@@ -536,8 +566,8 @@
             <div class="flex justify-between items-center">
               <span class="text-sm font-semibold text-slate-600">Total</span>
               <div class="text-right">
-                <p class="text-lg font-black text-slate-900">${{ formatUSD(totalUSD) }}</p>
-                <p class="text-[11px] text-slate-400 font-mono">Bs.{{ formatVES(totalVES) }}</p>
+                <p class="text-lg font-black text-slate-900">{{ formattedTotal.primary }}</p>
+                <p class="text-[11px] text-slate-400 font-mono">{{ formattedTotal.secondary }}</p>
               </div>
             </div>
             <div class="flex gap-2">
@@ -552,7 +582,7 @@
                 class="flex-1 h-12 rounded-xl text-sm font-black text-white bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                 :class="cart.length === 0 ? 'opacity-30 cursor-not-allowed' : 'hover:from-emerald-400 hover:to-emerald-500'">
                 <CreditCard class="w-4 h-4" />
-                COBRAR — ${{ formatUSD(totalUSD) }}
+                COBRAR — {{ formattedTotal.primary }}
               </button>
               <button v-else @click="showTopUp = true; showMobileCart = false"
                 class="flex-1 h-12 rounded-xl text-sm font-black text-white bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg shadow-amber-500/30 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
@@ -667,6 +697,17 @@
       @close="showVariantModal = false"
     />
 
+    <!-- ═══════ WEIGHT / VOLUME CALCULATOR ═══════ -->
+    <WeightVolumeModal
+      :visible="showWeightModal"
+      :product="weightModalProductInfo"
+      :initial-qty="weightModalInitialQty"
+      :bcv-rate="tasaBCV"
+      :default-currency="posDisplayStore.displayCurrency"
+      @close="closeWeightModal"
+      @confirm="confirmWeightEntry"
+    />
+
     <!-- ═══════ PAUSE SALE MODAL ═══════ -->
     <PauseModal
       v-if="showPauseModal"
@@ -699,7 +740,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import {
   Search, X, User, ShoppingBag, Trash2,
-  CreditCard, PackageSearch, PauseCircle, PlayCircle, Wifi, WifiOff,
+  CreditCard, PackageSearch, PauseCircle, Wifi, WifiOff,
   ScanBarcode, ScanLine, LayoutGrid, List,
   ListTree, Ticket, Clock, Settings2,
 } from 'lucide-vue-next';
@@ -708,6 +749,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useCajaStore } from '@/stores/caja';
 import { useForexRate } from '@/composables/useForexRate';
+import { usePosDisplayStore } from '@/stores/posDisplay';
 import { useInventory } from '@/modules/inventory/composables/useInventory';
 import { useTenantMetadata } from '@/composables/useTenantMetadata';
 import { useCheckout } from '@/composables/useCheckout';
@@ -727,6 +769,8 @@ import LayawaySuccessModal from './LayawaySuccessModal.vue';
 import TransactionTopUpModal from '@/components/modals/TransactionTopUpModal.vue';
 import CierreCaja from './CierreCaja.vue';
 import VariantSelectorModal from './VariantSelectorModal.vue';
+import WeightVolumeModal, { type WeightModalProduct } from './WeightVolumeModal.vue';
+import { unitsLabelFor } from '@/composables/usePackageTypes';
 import PauseModal from './PauseModal.vue';
 import ParkedSalesModal from './ParkedSalesModal.vue';
 import ExpiredParkedSaleModal from './ExpiredParkedSaleModal.vue';
@@ -791,6 +835,9 @@ function clearCheckoutModalError() {
 }
 
 const { rateValue: tasaBCV, fetchForexRate } = useForexRate();
+const posDisplayStore = usePosDisplayStore();
+/** { primary, secondary } del total de la venta, reusado en todos los puntos donde se muestra (header, FAB móvil, hoja de carrito, botón Cobrar). */
+const formattedTotal = computed(() => posDisplayStore.formatPrice(totalUSD.value, tasaBCV.value));
 const {
   products: inventoryProducts,
   categories: inventoryCategories,
@@ -808,6 +855,9 @@ function handleClose() {
 
 interface CartItem {
   id: string;
+  /** Unique per row — only set for PESO/VOLUMEN lines, where several rows can
+   *  legitimately share the same product `id` (separate weighed portions). */
+  cartItemId?: string;
   productId: string;
   variantId?: string;
   name: string;
@@ -821,7 +871,10 @@ interface CartItem {
   maxStock: number;
   maxVariantStock?: number;
   unitsPerPackage: number;
-  mode: 'UNIDAD' | 'BULTO';
+  /** PESO/VOLUMEN lines carry a decimal `qty` (Kg/L) instead of a whole-unit count. */
+  mode: 'UNIDAD' | 'BULTO' | 'PESO' | 'VOLUMEN';
+  /** Set only for PESO/VOLUMEN lines — drives the ticket's Kg/Litros breakdown and re-opens the weight modal on click. */
+  sale_unit?: string;
   unitPrice: number;
   conversionFactor: number;
   unitLabel: string;
@@ -830,6 +883,12 @@ interface CartItem {
 
 function getItemAtomicUnits(item: CartItem): number {
   return item.mode === 'BULTO' ? (item.unitsPerPackage || 1) : 1;
+}
+
+/** Unique id for a single cart row — lets multiple PESO/VOLUMEN portions of the same product coexist. */
+function generateCartItemId(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return `row-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function getCartVariantConsumption(variantId: string): number {
@@ -865,6 +924,8 @@ interface Product {
   hasVariants: boolean;
   variants: VariantData[];
   unitsPerPackage: number;
+  /** 'PESO' | 'VOLUMEN' | 'UNIDAD' — GlobalProduct.SaleUnitChoices on the backend. */
+  sale_unit: string;
 }
 
 interface Category {
@@ -915,12 +976,6 @@ function tickTimers() {
   }
 }
 
-function formatTimer(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-}
-
 async function fetchParkedSales() {
   try {
     const result = await listParkedSales('PAUSED');
@@ -942,6 +997,7 @@ async function onPauseSale(alias: string) {
   try {
     const items = cart.value.map(i => ({
       id: i.id,
+      cartItemId: i.cartItemId,
       productId: i.productId,
       variantId: i.variantId,
       name: i.name,
@@ -951,6 +1007,7 @@ async function onPauseSale(alias: string) {
       image: i.image || '',
       unitsPerPackage: i.unitsPerPackage,
       mode: i.mode,
+      sale_unit: i.sale_unit,
       unitPrice: i.unitPrice,
       maxStock: i.maxStock,
       maxVariantStock: i.maxVariantStock,
@@ -1243,6 +1300,32 @@ const cart = ref<CartItem[]>([]);
 const showVariantModal = ref(false);
 const selectedVariantProduct = ref<Product | null>(null);
 
+// Weight/Volume calculator (PESO/VOLUMEN products)
+const showWeightModal = ref(false);
+const weightModalProduct = ref<Product | null>(null);
+/** Index of the cart line being adjusted, or null when adding a brand-new one. */
+const weightModalEditIndex = ref<number | null>(null);
+const weightModalInitialQty = computed<number | null>(() => (
+  weightModalEditIndex.value != null ? cart.value[weightModalEditIndex.value]?.qty ?? null : null
+));
+const weightModalProductInfo = computed<WeightModalProduct | null>(() => {
+  const p = weightModalProduct.value;
+  if (!p) return null;
+  // Several PESO/VOLUMEN rows can now coexist for the same product (separate
+  // weighed portions) — the cap for THIS row is what's left after every OTHER
+  // row of the same product, not the product's raw available stock.
+  const consumedByOtherRows = cart.value.reduce((sum, item, idx) => (
+    idx !== weightModalEditIndex.value && item.productId === p.id && (item.mode === 'PESO' || item.mode === 'VOLUMEN')
+      ? sum + item.qty
+      : sum
+  ), 0);
+  return {
+    id: p.id, name: p.name, image: p.image, barcode: p.barcode,
+    sale_unit: p.sale_unit, price_usd: p.price_usd,
+    maxStock: Math.max(0, p.availableStock - consumedByOtherRows),
+  };
+});
+
 const categories = computed<Category[]>(() =>
   inventoryCategories.value.map((c, i) => ({
     id: c.id,
@@ -1271,6 +1354,7 @@ const products = computed<Product[]>(() =>
       category_id: p.categoryId as string,
       brandName: p.brandName || '',
       categoryName: p.categoryName || '',
+      sale_unit: p.saleUnit || 'UNIDAD',
       hasVariants: p.hasVariants ?? false,
       variants: (p.variants || []).map(v => ({
         id: v.id,
@@ -1318,7 +1402,13 @@ function getCartAtomicConsumption(productId: string): number {
     .reduce((sum, i) => sum + (i.qty * getItemAtomicUnits(i)), 0);
 }
 
+/** PESO/VOLUMEN products never add as a flat "1 unit" — they always go through the weight/volume calculator. */
 function addToCart(p: Product, variant?: VariantData) {
+  if (!variant && p.sale_unit && p.sale_unit !== 'UNIDAD') {
+    openWeightModal(p);
+    return;
+  }
+
   const productId = p.id;
   const id = variant ? variant.id : p.id;
   const name = variant ? `${p.name} · ${variant.display_name}` : p.name;
@@ -1378,6 +1468,63 @@ function addToCart(p: Product, variant?: VariantData) {
     unitLabel: 'Unidad',
     altUnitLabel: unitsPerPackage > 1 ? 'Bulto' : '',
   });
+}
+
+/** Opens the calculator — pre-filled for editing if this product already has a weight/volume line in the cart. */
+/** Clicking the product (grid or scan) always opens the calculator for a NEW
+ *  row — it never merges into an existing PESO/VOLUMEN line, so the same
+ *  product can appear as separate portions (e.g. 0.500 Kg + 0.250 Kg). */
+function openWeightModal(p: Product) {
+  weightModalProduct.value = p;
+  weightModalEditIndex.value = null;
+  showWeightModal.value = true;
+}
+
+/** Re-opens the calculator for an existing weight/volume cart line (click on its qty in the ticket). */
+function openWeightModalForEdit(index: number) {
+  const item = cart.value[index];
+  const p = products.value.find((x) => x.id === item.productId);
+  if (!p) return;
+  weightModalProduct.value = p;
+  weightModalEditIndex.value = index;
+  showWeightModal.value = true;
+}
+
+function closeWeightModal() {
+  showWeightModal.value = false;
+  weightModalProduct.value = null;
+  weightModalEditIndex.value = null;
+}
+
+function confirmWeightEntry(qty: number) {
+  const p = weightModalProduct.value;
+  if (!p) return;
+
+  if (weightModalEditIndex.value != null) {
+    cart.value[weightModalEditIndex.value].qty = qty;
+  } else {
+    const mode = p.sale_unit === 'VOLUMEN' ? 'VOLUMEN' : 'PESO';
+    cart.value.push({
+      id: p.id,
+      cartItemId: generateCartItemId(),
+      productId: p.id,
+      name: p.name,
+      price_usd: p.price_usd,
+      qty,
+      stock: p.availableStock,
+      maxStock: p.availableStock,
+      unitsPerPackage: 1,
+      barcode: p.barcode,
+      image: p.image || '',
+      mode,
+      sale_unit: p.sale_unit,
+      unitPrice: p.price_usd,
+      conversionFactor: 1,
+      unitLabel: unitsLabelFor(p.sale_unit),
+      altUnitLabel: '',
+    });
+  }
+  closeWeightModal();
 }
 
 function addItem(p: Product) {
@@ -1534,11 +1681,12 @@ function onTopUpConfirm(_pkg: unknown, _code: string) {
   showTopUp.value = false;
 }
 
-function formatUSD(n: number): string {
-  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 function formatVES(n: number): string {
   return n.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+/** PESO/VOLUMEN ticket lines carry a decimal qty (e.g. 0.425 Kg) — up to 3 decimals. */
+function formatCartQty(n: number): string {
+  return (n || 0).toLocaleString('es', { minimumFractionDigits: 0, maximumFractionDigits: 3 });
 }
 
 const dataLoading = computed(() => invLoading.value.products || invLoading.value.categories);

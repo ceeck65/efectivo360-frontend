@@ -742,6 +742,9 @@ function onDocumentClick(e: MouseEvent) {
 watch(activeMainTab, (tab) => {
   if (tab === 'products' && productsResults.value.length === 0 && !loadingProducts.value) loadProducts();
   if (tab === 'moderation' && moderationSubTab.value === 'rejected' && rejectedProducts.value.length === 0 && !loadingRejected.value) loadRejected();
+  // KPIs are tab-independent, but re-syncing on every tab switch keeps the
+  // figure honest even if another session changed the catalog meanwhile.
+  loadStats();
 });
 
 watch(moderationSubTab, (sub) => {
@@ -751,6 +754,7 @@ watch(moderationSubTab, (sub) => {
 const debouncedSearchLoad = useDebounceFn(() => {
   productsPage.value = 1;
   loadProducts();
+  loadStats();
 }, 300);
 watch(productsSearch, debouncedSearchLoad);
 

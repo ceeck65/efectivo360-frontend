@@ -2,6 +2,8 @@ import { httpClient } from '@core/index.js';
 
 export interface ParkedSaleItem {
   id: string;
+  /** Unique per row — lets multiple PESO/VOLUMEN portions of the same product survive pause/resume without key collisions. */
+  cartItemId?: string;
   productId: string;
   variantId?: string;
   name: string;
@@ -10,7 +12,8 @@ export interface ParkedSaleItem {
   qty: number;
   image?: string;
   unitsPerPackage: number;
-  mode: 'UNIDAD' | 'BULTO';
+  mode: 'UNIDAD' | 'BULTO' | 'PESO' | 'VOLUMEN';
+  sale_unit?: string;
   unitPrice: number;
   maxStock: number;
   maxVariantStock?: number;

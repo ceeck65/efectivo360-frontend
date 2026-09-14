@@ -88,7 +88,7 @@ defineProps<{
   parkedTimers: Record<number, number>;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   resume: [sale: ParkedSale];
   cancel: [sale: ParkedSale];
   close: [];

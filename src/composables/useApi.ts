@@ -37,7 +37,7 @@ let sessionEndHandled = false;
  * Replaces the old silent `window.location.href = '/es/login'` kick: the user
  * must be told the session ended and why (expired/invalidated server-side —
  * the "otro motivo" case, distinct from the proactive inactivity warning in
- * useSessionTimeout.ts) before losing whatever they were doing.
+ * useIdleTimeout.ts) before losing whatever they were doing.
  */
 function endSessionWithNotice(reason: 'no_refresh_token' | 'refresh_failed') {
   localStorage.removeItem('access_token');

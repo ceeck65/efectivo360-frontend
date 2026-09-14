@@ -96,6 +96,8 @@ export interface Product extends BaseEntity {
   brandName?: string;
   /** Nombre de la categoría */
   categoryName?: string;
+  /** Unidad de venta POS: PESO, VOLUMEN o UNIDAD (GlobalProduct.SaleUnitChoices en el backend) */
+  saleUnit?: string;
   /** Index signature para compatibilidad con Record<string, unknown> */
   [key: string]: unknown;
 }

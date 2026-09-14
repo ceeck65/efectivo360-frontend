@@ -231,6 +231,8 @@ interface VariantStock {
   id: string;
   sku: string;
   stock: number;
+  display_name?: string;
+  formatted_attributes?: { name: string; value: string }[];
 }
 
 interface ProductItem {

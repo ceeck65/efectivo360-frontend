@@ -72,8 +72,12 @@
                 v-model="saleUnit"
                 class="w-full h-9 px-3 text-sm border border-slate-300 rounded-lg bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 @keydown.enter.prevent="focusNext(2)">
-                <option v-for="opt in SALE_UNIT_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
+                <option v-for="opt in SALE_UNIT_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
+              <p v-if="requiresDecimalInput" class="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-amber-600">
+                <Scale class="w-3 h-3 shrink-0" />
+                Requiere ingreso decimal / balanza en el POS.
+              </p>
             </div>
             <div>
               <label class="block text-xs font-medium text-slate-600 mb-1">Presentación de Compra</label>
@@ -82,7 +86,7 @@
                 v-model="purchaseUnitName"
                 class="w-full h-9 px-3 text-sm border border-slate-300 rounded-lg bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                 @keydown.enter.prevent="focusNext(3)">
-                <option v-for="opt in PACKAGE_TYPE_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
+                <option v-for="opt in packageOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
               </select>
             </div>
           </div>
@@ -132,10 +136,11 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
-import { X, Lock, PackagePlus, Save, Loader2, Globe2 } from 'lucide-vue-next';
+import { X, Lock, PackagePlus, Save, Loader2, Globe2, Scale } from 'lucide-vue-next';
 import { fetchApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
 import CategoryAsyncSelect from '@/views/admin/staff/products/CategoryAsyncSelect.vue';
+import { packageOptionsFor, directPackageFor } from '@/composables/usePackageTypes';
 
 // Matches GlobalProduct.TaxType / Product.tax_type on the backend (apps/products/models.py).
 // REDUCIDO exists on the backend but isn't offered here per the quick-create UX spec.
@@ -144,8 +149,16 @@ const TAX_TYPE_OPTIONS = [
   { value: 'IVA_16', label: 'IVA General (16%)' },
   { value: 'IVA_8', label: 'IVA Reducido (8%)' },
 ];
-const SALE_UNIT_OPTIONS = ['UNIDAD', 'KG', 'LITRO'];
-const PACKAGE_TYPE_OPTIONS = ['BULTO', 'CAJA', 'SACO', 'PIPA', 'BIDÓN', 'GALON', 'UNIDAD'];
+// Matches GlobalProduct.SaleUnitChoices (apps/products/models.py).
+const SALE_UNIT_OPTIONS = [
+  { value: 'PESO', label: '⚖️ PESO (Kilogramos, Gramos, Libras, Granel)' },
+  { value: 'VOLUMEN', label: '🧪 VOLUMEN (Lítros, Mililitros, Gases, Galones)' },
+  { value: 'UNIDAD', label: '📦 UNIDAD (Unidades, Pares, Docenas, Bultos, Cajas)' },
+];
+// PESO / VOLUMEN products are sold by weight or volume, so the POS needs a
+// decimal quantity field (and, where available, a scale reading) instead of
+// a whole-number count.
+const DECIMAL_SALE_UNITS = new Set(['PESO', 'VOLUMEN']);
 
 export interface QuickCreatedProduct {
   id: string;
@@ -188,14 +201,25 @@ const name = ref('');
 const categoryId = ref<string | number | null>(null);
 const taxType = ref('');
 const saleUnit = ref('UNIDAD');
-const purchaseUnitName = ref('BULTO');
-const conversionFactor = ref<number | null>(24);
+const purchaseUnitName = ref(directPackageFor('UNIDAD'));
+const conversionFactor = ref<number | null>(1);
 const priceUsd = ref<number | null>(null);
 const saving = ref(false);
 
 function onCategorySelect() {
   // Handled via v-model; kept for parity with CategoryAsyncSelect's contract.
 }
+
+const requiresDecimalInput = computed(() => DECIMAL_SALE_UNITS.has(saleUnit.value));
+const packageOptions = computed(() => packageOptionsFor(saleUnit.value));
+
+// Changing the measure re-preselects the "direct" package (no case/bulk
+// multiplier) for the new measure — a PESO product should never keep a
+// leftover LIQUIDO/UNIDAD package like GALON or BULTO selected.
+watch(saleUnit, (unit) => {
+  purchaseUnitName.value = directPackageFor(unit);
+  conversionFactor.value = 1;
+});
 
 const canSubmit = computed(() => (
   name.value.trim().length > 0 &&
@@ -210,8 +234,8 @@ function resetForm() {
   categoryId.value = null;
   taxType.value = '';
   saleUnit.value = 'UNIDAD';
-  purchaseUnitName.value = 'BULTO';
-  conversionFactor.value = 24;
+  purchaseUnitName.value = directPackageFor('UNIDAD');
+  conversionFactor.value = 1;
   priceUsd.value = null;
   saving.value = false;
 }

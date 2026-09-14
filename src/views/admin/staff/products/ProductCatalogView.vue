@@ -263,6 +263,8 @@ interface VariantItem {
   stock: number;
   price_base: string;
   attribute_values: Record<string, string>;
+  display_name?: string;
+  formatted_attributes?: { name: string; value: string }[];
 }
 
 interface CatalogProduct {

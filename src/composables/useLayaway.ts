@@ -9,7 +9,9 @@ export interface LayawayItemPayload {
   product_id: string;
   qty: number;
   unit_price_cents: number;
-  pricing_mode: 'UNIDAD' | 'BULTO';
+  // Backend stores this as an opaque label (apps/sales/services.py) — actual
+  // stock math always comes from qty * conversion_factor, never from this string.
+  pricing_mode: 'UNIDAD' | 'BULTO' | 'PESO' | 'VOLUMEN';
   conversion_factor: number;
 }
 

@@ -371,6 +371,7 @@ function mapProduct(item: any): Product {
     })),
     brandName: item.brand_name ?? '',
     categoryName: item.category_name ?? '',
+    saleUnit: item.sale_unit ?? 'UNIDAD',
     status: 'ACTIVE' as any,
     createdBy: item.created_by ?? '',
     updatedBy: item.updated_by ?? '',

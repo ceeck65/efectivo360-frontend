@@ -102,7 +102,7 @@
             <BrandSelect
               :modelValue="form.brand"
               :endpoint="selectedCategoryId ? '/api/v1/catalog/categories/' + selectedCategoryId + '/brands/' : '/api/v1/catalog/brands/all/'"
-              @update:modelValue="form.brand = $event || ''"
+              @update:modelValue="form.brand = String($event ?? '')"
               @createBrand="showBrandModal = true"
             />
           </div>

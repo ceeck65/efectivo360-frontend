@@ -61,8 +61,12 @@
             <label class="block text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Unidad de Venta POS</label>
             <select v-model="saleUnit"
               class="w-full h-9 px-3 text-sm border border-slate-200 rounded-lg bg-white text-slate-800 focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500">
-              <option v-for="opt in SALE_UNIT_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
+              <option v-for="opt in SALE_UNIT_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
             </select>
+            <p v-if="requiresDecimalInput" class="mt-1.5 flex items-center gap-1 text-[10px] font-medium text-amber-600">
+              <Scale class="w-3 h-3 shrink-0" />
+              El POS solicitará ingreso decimal / integración con balanza para este producto.
+            </p>
           </div>
         </div>
 
@@ -85,7 +89,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
-import { X, Package, Lock, Save, Loader2 } from 'lucide-vue-next';
+import { X, Package, Lock, Save, Loader2, Scale } from 'lucide-vue-next';
 import { fetchApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
 import BrandSelect from '@/views/admin/super-console/components/BrandSelect.vue';
@@ -102,6 +106,7 @@ interface ApprovedProduct {
   category_id: string | null;
   category_name: string;
   tax_type: string;
+  sale_unit: string;
   image_url: string;
   is_verified: boolean;
   created_at: string;
@@ -114,7 +119,16 @@ const TAX_TYPE_OPTIONS = [
   { value: 'IVA_8', label: 'IVA Reducido (8%)' },
   { value: 'REDUCIDO', label: 'Reducido / Especial' },
 ];
-const SALE_UNIT_OPTIONS = ['UNIDAD', 'KG', 'LITRO'];
+// Matches GlobalProduct.SaleUnitChoices (apps/products/models.py).
+const SALE_UNIT_OPTIONS = [
+  { value: 'PESO', label: '⚖️ PESO (Kilogramos, Gramos, Libras, Granel)' },
+  { value: 'VOLUMEN', label: '🧪 VOLUMEN (Lítros, Mililitros, Gases, Galones)' },
+  { value: 'UNIDAD', label: '📦 UNIDAD (Unidades, Pares, Docenas, Bultos, Cajas)' },
+];
+// PESO / VOLUMEN products are sold by weight or volume, so the POS needs a
+// decimal quantity field (and, where available, a scale reading) instead of
+// a whole-number count.
+const DECIMAL_SALE_UNITS = new Set(['PESO', 'VOLUMEN']);
 
 const props = defineProps<{
   visible: boolean;
@@ -130,6 +144,7 @@ const emit = defineEmits<{
 const { success, error: notifyError } = useNotify();
 
 const isEdit = computed(() => !!props.product);
+const requiresDecimalInput = computed(() => DECIMAL_SALE_UNITS.has(saleUnit.value));
 
 const barcode = ref('');
 const name = ref('');
@@ -153,7 +168,7 @@ function resetForm() {
   brandId.value = p?.brand_id || null;
   categoryId.value = p?.category_id || null;
   taxType.value = p?.tax_type || 'EXEMPT';
-  saleUnit.value = 'UNIDAD';
+  saleUnit.value = p?.sale_unit || 'UNIDAD';
   imageFile.value = null;
   saving.value = false;
 }

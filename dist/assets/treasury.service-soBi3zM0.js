@@ -1,0 +1,2 @@
+import{t as e}from"./axios.config-5urExFSg.js";import"./core-R86GY3LM.js";async function t(t=!0){let n=await e.get(`/api/v1/treasury/payment-methods/`,{params:{is_active:t?`true`:void 0}}),r=n.data?.data??n.data;return r?.results&&Array.isArray(r.results)?r.results:r?.payment_methods&&Array.isArray(r.payment_methods)?r.payment_methods:Array.isArray(r)?r:[]}export{t};
+//# sourceMappingURL=treasury.service-soBi3zM0.js.map

@@ -136,7 +136,7 @@
 
         <div v-if="searchResults.length > 0"
           class="absolute z-30 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-72 overflow-y-auto">
-          <button v-for="(p, i) in searchResults" :key="p.id"
+          <button v-for="(p, i) in searchResults" :key="p.product_id || p.global_product_id || i"
             @click="addProductRow(p)" @mouseenter="highlightedIndex = i"
             class="w-full text-left px-3 py-2.5 border-b border-slate-100 last:border-0 flex items-center gap-3 transition-colors"
             :class="i === highlightedIndex ? 'bg-blue-50' : 'hover:bg-slate-50'">
@@ -145,9 +145,16 @@
               <Package v-else class="w-4 h-4 text-slate-300" />
             </div>
             <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-800 truncate">{{ p.name }}</p>
+              <div class="flex items-center gap-1.5">
+                <p class="text-sm font-medium text-slate-800 truncate">{{ p.name }}</p>
+                <span v-if="isNewLocal(p)"
+                  class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-semibold rounded bg-blue-50 text-blue-600 border border-blue-200 shrink-0">
+                  <Globe2 class="w-2.5 h-2.5" /> Banco Global
+                </span>
+              </div>
               <p class="text-[11px] text-slate-400 font-mono">
-                {{ p.barcode || `SKU: ${p.sku}` }} · Stock: {{ formatQty(p.stock) }}
+                {{ p.barcode || `SKU: ${p.sku}` }}
+                <span v-if="!isNewLocal(p)">· Stock: {{ formatQty(p.stock) }}</span>
               </p>
             </div>
           </button>
@@ -196,6 +203,11 @@
                         <span class="inline-flex items-center px-1.5 py-0.5 text-[9px] font-semibold rounded bg-slate-100 text-slate-500 border border-slate-200">
                           Venta: {{ row.product.sale_unit }}
                         </span>
+                        <span v-if="isNewLocal(row.product)"
+                          class="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-semibold rounded bg-blue-50 text-blue-600 border border-blue-200"
+                          title="Se importará al Catálogo del tenant solo al procesar la factura">
+                          <Globe2 class="w-2.5 h-2.5" /> Nuevo · Banco Global
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -203,7 +215,7 @@
                 <td class="px-2 py-2.5">
                   <select v-model="row.purchase_unit_name"
                     class="w-full h-8 px-2 text-xs border border-slate-200 rounded-md bg-transparent text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-400">
-                    <option v-for="opt in PACKAGE_TYPE_OPTIONS" :key="opt" :value="opt">{{ opt }}</option>
+                    <option v-for="opt in packageOptionsFor(row.product.sale_unit)" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
                   </select>
                 </td>
                 <td class="px-2 py-2.5">
@@ -218,7 +230,7 @@
                     @keydown.enter.prevent="focusQuickEntry" />
                 </td>
                 <td class="px-2 py-2.5 text-right">
-                  <span class="text-sm font-semibold text-emerald-600">+{{ formatQty(unitsAdded(row)) }}</span>
+                  <span class="text-sm font-semibold text-emerald-600">+{{ formatQty(unitsAdded(row)) }} {{ unitsLabelFor(row.product.sale_unit) }}</span>
                   <p class="text-[10px] text-slate-400 leading-tight">
                     {{ formatQty(row.packages_quantity) }} {{ row.purchase_unit_name || 'u' }} × {{ row.conversion_factor }}
                   </p>
@@ -312,26 +324,32 @@ import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
 import {
   ArrowLeft, ScanBarcode, Loader2, Package, Trash2, PackageCheck, Wallet, AlertTriangle, Plus,
-  Handshake, FileText, PackageOpen,
+  Handshake, FileText, PackageOpen, Globe2,
 } from 'lucide-vue-next';
-import { apiClient, fetchApi } from '@/composables/useApi';
+import { fetchApi } from '@/composables/useApi';
 import { useNotify } from '@/composables/useNotify';
 import { useCajaStore } from '@/stores/caja';
 import { useForexRate } from '@/composables/useForexRate';
-import QuickProductCreateModal from './QuickProductCreateModal.vue';
+import QuickProductCreateModal, { type QuickCreatedProduct } from './QuickProductCreateModal.vue';
 import QuickSupplierModal, { type QuickCreatedSupplier } from './QuickSupplierModal.vue';
+import { packageOptionsFor, directPackageFor, unitsLabelFor } from '@/composables/usePackageTypes';
 
 type PaymentSource = 'CASH_DRAWER' | 'CAPITAL_INJECTION' | 'SUPPLIER_CREDIT' | 'CONSIGNMENT';
 type Currency = 'USD' | 'VES';
 
 // Matches the backend's strict `package_type` enum (apps/purchases/serializers.py).
-// Anything outside this set (e.g. a future custom label) still submits fine via
-// the free-text `purchase_unit_name` legacy alias.
-const PACKAGE_TYPE_OPTIONS = ['BULTO', 'CAJA', 'SACO', 'PIPA', 'BIDÓN', 'GALON', 'UNIDAD'] as const;
+// Anything outside this set (e.g. any of the measure-specific labels from
+// usePackageTypes) still submits fine via the free-text `purchase_unit_name`
+// legacy alias — see submit()'s payload mapping below.
 const KNOWN_BACKEND_PACKAGE_TYPES = new Set(['BULTO', 'CAJA', 'SACO', 'PIPA', 'GALON', 'UNIDAD']);
 
 interface SearchProduct {
-  id: string;
+  /** Local Product ULID — set only when this product already exists in the tenant's DB. */
+  product_id: string | null;
+  /** GlobalProduct ULID — set only when this is a Banco Global hit not yet cloned to
+   *  the tenant. Selecting it never calls a local-creation endpoint; the clone happens
+   *  once, inside PurchaseExpressEntrySerializer.create(), when the invoice is processed. */
+  global_product_id: string | null;
   name: string;
   sku: string;
   /** Real printed/scanned barcode. Empty when the product genuinely has none (manually created). */
@@ -443,11 +461,13 @@ function setQtyRef(key: number, el: unknown) {
   else delete qtyRefs[key];
 }
 
+/** GET /api/v1/products/:id/ — always an existing local product (used by the "Reponer" deep link). */
 function mapProduct(item: any): SearchProduct {
   const defaultPres = (item.presentations || []).find((p: any) => p.is_default) || item.presentations?.[0];
   const anchor = defaultPres?.prices?.find((pr: any) => pr.is_anchor);
   return {
-    id: item.id,
+    product_id: item.id,
+    global_product_id: null,
     name: item.effective_name || item.global_product?.official_name || 'Producto',
     sku: item.effective_sku || item.global_product?.sku || '',
     barcode: defaultPres?.barcode || '',
@@ -461,10 +481,16 @@ function mapProduct(item: any): SearchProduct {
   };
 }
 
-/** Flat response shape from GET /api/v1/catalog/lookup/ (both local-hit and global-clone cases). */
+/**
+ * Flat item shape from GET /api/v1/catalog/lookup/ (?barcode= single hit, or ?q= list
+ * under `results`). 100% read-only endpoint — a GLOBAL hit means the product lives only
+ * in the Banco Global and has `product_id: null` / `global_product_id` set; it is NOT
+ * cloned into the tenant by searching or selecting it.
+ */
 function mapCatalogLookupProduct(res: any): SearchProduct {
   return {
-    id: res.id,
+    product_id: res.product_id ?? null,
+    global_product_id: res.global_product_id ?? null,
     name: res.name,
     sku: res.sku,
     barcode: res.barcode || '',
@@ -477,6 +503,12 @@ function mapCatalogLookupProduct(res: any): SearchProduct {
     current_price: Number(res.price_usd ?? 0),
     tax_type: res.tax_type || '',
   };
+}
+
+/** True when this product only exists in the Banco Global — selecting it queues an
+ *  import that only happens if/when the invoice is processed. */
+function isNewLocal(product: SearchProduct): boolean {
+  return !product.product_id;
 }
 
 // A scanned code is all digits/dashes; a typed product name never looks like this.
@@ -521,15 +553,20 @@ function openQuickCreate(barcode: string) {
   notFound.value = false;
 }
 
-function onQuickCreateSuccess(product: SearchProduct) {
+function onQuickCreateSuccess(product: QuickCreatedProduct) {
   showQuickCreate.value = false;
-  addProductRow(product);
+  // Registro Rápido always creates the local Product synchronously — this row
+  // is local from the start, not a Banco Global reference.
+  const { id, ...rest } = product;
+  addProductRow({ ...rest, product_id: id, global_product_id: null });
 }
 
 /**
  * GET /api/v1/catalog/lookup/?barcode= — exact-match lookup, used for every
- * barcode-shaped scan/entry instead of the fuzzy /api/products/ search.
- * 200: product exists locally, or was just cloned from the Global Catalog —
+ * barcode-shaped scan/entry. 100% read-only: a GLOBAL hit is NOT cloned into
+ * the tenant here — it only gets added to the in-memory grid, and only
+ * becomes a real local Product if/when "Procesar Factura" is clicked.
+ * 200: product exists locally, or exists in the Banco Global (not yet local) —
  *      confirm with a chime + row insert + toast.
  * 404: not found anywhere — open Registro Rápido to create it.
  */
@@ -542,7 +579,11 @@ async function handleBarcodeScan(barcode: string) {
     const product = mapCatalogLookupProduct(res);
     playSoftTone();
     addProductRow(product);
-    success('Producto importado desde el Catálogo Global de Efectivo 360');
+    success(
+      isNewLocal(product)
+        ? 'Producto del Banco Global agregado. Se importará al procesar la factura.'
+        : 'Producto local agregado a la factura.',
+    );
   } catch (e: any) {
     if (e?.status === 404) {
       openQuickCreate(barcode);
@@ -572,9 +613,11 @@ const debouncedSearch = useDebounceFn(async (term: string) => {
   searching.value = true;
   notFound.value = false;
   try {
-    const res = await apiClient.get('/api/products/', { params: { search: term, page_size: 8 } });
-    const items = Array.isArray(res.data?.results) ? res.data.results : (Array.isArray(res.data) ? res.data : []);
-    const mapped = items.map(mapProduct);
+    // Pure read: GET /api/v1/catalog/lookup/?q= — merges local-tenant products
+    // with Banco Global hits, without cloning any of them into the tenant.
+    const res = await fetchApi<any>('/api/v1/catalog/lookup/', { params: { q: term } });
+    const items = Array.isArray(res?.results) ? res.results : [];
+    const mapped = items.map(mapCatalogLookupProduct);
     searchResults.value = mapped;
     highlightedIndex.value = mapped.length > 0 ? 0 : -1;
     if (mapped.length === 0) {
@@ -623,15 +666,24 @@ function habitualMarginPct(product: SearchProduct): number | null {
 }
 
 function addProductRow(product: SearchProduct) {
-  const conversionFactor = product.conversion_factor > 0 ? product.conversion_factor : 1;
+  // Keep the product's own habitual package only if it's actually valid for its
+  // measure (e.g. a PESO product historically bought in SACO); otherwise default
+  // to the "direct" option for that measure — never a package from another
+  // measure, and never its stale conversion factor (a "direct" package is 1:1).
+  const validPackages = packageOptionsFor(product.sale_unit).map((opt) => opt.value);
+  const hasValidHabitualPackage = validPackages.includes(product.purchase_unit_name);
+  const defaultPurchaseUnitName = hasValidHabitualPackage
+    ? product.purchase_unit_name
+    : directPackageFor(product.sale_unit);
+  const conversionFactor = hasValidHabitualPackage && product.conversion_factor > 0
+    ? product.conversion_factor
+    : 1;
   const key = ++rowKeySeq;
   const seedCostUsd = Math.round(product.current_cost * conversionFactor * 100) / 100;
   rows.value.push({
     key,
     product,
-    purchase_unit_name: PACKAGE_TYPE_OPTIONS.includes(product.purchase_unit_name as any)
-      ? product.purchase_unit_name
-      : 'UNIDAD',
+    purchase_unit_name: defaultPurchaseUnitName,
     conversion_factor: conversionFactor,
     packages_quantity: 1,
     // Seed cost in the invoice's current currency so the field reads naturally.
@@ -847,7 +899,10 @@ async function submit() {
       payment_source: paymentSource.value,
       cash_drawer_id: paymentSource.value === 'CASH_DRAWER' ? (cajaStore.turnoActivo?.id ?? null) : null,
       items: rows.value.map((r) => ({
-        product_id: r.product.id,
+        // Exactly one of these is set — global_product_id defers local creation
+        // to the backend's own atomic transaction, at the moment of processing.
+        product_id: r.product.product_id,
+        global_product_id: r.product.global_product_id,
         // Strict backend enum when it matches; otherwise falls back to the free-text alias.
         package_type: KNOWN_BACKEND_PACKAGE_TYPES.has(r.purchase_unit_name) ? r.purchase_unit_name : null,
         purchase_unit_name: r.purchase_unit_name,

@@ -4,11 +4,11 @@ import { useRoute, useRouter } from 'vue-router'
 import { useApi } from '@/composables/useApi'
 import { useNotify } from '@/composables/useNotify'
 import {
-  Loader2, Save, X, Package, DollarSign, TrendingUp,
-  ShieldCheck, Pencil, Trash2, Plus, ChevronDown,
-  GripVertical, BadgeCheck, Hash, Barcode, FileText,
-  ImagePlus, Tag, Layers, Percent, Globe, Building2,
-  Warehouse, Truck, Scale, Thermometer,
+  Loader2, Save, X, Package, DollarSign,
+  ShieldCheck, Trash2, Plus, ChevronDown,
+  BadgeCheck, FileText,
+  ImagePlus, Tag, Layers, Percent, Building2,
+  Warehouse, Truck, Scale,
 } from 'lucide-vue-next'
 
 const { fetchApi } = useApi()
@@ -60,13 +60,6 @@ const form = reactive({
   units_per_package: 1,
 })
 
-const presentations = ref([])
-const globalProduct = ref(null)
-const totalStock = ref(0)
-const productImage = ref('')
-const selectedImageFile = ref<File | null>(null)
-const variants = ref<VariantRow[]>([])
-
 interface VariantRow {
   id: string
   sku: string
@@ -75,6 +68,34 @@ interface VariantRow {
   price_base: number
   attribute_values: Record<string, string>
 }
+
+interface PresentationPrice {
+  id: string | null
+  currency_code: string
+  cost: number
+  retail_price: number
+  profit_margin: number
+  is_anchor: boolean
+}
+
+interface Presentation {
+  id: string | null
+  name: string
+  sku: string
+  units_per_package: number
+  barcode: string
+  is_base_unit: boolean
+  is_default: boolean
+  expanded: boolean
+  prices: PresentationPrice[]
+}
+
+const presentations = ref<Presentation[]>([])
+const globalProduct = ref<any>(null)
+const totalStock = ref(0)
+const productImage = ref('')
+const selectedImageFile = ref<File | null>(null)
+const variants = ref<VariantRow[]>([])
 
 interface DynamicAttribute {
   id: string | number
@@ -106,9 +127,9 @@ const tabs = [
 
 onMounted(async () => {
   try {
-    const res = await fetchApi(`/api/v1/products/${productUlid.value}/`)
+    const res = await fetchApi<any>(`/api/v1/products/${productUlid.value}/`)
     applyProductData(res)
-    const rateRes = await fetchApi('/api/v1/forex/bcv-rate/').catch(() => null)
+    const rateRes = await fetchApi<{ rate?: number }>('/api/v1/forex/bcv-rate/').catch(() => null)
     if (rateRes?.rate) bcvRate.value = rateRes.rate
   } catch (e) {
     notifyError('Error al cargar el producto')
@@ -144,7 +165,7 @@ async function loadCategoryAttributes() {
   }
 }
 
-function applyProductData(data) {
+function applyProductData(data: any) {
   form.id = data.id || ''
   form.sku = data.effective_sku || data.global_product?.sku || ''
   form.name = data.effective_name || data.global_product?.official_name || ''
@@ -170,7 +191,7 @@ function applyProductData(data) {
   productImage.value = data.image || ''
   loadCategoryAttributes()
 
-  const presList = (data.presentations || []).map(p => ({
+  const presList: Presentation[] = (data.presentations || []).map((p: any) => ({
     id: p.id,
     name: p.name || 'UNIDAD',
     sku: p.sku || '',
@@ -179,7 +200,7 @@ function applyProductData(data) {
     is_base_unit: p.is_base_unit || false,
     is_default: p.is_default || false,
     expanded: false,
-    prices: (p.prices || []).map(pr => ({
+    prices: (p.prices || []).map((pr: any) => ({
       id: pr.id,
       currency_code: pr.currency_code || pr.currency?.code || 'USD',
       cost: parseFloat(pr.cost || 0),
@@ -218,11 +239,11 @@ function applyProductData(data) {
   }))
 }
 
-function getPrice(presentation, currencyCode) {
+function getPrice(presentation: Presentation, currencyCode: string) {
   return presentation.prices.find(p => p.currency_code === currencyCode)
 }
 
-function ensurePrice(presentation, currencyCode) {
+function ensurePrice(presentation: Presentation, currencyCode: string) {
   let price = getPrice(presentation, currencyCode)
   if (!price) {
     price = { id: null, currency_code: currencyCode, cost: 0, retail_price: 0, profit_margin: 30, is_anchor: currencyCode === 'USD' }
@@ -231,7 +252,7 @@ function ensurePrice(presentation, currencyCode) {
   return price
 }
 
-function recalcRetailPrice(presentation, currencyCode) {
+function recalcRetailPrice(presentation: Presentation, currencyCode: string) {
   const price = getPrice(presentation, currencyCode)
   if (!price) return
   if (form.margin_type === 'TRADITIONAL') {
@@ -242,7 +263,7 @@ function recalcRetailPrice(presentation, currencyCode) {
   }
 }
 
-function recalcMargin(presentation, currencyCode) {
+function recalcMargin(presentation: Presentation, currencyCode: string) {
   const price = getPrice(presentation, currencyCode)
   if (!price || price.cost <= 0) return
   if (form.margin_type === 'TRADITIONAL') {
@@ -269,11 +290,11 @@ function addPresentation() {
   })
 }
 
-function removePresentation(index) {
+function removePresentation(index: number) {
   presentations.value.splice(index, 1)
 }
 
-function togglePresentation(index) {
+function togglePresentation(index: number) {
   presentations.value[index].expanded = !presentations.value[index].expanded
 }
 
@@ -294,6 +315,19 @@ function onFileSelected(e: Event) {
   }
   reader.readAsDataURL(file)
   target.value = ''
+}
+
+function handleHeaderImageError(e: Event) {
+  const target = e.target as HTMLImageElement
+  target.style.display = 'none'
+  const fallback = (target.nextElementSibling || target.parentElement?.querySelector('.fallback')) as HTMLElement | null
+  if (fallback) fallback.style.display = 'flex'
+}
+
+function handleFormImageError(e: Event) {
+  const target = e.target as HTMLImageElement
+  target.style.display = 'none'
+  productImage.value = ''
 }
 
 function buildEmptyAttributeValues(): Record<string, string> {
@@ -330,22 +364,22 @@ async function saveProduct() {
     const payload: Record<string, any> = {
       is_active: form.is_active,
       container_type: form.container_type,
-      container_capacity: parseInt(form.capacidad_por_contenedor) || undefined,
-      containers_count: parseInt(form.cantidad_contenedores) || undefined,
+      container_capacity: form.capacidad_por_contenedor || undefined,
+      containers_count: form.cantidad_contenedores || undefined,
       presentations: presentations.value.map(p => {
         const presPayload = {
           id: p.id || undefined,
           name: p.name,
           sku: p.sku || form.sku,
-          multiplier: parseFloat(p.units_per_package) || 1,
+          multiplier: p.units_per_package || 1,
           barcode: p.barcode || '',
           is_base_unit: p.is_base_unit || false,
           is_default: p.is_default || false,
           prices: p.prices.map(pr => ({
             currency: pr.currency_code,
-            cost: parseFloat(pr.cost) || 0,
-            retail_price: parseFloat(pr.retail_price) || 0,
-            profit_margin: parseFloat(pr.profit_margin) || 0,
+            cost: pr.cost || 0,
+            retail_price: pr.retail_price || 0,
+            profit_margin: pr.profit_margin || 0,
             is_anchor: pr.is_anchor || false,
           })),
         }
@@ -394,7 +428,7 @@ async function saveProduct() {
     notifySuccess('Producto actualizado exitosamente')
     const res = await fetchApi(`/api/v1/products/${productUlid.value}/`)
     applyProductData(res)
-  } catch (e) {
+  } catch (e: any) {
     const drfData = e?.response?.data ?? e?.data
     if (drfData && typeof drfData === 'object') {
       const msgs = Object.values(drfData).flat().filter(Boolean).join('. ')
@@ -422,7 +456,7 @@ async function saveProduct() {
               :src="productImage"
               :alt="form.name"
               class="h-full w-full object-cover"
-              @error="(e) => { e.target.style.display = 'none'; (e.target.nextElementSibling || e.target.parentElement.querySelector('.fallback')).style.display = 'flex' }"
+              @error="handleHeaderImageError"
             />
             <span v-show="!productImage" class="fallback text-base text-slate-400">📦</span>
           </div>
@@ -567,7 +601,7 @@ async function saveProduct() {
                   :src="productImage"
                   class="max-h-full max-w-full object-contain p-2"
                   alt="Preview"
-                  @error="(e) => { e.target.style.display = 'none'; productImage = '' }"
+                  @error="handleFormImageError"
                 />
                 <div v-if="!productImage" class="flex flex-col items-center gap-2 text-slate-400">
                   <ImagePlus class="w-8 h-8" />
@@ -692,7 +726,7 @@ async function saveProduct() {
                     <div class="flex justify-end">
                       <input
                         :value="getPrice(pres, 'USD')?.cost ?? 0"
-                        @input="(e) => { const p = ensurePrice(pres, 'USD'); p.cost = parseFloat(e.target.value) || 0; recalcRetailPrice(pres, 'USD') }"
+                        @input="(e) => { const p = ensurePrice(pres, 'USD'); p.cost = parseFloat((e.target as HTMLInputElement).value) || 0; recalcRetailPrice(pres, 'USD') }"
                         type="number" step="0.01" min="0"
                         class="w-24 px-2 py-1 text-sm border border-slate-200 rounded-md bg-white text-right focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
                       />
@@ -702,7 +736,7 @@ async function saveProduct() {
                     <div class="flex justify-end">
                       <input
                         :value="getPrice(pres, 'USD')?.profit_margin ?? 30"
-                        @input="(e) => { const p = ensurePrice(pres, 'USD'); p.profit_margin = parseFloat(e.target.value) || 0; recalcRetailPrice(pres, 'USD') }"
+                        @input="(e) => { const p = ensurePrice(pres, 'USD'); p.profit_margin = parseFloat((e.target as HTMLInputElement).value) || 0; recalcRetailPrice(pres, 'USD') }"
                         type="number" step="0.01" min="0"
                         class="w-20 px-2 py-1 text-sm border border-slate-200 rounded-md bg-white text-right focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"
                       />
@@ -751,7 +785,7 @@ async function saveProduct() {
                     <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">$</span>
                     <input
                       :value="getPrice(pres, 'USD')?.cost ?? 0"
-                      @input="(e) => { const p = ensurePrice(pres, 'USD'); p.cost = parseFloat(e.target.value) || 0; recalcRetailPrice(pres, 'USD') }"
+                      @input="(e) => { const p = ensurePrice(pres, 'USD'); p.cost = parseFloat((e.target as HTMLInputElement).value) || 0; recalcRetailPrice(pres, 'USD') }"
                       type="number" step="0.01" min="0"
                       class="w-full h-9 pl-6 pr-3 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -761,7 +795,7 @@ async function saveProduct() {
                   <label class="block text-[10px] font-medium text-slate-400 mb-1">Margen %</label>
                   <input
                     :value="getPrice(pres, 'USD')?.profit_margin ?? 30"
-                    @input="(e) => { const p = ensurePrice(pres, 'USD'); p.profit_margin = parseFloat(e.target.value) || 0; recalcRetailPrice(pres, 'USD') }"
+                    @input="(e) => { const p = ensurePrice(pres, 'USD'); p.profit_margin = parseFloat((e.target as HTMLInputElement).value) || 0; recalcRetailPrice(pres, 'USD') }"
                     type="number" step="0.01" min="0"
                     class="w-full h-9 px-3 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -773,7 +807,7 @@ async function saveProduct() {
                   <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">$</span>
                   <input
                     :value="getPrice(pres, 'USD')?.retail_price ?? 0"
-                    @input="(e) => { const p = ensurePrice(pres, 'USD'); p.retail_price = parseFloat(e.target.value) || 0; recalcMargin(pres, 'USD') }"
+                    @input="(e) => { const p = ensurePrice(pres, 'USD'); p.retail_price = parseFloat((e.target as HTMLInputElement).value) || 0; recalcMargin(pres, 'USD') }"
                     type="number" step="0.01" min="0"
                     class="w-full h-9 pl-6 pr-3 text-sm border border-slate-300 rounded-lg bg-white font-medium text-emerald-700 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -790,7 +824,7 @@ async function saveProduct() {
                     <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">Bs.</span>
                     <input
                       :value="getPrice(pres, 'VES')?.cost ?? 0"
-                      @input="(e) => { const p = ensurePrice(pres, 'VES'); p.cost = parseFloat(e.target.value) || 0; recalcRetailPrice(pres, 'VES') }"
+                      @input="(e) => { const p = ensurePrice(pres, 'VES'); p.cost = parseFloat((e.target as HTMLInputElement).value) || 0; recalcRetailPrice(pres, 'VES') }"
                       type="number" step="0.01" min="0"
                       class="w-full h-9 pl-8 pr-3 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                     />
@@ -800,7 +834,7 @@ async function saveProduct() {
                   <label class="block text-[10px] font-medium text-slate-400 mb-1">Margen %</label>
                   <input
                     :value="getPrice(pres, 'VES')?.profit_margin ?? 30"
-                    @input="(e) => { const p = ensurePrice(pres, 'VES'); p.profit_margin = parseFloat(e.target.value) || 0; recalcRetailPrice(pres, 'VES') }"
+                    @input="(e) => { const p = ensurePrice(pres, 'VES'); p.profit_margin = parseFloat((e.target as HTMLInputElement).value) || 0; recalcRetailPrice(pres, 'VES') }"
                     type="number" step="0.01" min="0"
                     class="w-full h-9 px-3 text-sm border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -812,7 +846,7 @@ async function saveProduct() {
                   <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400">Bs.</span>
                   <input
                     :value="getPrice(pres, 'VES')?.retail_price ?? 0"
-                    @input="(e) => { const p = ensurePrice(pres, 'VES'); p.retail_price = parseFloat(e.target.value) || 0; recalcMargin(pres, 'VES') }"
+                    @input="(e) => { const p = ensurePrice(pres, 'VES'); p.retail_price = parseFloat((e.target as HTMLInputElement).value) || 0; recalcMargin(pres, 'VES') }"
                     type="number" step="0.01" min="0"
                     class="w-full h-9 pl-8 pr-3 text-sm border border-slate-300 rounded-lg bg-white font-medium text-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                   />
