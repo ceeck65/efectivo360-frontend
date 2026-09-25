@@ -3,12 +3,17 @@ import { createPinia } from 'pinia';
 import Vue3Toastify from 'vue3-toastify';
 import router from './router';
 import App from './App.vue';
+import StorefrontApp from './views/storefront/StorefrontApp.vue';
+import { isStoreHost } from './views/storefront/storefront';
 import './styles/main.css';
 
 // Efi Assistant components (global registration)
 import { EfiChatBubble, EfiChatWindow } from '@modules/assistant';
 
-const app = createApp(App);
+// La tienda pública (store.efectivo360.app/<slug>/ o /store/<slug>) se monta con su propia raíz,
+// sin los efectos del backoffice (splash, sesión, asistente, service worker).
+const isStorefront = isStoreHost() || window.location.pathname.startsWith('/store/');
+const app = createApp(isStorefront ? StorefrontApp : App);
 
 // Pinia store
 const pinia = createPinia();

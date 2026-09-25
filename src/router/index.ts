@@ -5,10 +5,27 @@ import { categoriesRoutes } from '@modules/categories/router';
 import { blueprintsRoutes } from '@modules/blueprints/router';
 import { chatRoutes } from '@modules/chat/router';
 import { vaultsRoutes } from '@modules/vaults/router';
+import { isStoreHost } from '@/views/storefront/storefront';
+
+const StorefrontView = () => import('@/views/storefront/StorefrontView.vue');
+
+// Subdominio de tiendas (store. / tienda.): solo existe la tienda pública, en /<slug>/.
+const storeHostRoutes = [
+  { path: '/', beforeEnter: () => { window.location.replace('https://efectivo360.app'); return false; }, component: StorefrontView },
+  { path: '/:slug([a-z0-9-]+)', name: 'PublicStore', component: StorefrontView, meta: { storefront: true } },
+  { path: '/:pathMatch(.*)*', component: StorefrontView, meta: { storefront: true } },
+];
 
 const router = createRouter({
   history: createWebHistory(),
-  routes: [
+  routes: isStoreHost() ? storeHostRoutes : [
+    // Tienda pública en el dominio del sistema (desarrollo y vista previa desde el backoffice)
+    {
+      path: '/store/:slug([a-z0-9-]+)',
+      name: 'PublicStorePreview',
+      component: StorefrontView,
+      meta: { storefront: true },
+    },
     {
       path: '/',
       redirect: '/es',
@@ -151,6 +168,32 @@ const router = createRouter({
       path: '/admin/customers',
       name: 'Customers',
       component: () => import('@/views/admin/customers/CustomersView.vue'),
+      meta: { requiresAuth: true },
+    },
+    // Tienda pública: configuración (la tienda se ve en store.efectivo360.app/<slug>/)
+    {
+      path: '/admin/storefront',
+      name: 'StorefrontSettings',
+      component: () => import('@/views/admin/storefront/StorefrontSettingsView.vue'),
+      meta: { requiresAuth: true },
+    },
+    // Catálogos digitales (PDF / WhatsApp) con los productos de la tienda actual
+    {
+      path: '/admin/digital-catalogs',
+      name: 'DigitalCatalogs',
+      component: () => import('@/views/admin/digital-catalogs/DigitalCatalogsListView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/admin/digital-catalogs/new',
+      name: 'DigitalCatalogNew',
+      component: () => import('@/views/admin/digital-catalogs/DigitalCatalogBuilderView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/admin/digital-catalogs/:id/edit',
+      name: 'DigitalCatalogEdit',
+      component: () => import('@/views/admin/digital-catalogs/DigitalCatalogBuilderView.vue'),
       meta: { requiresAuth: true },
     },
 // Payment Methods - Separación de responsabilidades

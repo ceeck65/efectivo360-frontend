@@ -63,7 +63,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: true,
       port: 3000,
-      allowedHosts: ['efectivo360.test'],
+      allowedHosts: ['efectivo360.test', 'store.efectivo360.test', 'tienda.efectivo360.test'],
       hmr: { clientPort: 3000 },
       proxy: {
         '/api': { target: apiUrl, changeOrigin: true },
